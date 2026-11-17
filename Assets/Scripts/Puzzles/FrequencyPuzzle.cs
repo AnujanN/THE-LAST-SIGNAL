@@ -25,6 +25,7 @@ namespace LastSignal.Puzzles
         [SerializeField] private TMP_Text display;
         [SerializeField] private AudioSource staticSource;
         [SerializeField] private string wrongMessage = "Only static. That isn't the right frequency.";
+        [SerializeField] private UnityEvent onModulesReady = new UnityEvent();
         [SerializeField] private UnityEvent onSolved = new UnityEvent();
 
         private float frequency;
@@ -45,7 +46,19 @@ namespace LastSignal.Puzzles
                 staticSource.loop = true;
                 staticSource.Play();
             }
+            foreach (ItemSlot m in modules) if (m != null) m.Installed += OnModuleInstalled;
             Refresh();
+        }
+
+        private void OnDestroy()
+        {
+            foreach (ItemSlot m in modules) if (m != null) m.Installed -= OnModuleInstalled;
+        }
+
+        private void OnModuleInstalled(ItemSlot slot)
+        {
+            Refresh();
+            if (ModulesReady(out _)) onModulesReady.Invoke();
         }
 
         public bool ModulesReady(out string missing)

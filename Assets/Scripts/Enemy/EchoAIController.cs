@@ -106,6 +106,7 @@ namespace LastSignal.Enemy
         {
             if (Current != State.Inactive) return;
             gameObject.SetActive(true);
+            if (player == null) FindPlayer();
             SetState(waypoints.Length > 0 ? State.Patrol : State.Search);
             searchCentre = transform.position;
         }
@@ -116,10 +117,19 @@ namespace LastSignal.Enemy
             if (agent.isOnNavMesh) agent.ResetPath();
         }
 
+        /// <summary>Withdraw completely (scripted story moments); StartHunt or Activate brings it back.</summary>
+        public void Vanish()
+        {
+            Deactivate();
+            AudioManager.Instance?.PlayUI(PlaceholderClips.Scream, 0.7f);
+            gameObject.SetActive(false);
+        }
+
         /// <summary>Finale: always knows roughly where the player is and closes in.</summary>
         public void StartHunt()
         {
-            if (Current == State.Inactive) gameObject.SetActive(true);
+            gameObject.SetActive(true);
+            if (player == null) FindPlayer();
             SetState(State.Hunt);
         }
 

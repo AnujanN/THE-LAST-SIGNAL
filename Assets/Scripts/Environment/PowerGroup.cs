@@ -13,6 +13,8 @@ namespace LastSignal.Environment
     {
         [SerializeField] private string powerFlag = "power:station";
         [SerializeField] private string offFlag = "";
+        [Tooltip("Powered from the start (until offFlag is set), e.g. the tower in Level 3.")]
+        [SerializeField] private bool startPowered;
         [SerializeField] private Light[] lights = new Light[0];
         [SerializeField] private GameObject[] showWhenPowered = new GameObject[0];
         [SerializeField] private GameObject[] hideWhenPowered = new GameObject[0];
@@ -28,7 +30,8 @@ namespace LastSignal.Environment
         private void Start()
         {
             // Restore silently; onPowered already ran before the checkpoint.
-            bool on = WorldFlags.Has(powerFlag) && (string.IsNullOrEmpty(offFlag) || !WorldFlags.Has(offFlag));
+            bool switchedOff = !string.IsNullOrEmpty(offFlag) && WorldFlags.Has(offFlag);
+            bool on = (startPowered || WorldFlags.Has(powerFlag)) && !switchedOff;
             Apply(on);
         }
 

@@ -23,6 +23,8 @@ namespace LastSignal.Interaction
         private string installPrompt, emptyPrompt, needMessage;
 
         public bool IsInstalled { get; private set; }
+        /// <summary>Raised when an item is installed during play (not on checkpoint restore).</summary>
+        public event System.Action<ItemSlot> Installed;
         public string RequiredItemName => requiredItemName;
         private string Flag => "slot:" + id;
 
@@ -66,6 +68,7 @@ namespace LastSignal.Interaction
             WorldFlags.Set(Flag);
             ApplyVisual();
             onInstalled.Invoke();
+            Installed?.Invoke(this);
         }
 
         private void ApplyVisual()

@@ -1,0 +1,316 @@
+using System.Collections;
+using System.Linq;
+using LastSignal.Enemy;
+using LastSignal.GameFlow;
+using LastSignal.Interaction;
+using LastSignal.Inventory;
+using LastSignal.Player;
+using LastSignal.Puzzles;
+using LastSignal.Save;
+using LastSignal.Utilities;
+using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.TestTools;
+
+namespace LastSignal.Tests
+{
+    /// <summary>
+    /// Loads the real level scenes and drives each critical path in order (pickups, puzzles,
+    /// doors, recordings, exits) to prove every level can be completed without softlocks,
+    /// that objectives advance, and that the scene flow reaches the ending.
+    /// Interactions are invoked directly rather than by aiming the camera.
+    /// </summary>
+    public class LevelWalkthroughTests
+    {
+        private GameFlowManager flow;
+        private PlayerInteractor interactor;
+        private PlayerController player;
+        private InventoryManager inventory;
+
+        [UnitySetUp]
+        public IEnumerator SetUp()
+        {
+            Time.timeScale = 1f;
+            yield return null;
+            flow = GameFlowManager.Instance;
+            Assert.IsNotNull(flow, "GameFlowManager should bootstrap automatically");
+        }
+
+        [UnityTearDown]
+        public IEnumerator TearDown()
+        {
+            Time.timeScale = 1f;
+            ModalStack.Reset();
+            HidingSpot.ResetStatic();
+            SaveManager.Delete();
+            yield return null;
+        }
+
+        private IEnumerator StartLevel(string scene)
+        {
+            flow.StartFresh(scene);
+            yield return WaitForScene(scene);
+            CachePlayer();
+            interactor.InputRouter.KeyboardMouseEnabled = false;
+        }
+
+        private IEnumerator WaitForScene(string scene, float timeout = 20f)
+        {
+            float end = Time.realtimeSinceStartup + timeout;
+            while ((SceneManager.GetActiveScene().name != scene || flow.IsLoading) && Time.realtimeSinceStartup < end)
+                yield return null;
+            Assert.AreEqual(scene, SceneManager.GetActiveScene().name, "Scene did not load: " + scene);
+            Assert.IsFalse(flow.IsLoading);
+            yield return null;
+            yield return null;
+        }
+
+        private void CachePlayer()
+        {
+            interactor = Object.FindAnyObjectByType<PlayerInteractor>();
+            Assert.IsNotNull(interactor, "Player missing from scene");
+            player = interactor.GetComponent<PlayerController>();
+            inventory = interactor.GetComponent<InventoryManager>();
+        }
+
+        private static T Get<T>(string name) where T : Component
+        {
+            T found = Object.FindObjectsByType<T>(FindObjectsInactive.Include, FindObjectsSortMode.None).FirstOrDefault(c => c.name == name);
+            Assert.IsNotNull(found, typeof(T).Name + " '" + name + "' not found");
+            return found;
+        }
+
+        private static string Objective => ObjectiveManager.Instance.CurrentId;
+
+        private IEnumerator WaitUntilTrue(System.Func<bool> condition, float timeoutSeconds, string what)
+        {
+            float end = Time.realtimeSinceStartup + timeoutSeconds;
+            while (!condition() && Time.realtimeSinceStartup < end) yield return null;
+            Assert.IsTrue(condition(), "Timed out waiting for: " + what);
+        }
+
+        private IEnumerator WalkInto(Vector3 position)
+        {
+            player.Teleport(position);
+            yield return new WaitForFixedUpdate();
+            yield return null;
+            yield return null;
+        }
+
+        // ================================================================== Level 1
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator Level1_CriticalPath_ReachesLevel2()
+        {
+            yield return StartLevel(GameFlowManager.Level1Scene);
+            Assert.AreEqual("l1_enter", Objective);
+
+            Get<PickupItem>("Pickup_Flashlight").Interact(interactor);
+            Assert.IsTrue(inventory.Has("flashlight"));
+            Assert.AreEqual("l1_search", Objective);
+
+            Door control = Get<Door>("ControlDoor");
+            control.Interact(interactor);
+            yield return new WaitForSeconds(1f);
+            Assert.IsFalse(control.IsOpen, "Control room must stay locked without power");
+
+            foreach (string t in new[] { "Tape_1", "Tape_2", "Tape_3" }) Get<PickupItem>(t).Interact(interactor);
+            Assert.AreEqual(3, inventory.Count("tape_fragment"));
+            Assert.AreEqual("l1_power", Objective);
+
+            BreakerPuzzle breaker = Get<BreakerPuzzle>("BreakerPuzzle");
+            Assert.IsFalse(breaker.TryRestorePower(), "Lever must fail without the fuse");
+            Get<PickupItem>("Pickup_MainFuse").Interact(interactor);
+            ItemSlot socket = Get<ItemSlot>("FuseSocket");
+            socket.Interact(interactor);
+            Assert.IsTrue(socket.IsInstalled);
+            Assert.IsFalse(breaker.TryRestorePower(), "Lever must fail with the starting breaker pattern");
+
+            bool[] solution = { true, false, true, false };
+            for (int i = 0; i < 4; i++) Get<BreakerSwitch>("Breaker_B" + (i + 1)).Set(solution[i]);
+            Assert.IsTrue(breaker.TryRestorePower());
+            Assert.IsTrue(WorldFlags.Has("power:station"));
+            Assert.AreEqual("l1_tape", Objective);
+            Assert.IsTrue(Get<Light>("Corridor").enabled, "Powered lights should come on");
+            Assert.IsTrue(SaveManager.HasSave, "Power checkpoint should save");
+
+            control.Interact(interactor);
+            yield return WaitUntilTrue(() => control.IsOpen, 3f, "control door open");
+
+            TapePlayer tape = Get<TapePlayer>("TapePlayer");
+            Time.timeScale = 20f;
+            tape.Interact(interactor);
+            yield return WaitUntilTrue(() => tape.HasPlayed, 15f, "level 1 tape finished");
+            Time.timeScale = 1f;
+            Assert.AreEqual("l1_key", Objective);
+
+            PickupItem key = Get<PickupItem>("Pickup_BasementKey");
+            yield return null;
+            Assert.IsTrue(key.gameObject.activeSelf, "Key should appear after the tape");
+            key.Interact(interactor);
+            Assert.AreEqual("l1_basement", Objective);
+
+            Door basement = Get<Door>("BasementDoor");
+            basement.Interact(interactor);
+            yield return WaitUntilTrue(() => basement.IsOpen, 3f, "basement door open");
+            Assert.AreEqual("l1_down", Objective);
+
+            yield return WalkInto(new Vector3(4.6f, 0.05f, 6f));
+            yield return WaitForScene(GameFlowManager.Level2Scene);
+            CachePlayer();
+            Assert.IsTrue(inventory.Has("flashlight"), "Flashlight should carry over to Level 2");
+            Assert.AreEqual("l2_find_gen", Objective);
+        }
+
+        // ================================================================== Level 2
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator Level2_CriticalPath_ReachesLevel3()
+        {
+            yield return StartLevel(GameFlowManager.Level2Scene);
+            Get<EchoAIController>("Echo").Deactivate();
+            Assert.IsTrue(interactor.Flashlight.DrainEnabled, "Battery should drain in Level 2");
+
+            GeneratorPuzzle generator = Get<GeneratorPuzzle>("GeneratorPuzzle");
+            generator.PressStep(0);
+            Assert.AreEqual(0, generator.Progress, "Start-up must not progress with parts missing");
+
+            foreach (string p in new[] { "Part_SparkPlug", "Part_Fuse30A", "Part_DriveBelt" }) Get<PickupItem>(p).Interact(interactor);
+            foreach (string s in new[] { "Slot_SparkPlug", "Slot_Fuse", "Slot_Belt" }) Get<ItemSlot>(s).Interact(interactor);
+            Assert.AreEqual("l2_start", Objective);
+
+            generator.PressStep(1);
+            Assert.AreEqual(0, generator.Progress, "Wrong first step should reset");
+            generator.PressStep(0);
+            generator.PressStep(2);
+            Assert.AreEqual(0, generator.Progress, "Out-of-order step should reset");
+            generator.PressStep(0);
+            generator.PressStep(1);
+            generator.PressStep(2);
+            Assert.IsTrue(generator.IsSolved);
+            Assert.IsTrue(WorldFlags.Has("power:generator"));
+            Assert.AreEqual("l2_tape", Objective);
+
+            ActionButton lift = Get<ActionButton>("LiftButton");
+            lift.Interact(interactor);
+            yield return null;
+            Assert.IsFalse(lift.Used, "Elevator must wait for the recording");
+
+            TapePlayer tape = Get<TapePlayer>("EmergencyRecorder");
+            Time.timeScale = 20f;
+            tape.Interact(interactor);
+            yield return WaitUntilTrue(() => tape.HasPlayed, 15f, "level 2 recording finished");
+            Assert.AreEqual("l2_lift", Objective);
+
+            lift.Interact(interactor);
+            Assert.IsTrue(lift.Used);
+            yield return WaitForScene(GameFlowManager.Level3Scene, 30f);
+            Time.timeScale = 1f;
+            Assert.AreEqual("l3_components", Objective);
+        }
+
+        // ================================================================== Level 3
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator Level3_CriticalPath_ReachesEnding()
+        {
+            yield return StartLevel(GameFlowManager.Level3Scene);
+            EchoAIController echo = Get<EchoAIController>("Echo");
+            echo.Deactivate();
+
+            FrequencyPuzzle freq = Get<FrequencyPuzzle>("FrequencyPuzzle");
+            freq.Transmit();
+            Assert.IsFalse(freq.IsSolved, "Cannot transmit without modules");
+
+            foreach (string m in new[] { "Module_RFAmp", "Module_Coupler", "Module_Tuner" }) Get<PickupItem>(m).Interact(interactor);
+            foreach (string s in new[] { "Slot_RFAmp", "Slot_Coupler", "Slot_Tuner" }) Get<ItemSlot>(s).Interact(interactor);
+            Assert.AreEqual("l3_tune", Objective);
+
+            freq.Transmit();
+            Assert.IsFalse(freq.IsSolved, "Wrong frequency must not solve");
+            for (int i = 0; i < 7; i++) freq.Tune(1f);
+            for (int i = 0; i < 2; i++) freq.Tune(0.1f);
+            Assert.AreEqual(103.7f, freq.Frequency, 0.001f);
+            freq.Transmit();
+            Assert.IsTrue(freq.IsSolved);
+            Assert.AreEqual("l3_recording", Objective);
+            Assert.IsFalse(echo.gameObject.activeSelf, "The Echo withdraws during the final recording");
+
+            ActionButton shutdown = Get<ActionButton>("MasterShutdown");
+            shutdown.Interact(interactor);
+            Assert.IsFalse(shutdown.Used, "Shutdown must wait for the final recording");
+
+            TapePlayer finalTape = Get<TapePlayer>("FinalRecording");
+            Time.timeScale = 20f;
+            finalTape.Interact(interactor);
+            yield return null;
+            Assert.IsTrue(player.MovementLocked, "Player is held still during the final recording");
+            yield return WaitUntilTrue(() => finalTape.HasPlayed, 20f, "final recording finished");
+            Time.timeScale = 1f;
+            Assert.IsFalse(player.MovementLocked);
+            Assert.IsFalse(finalTape.CanInteract(interactor), "Final recording is not replayable/skippable");
+            Assert.AreEqual("l3_shutdown", Objective);
+
+            shutdown.Interact(interactor);
+            Assert.IsTrue(WorldFlags.Has(FinaleSequence.ShutdownFlag));
+            Assert.AreEqual("l3_escape", Objective);
+            Door escape = Get<Door>("EscapeDoor");
+            yield return WaitUntilTrue(() => escape.IsOpen, 3f, "escape door open");
+            Assert.IsFalse(Get<Light>("Chamber").enabled, "Tower lights die at shutdown");
+
+            yield return WalkInto(new Vector3(-15.2f, 0.05f, 25f));
+            yield return WaitForScene(GameFlowManager.EndingScene);
+            Assert.IsNotNull(Object.FindAnyObjectByType<EndingSequence>());
+            Assert.IsFalse(SaveManager.HasSave, "Finishing the game clears the save");
+        }
+
+        // ================================================================== The Echo
+
+        [UnityTest, Timeout(90000)]
+        public IEnumerator Echo_Chases_LosesHiddenPlayer_Investigates_AndCatches()
+        {
+            yield return StartLevel(GameFlowManager.Level2Scene);
+            EchoAIController echo = Get<EchoAIController>("Echo");
+
+            // Sight -> chase.
+            yield return WalkInto(new Vector3(3f, 0.05f, 5.5f));
+            echo.Activate();
+            echo.WarpTo(new Vector3(-5f, 0f, 5.5f));
+            echo.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
+            yield return WaitUntilTrue(() => echo.Current == EchoAIController.State.Chase, 3f, "chase after seeing the player");
+
+            // Hiding -> it cannot see the player and gives up to search; no catch.
+            HidingSpot locker = Get<HidingSpot>("Locker_A2");
+            locker.Enter(player);
+            Assert.IsTrue(HidingSpot.PlayerHidden);
+            Assert.IsFalse(echo.CanSeePlayer(), "Hidden player must not be visible");
+            yield return WaitUntilTrue(() => echo.Current == EchoAIController.State.Search, 6f, "search after losing the player");
+            yield return new WaitForSeconds(2f);
+            Assert.IsFalse(flow.IsGameOver, "A hidden player must never be caught");
+            locker.Leave();
+
+            // Noise -> investigate.
+            yield return WalkInto(new Vector3(0f, 0.05f, 18f));
+            echo.Deactivate();
+            echo.WarpTo(new Vector3(-12f, 0f, 5.5f));
+            echo.Activate();
+            yield return null;
+            NoiseSystem.Emit(new Vector3(-8f, 0f, 5.5f), 9f);
+            yield return null;
+            Assert.AreEqual(EchoAIController.State.Investigate, echo.Current);
+
+            // Standing still in front of it -> caught -> game over -> retry restores play.
+            yield return WalkInto(new Vector3(-9f, 0.05f, 5.5f));
+            echo.WarpTo(new Vector3(-11f, 0f, 5.5f));
+            echo.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
+            yield return WaitUntilTrue(() => flow.IsGameOver, 8f, "caught by The Echo");
+            yield return new WaitForSecondsRealtime(1.5f);
+            Assert.IsTrue(ModalStack.AnyOpen, "Game over screen should be shown");
+            flow.RetryCheckpoint();
+            yield return WaitForScene(GameFlowManager.Level2Scene);
+            Assert.IsFalse(flow.IsGameOver);
+            Assert.IsFalse(ModalStack.AnyOpen);
+        }
+    }
+}

@@ -19,6 +19,7 @@ namespace LastSignal.Puzzles
         [Tooltip("Names of the start-up controls in the correct order.")]
         [SerializeField] private string[] steps = { "Fuel valve", "Choke", "Starter" };
         [SerializeField] private string wrongOrderMessage = "The engine coughs and stalls. Follow the start-up order on the maintenance note.";
+        [SerializeField] private UnityEvent onPartsReady = new UnityEvent();
         [SerializeField] private UnityEvent onSolved = new UnityEvent();
 
         private int progress;
@@ -30,6 +31,17 @@ namespace LastSignal.Puzzles
         private void Start()
         {
             if (WorldFlags.Has(Flag)) IsSolved = true;
+            foreach (ItemSlot p in parts) if (p != null) p.Installed += OnPartInstalled;
+        }
+
+        private void OnDestroy()
+        {
+            foreach (ItemSlot p in parts) if (p != null) p.Installed -= OnPartInstalled;
+        }
+
+        private void OnPartInstalled(ItemSlot slot)
+        {
+            if (AllPartsInstalled(out _)) onPartsReady.Invoke();
         }
 
         public bool AllPartsInstalled(out string missing)

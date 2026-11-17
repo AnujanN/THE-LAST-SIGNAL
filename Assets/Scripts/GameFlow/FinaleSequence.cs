@@ -61,8 +61,9 @@ namespace LastSignal.GameFlow
             yield return new WaitForSeconds(huntDelay);
             if (echo != null)
             {
-                if (echoSpawn != null) echo.WarpTo(echoSpawn.position);
+                // Activate first: a disabled NavMeshAgent cannot be warped.
                 echo.StartHunt();
+                if (echoSpawn != null) echo.WarpTo(echoSpawn.position);
             }
         }
 

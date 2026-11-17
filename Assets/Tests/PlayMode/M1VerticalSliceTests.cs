@@ -8,7 +8,9 @@ using LastSignal.Player;
 using LastSignal.UI;
 using NUnit.Framework;
 using UnityEngine;
+using LastSignal.Utilities;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 
@@ -35,6 +37,8 @@ namespace LastSignal.Tests
         public IEnumerator SetUp()
         {
             Time.timeScale = 1f;
+            ModalStack.Reset();
+            yield return IsolateInEmptyScene();
             SpawnCube(new Vector3(0f, -0.5f, 0f), new Vector3(40f, 1f, 40f)); // floor, top at y = 0
 
 #if UNITY_EDITOR
@@ -306,6 +310,22 @@ namespace LastSignal.Tests
                 ? $"{h.collider.name} at {h.distance:F2} m"
                 : "nothing";
             return $"cam {cam.position} fwd {cam.forward}, player {player.transform.position}, ray hit {hit}, cursor {Cursor.lockState}";
+        }
+
+        /// <summary>
+        /// Other test classes load real game scenes; start each test in a fresh empty scene and
+        /// unload any game scene left behind so its geometry and cameras cannot interfere.
+        /// </summary>
+        private static IEnumerator IsolateInEmptyScene()
+        {
+            Scene fresh = SceneManager.CreateScene("M1Test_" + System.Guid.NewGuid().ToString("N"));
+            SceneManager.SetActiveScene(fresh);
+            for (int i = SceneManager.sceneCount - 1; i >= 0; i--)
+            {
+                Scene s = SceneManager.GetSceneAt(i);
+                if (s == fresh || !s.isLoaded || s.name.StartsWith("InitTestScene")) continue;
+                yield return SceneManager.UnloadSceneAsync(s);
+            }
         }
 
         private GameObject Track(GameObject go)

@@ -132,6 +132,14 @@ namespace LastSignal.GameFlow
             Load(Level1Scene);
         }
 
+        /// <summary>Start a level with a clean run state (tests, debug level select). Does not touch the save file.</summary>
+        public void StartFresh(string scene)
+        {
+            Live = new GameState();
+            checkpointState = null;
+            Load(scene);
+        }
+
         public bool CanContinue => SaveManager.HasSave;
 
         public void Continue()

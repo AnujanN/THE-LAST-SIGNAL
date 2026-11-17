@@ -52,6 +52,25 @@ namespace LastSignal.Inventory
 
         public bool Has(string id, int minimum = 1) => Count(id) >= minimum;
 
+        /// <summary>Copy of the current items (for checkpoints).</summary>
+        public List<Entry> Snapshot()
+        {
+            var copy = new List<Entry>(items.Count);
+            foreach (Entry e in items) copy.Add(new Entry { id = e.id, displayName = e.displayName, count = e.count });
+            return copy;
+        }
+
+        /// <summary>Replace the inventory with saved items. Raises ItemRemoved/ItemAdded so listeners refresh.</summary>
+        public void RestoreFrom(List<Entry> saved)
+        {
+            var old = new List<Entry>(items);
+            items.Clear();
+            foreach (Entry e in old) { e.count = 0; ItemRemoved?.Invoke(e); }
+            if (saved == null) return;
+            foreach (Entry e in saved)
+                if (e != null && e.count > 0) Add(e.id, e.displayName, e.count);
+        }
+
         public int Count(string id)
         {
             Entry e = Find(id);

@@ -1,0 +1,126 @@
+using System.Collections;
+using LastSignal.Audio;
+using LastSignal.GameFlow;
+using UnityEngine;
+using UnityEngine.AI;
+using UnityEngine.Events;
+
+namespace LastSignal.Interaction
+{
+    /// <summary>
+    /// Hinged door. Can be locked by an inventory item (key) and/or a world flag (e.g. power).
+    /// Opens once and stays open; the open state survives checkpoint reloads.
+    /// While closed, an optional NavMeshObstacle stops The Echo walking through it.
+    /// </summary>
+    public class Door : MonoBehaviour, IInteractable
+    {
+        [SerializeField] private string id = "door";
+        [SerializeField] private Transform hinge;
+        [SerializeField] private float openAngle = 100f;
+        [SerializeField] private float openSeconds = 0.8f;
+
+        [Header("Lock")]
+        [SerializeField] private string requiredItemId;
+        [SerializeField] private string requiredItemName = "Key";
+        [SerializeField] private bool consumeItem = true;
+        [SerializeField] private string requiredFlag;
+        [SerializeField] private string flagLockedMessage = "It won't open.";
+        [SerializeField] private string doorName = "door";
+
+        [Header("Events")]
+        [SerializeField] private UnityEvent onOpened = new UnityEvent();
+
+        private NavMeshObstacle obstacle;
+        private bool isOpen;
+        private bool moving;
+        private string openPrompt, lockedPrompt, unlockPrompt, needItemMessage;
+
+        public bool IsOpen => isOpen;
+        private string OpenFlag => "door:" + id;
+
+        private void Awake()
+        {
+            if (hinge == null) hinge = transform;
+            obstacle = GetComponentInChildren<NavMeshObstacle>();
+            openPrompt = "Open " + doorName;
+            lockedPrompt = "Try " + doorName;
+            unlockPrompt = "Unlock " + doorName + " (" + requiredItemName + ")";
+            needItemMessage = "Locked. You need the " + requiredItemName + ".";
+        }
+
+        private void Start()
+        {
+            if (WorldFlags.Has(OpenFlag)) SetOpenImmediate();
+        }
+
+        public string GetPrompt(PlayerInteractor interactor)
+        {
+            if (!string.IsNullOrEmpty(requiredFlag) && !WorldFlags.Has(requiredFlag)) return lockedPrompt;
+            if (!string.IsNullOrEmpty(requiredItemId))
+                return interactor.Inventory != null && interactor.Inventory.Has(requiredItemId) ? unlockPrompt : lockedPrompt;
+            return openPrompt;
+        }
+
+        public bool CanInteract(PlayerInteractor interactor) => isActiveAndEnabled && !isOpen && !moving;
+
+        public void Interact(PlayerInteractor interactor)
+        {
+            if (!string.IsNullOrEmpty(requiredFlag) && !WorldFlags.Has(requiredFlag))
+            {
+                interactor.ShowMessage(flagLockedMessage);
+                AudioManager.Instance?.PlayAt(PlaceholderClips.Thud, transform.position, 0.5f);
+                return;
+            }
+            if (!string.IsNullOrEmpty(requiredItemId))
+            {
+                if (interactor.Inventory == null || !interactor.Inventory.Has(requiredItemId))
+                {
+                    interactor.ShowMessage(needItemMessage);
+                    AudioManager.Instance?.PlayAt(PlaceholderClips.Thud, transform.position, 0.5f);
+                    return;
+                }
+                if (consumeItem) interactor.Inventory.Remove(requiredItemId);
+                interactor.ShowMessage("Used the " + requiredItemName + ".");
+            }
+            Open();
+        }
+
+        /// <summary>Open from code or events (no lock checks).</summary>
+        public void Open()
+        {
+            if (isOpen || moving) return;
+            WorldFlags.Set(OpenFlag);
+            StartCoroutine(OpenRoutine());
+        }
+
+        private IEnumerator OpenRoutine()
+        {
+            moving = true;
+            AudioManager.Instance?.PlayAt(PlaceholderClips.DoorCreak, transform.position, 0.7f);
+            Quaternion start = hinge.localRotation;
+            Quaternion end = start * Quaternion.Euler(0f, openAngle, 0f);
+            for (float t = 0f; t < openSeconds; t += Time.deltaTime)
+            {
+                hinge.localRotation = Quaternion.Slerp(start, end, Mathf.SmoothStep(0f, 1f, t / openSeconds));
+                yield return null;
+            }
+            hinge.localRotation = end;
+            Finish();
+            onOpened.Invoke();
+        }
+
+        /// <summary>Restore an already-opened door silently (no events, no sound).</summary>
+        private void SetOpenImmediate()
+        {
+            hinge.localRotation *= Quaternion.Euler(0f, openAngle, 0f);
+            Finish();
+        }
+
+        private void Finish()
+        {
+            isOpen = true;
+            moving = false;
+            if (obstacle != null) obstacle.enabled = false;
+        }
+    }
+}

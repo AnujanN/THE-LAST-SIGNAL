@@ -11,7 +11,7 @@ namespace LastSignal.UI
     /// </summary>
     public class MobileButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
     {
-        public enum Kind { Interact, Crouch, Flashlight, Pause, SprintToggle }
+        public enum Kind { Interact, Crouch, Flashlight, Pause, SprintToggle, Inventory }
 
         [SerializeField] private Kind kind;
         [SerializeField] private Graphic background;
@@ -55,6 +55,7 @@ namespace LastSignal.UI
                 case Kind.Flashlight: Router.Press(PlayerAction.Flashlight); break;
                 case Kind.Pause: Router.Press(PlayerAction.Pause); break;
                 case Kind.SprintToggle: Router.ToggleMobileSprint(); break;
+                case Kind.Inventory: Router.Press(PlayerAction.Inventory); break;
             }
         }
 

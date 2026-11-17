@@ -42,6 +42,16 @@ namespace LastSignal.Player
             }
         }
 
+        private void OnEnable()
+        {
+            Save.GameSettings.Changed += ApplySettings;
+            ApplySettings();
+        }
+
+        private void OnDisable() => Save.GameSettings.Changed -= ApplySettings;
+
+        private void ApplySettings() => SensitivityMultiplier = Save.GameSettings.LookSensitivity;
+
         private void Update()
         {
             if (input == null) return;

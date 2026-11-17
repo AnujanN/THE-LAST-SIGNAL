@@ -72,6 +72,8 @@ namespace LastSignal.Interaction
 
         private IInteractable FindTarget()
         {
+            // While hidden, the only thing to do is leave the hiding spot.
+            if (HidingSpot.Current != null) return HidingSpot.Current;
             if (viewCamera == null) return null;
             Transform cam = viewCamera.transform;
             Ray ray = new Ray(cam.position, cam.forward);

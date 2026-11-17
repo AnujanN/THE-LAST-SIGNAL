@@ -45,6 +45,7 @@ namespace LastSignal.Utilities
         {
             AudioClip clip = AudioClip.Create(name, data.Length, 1, rate, false);
             clip.SetData(data, 0);
+            clip.hideFlags = HideFlags.DontUnloadUnusedAsset;
             return clip;
         }
     }

@@ -14,6 +14,8 @@ namespace LastSignal.Interaction
         [SerializeField] private string displayName = "Item";
         [SerializeField, Min(1)] private int amount = 1;
         [SerializeField] private string promptVerb = "Pick up";
+        [Tooltip("Unique per object (e.g. tape_1). When set, the pickup stays gone after checkpoint reloads.")]
+        [SerializeField] private string saveId;
 
         [Header("Feedback")]
         [Tooltip("Optional. A generated placeholder sound plays when empty.")]
@@ -28,6 +30,14 @@ namespace LastSignal.Interaction
         public string DisplayName => displayName;
 
         private void Awake() => BuildStrings();
+
+        private void Start()
+        {
+            GameFlow.GameFlowManager flow = GameFlow.GameFlowManager.Instance;
+            if (!string.IsNullOrEmpty(saveId) && flow != null && flow.HasFlag(TakenFlag)) gameObject.SetActive(false);
+        }
+
+        private string TakenFlag => "taken:" + saveId;
 
         /// <summary>Set up the item from code (runtime spawns, tests).</summary>
         public void Configure(string id, string name, int count = 1)
@@ -52,6 +62,7 @@ namespace LastSignal.Interaction
         {
             if (interactor.Inventory != null) interactor.Inventory.Add(itemId, displayName, amount);
             interactor.ShowMessage(message);
+            if (!string.IsNullOrEmpty(saveId)) GameFlow.GameFlowManager.Instance?.SetFlag(TakenFlag);
 
             AudioClip clip = pickupSound != null ? pickupSound : PlaceholderAudio.Pickup;
             AudioSource.PlayClipAtPoint(clip, transform.position, volume);

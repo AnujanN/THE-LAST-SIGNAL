@@ -10,7 +10,8 @@ namespace LastSignal.Player
         Interact,
         Crouch,
         Flashlight,
-        Pause
+        Pause,
+        Inventory
     }
 
     /// <summary>
@@ -32,7 +33,7 @@ namespace LastSignal.Player
         private Vector2 pendingTouchLookPixels;
         private bool mobileSprintToggled;
         private bool mobileWasMoving;
-        private bool pendingInteract, pendingCrouch, pendingFlashlight, pendingPause;
+        private bool pendingInteract, pendingCrouch, pendingFlashlight, pendingPause, pendingInventory;
 
         /// <summary>Movement on X (strafe) and Y (forward), magnitude 0..1.</summary>
         public Vector2 Move { get; private set; }
@@ -45,6 +46,8 @@ namespace LastSignal.Player
         public bool CrouchPressed { get; private set; }
         public bool FlashlightPressed { get; private set; }
         public bool PausePressed { get; private set; }
+        /// <summary>Works while gameplay is blocked, so the same button can close the inventory.</summary>
+        public bool InventoryPressed { get; private set; }
 
         /// <summary>When true (e.g. paused), gameplay input reads as zero. Pause still works.</summary>
         public bool GameplayBlocked { get; set; }
@@ -67,6 +70,7 @@ namespace LastSignal.Player
                 case PlayerAction.Crouch: pendingCrouch = true; break;
                 case PlayerAction.Flashlight: pendingFlashlight = true; break;
                 case PlayerAction.Pause: pendingPause = true; break;
+                case PlayerAction.Inventory: pendingInventory = true; break;
             }
         }
 
@@ -76,11 +80,15 @@ namespace LastSignal.Player
             Vector2 mouseLook = Vector2.zero;
             bool sprintHeld = false;
             bool interact = pendingInteract, crouch = pendingCrouch;
-            bool flashlight = pendingFlashlight, pause = pendingPause;
-            pendingInteract = pendingCrouch = pendingFlashlight = pendingPause = false;
+            bool flashlight = pendingFlashlight, pause = pendingPause, inventory = pendingInventory;
+            pendingInteract = pendingCrouch = pendingFlashlight = pendingPause = pendingInventory = false;
 
             if (enableKeyboardMouse)
+            {
                 ReadKeyboardMouse(ref move, ref mouseLook, ref sprintHeld, ref interact, ref crouch, ref flashlight, ref pause);
+                Keyboard kb = Keyboard.current;
+                if (kb != null) inventory |= kb.iKey.wasPressedThisFrame || kb.tabKey.wasPressedThisFrame;
+            }
 
             // Mobile sprint is a toggle; it switches itself off when the player stops moving.
             bool mobileMoving = mobileMove.sqrMagnitude > 0.01f;
@@ -92,6 +100,7 @@ namespace LastSignal.Player
             pendingTouchLookPixels = Vector2.zero;
 
             PausePressed = pause;
+            InventoryPressed = inventory;
             if (GameplayBlocked)
             {
                 Move = Vector2.zero;

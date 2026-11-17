@@ -37,7 +37,16 @@ namespace LastSignal.Player
         public bool IsOn { get; private set; }
         public bool IsOwned => string.IsNullOrEmpty(requiredItemId) || (inventory != null && inventory.Has(requiredItemId));
         public float Charge01 => charge / maxCharge;
+        public float Charge => charge;
         public bool DrainEnabled { get => drainEnabled; set => drainEnabled = value; }
+        public float DrainPerSecond { get => drainPerSecond; set => drainPerSecond = Mathf.Max(0f, value); }
+
+        public void SetCharge(float value)
+        {
+            charge = Mathf.Clamp(value, 0f, maxCharge);
+            ChargeChanged?.Invoke(Charge01);
+            if (charge <= 0f && IsOn) SetOn(false, playSound: false);
+        }
 
         public event Action<bool> Toggled;
         public event Action<bool> OwnershipChanged;

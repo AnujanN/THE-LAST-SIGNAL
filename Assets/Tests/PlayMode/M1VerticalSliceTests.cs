@@ -152,6 +152,29 @@ namespace LastSignal.Tests
             Assert.Greater(cc.height, 1.7f);
         }
 
+        /// <summary>
+        /// Regression: standing inside a large story trigger (e.g. the office "footsteps" zone)
+        /// used to hide every interactable, because the trigger was the nearest hit.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Interactor_TargetsPickup_WhileInsideStoryTrigger()
+        {
+            var zone = Track(new GameObject("StoryZone"));
+            zone.transform.position = player.transform.position + Vector3.up;
+            var box = zone.AddComponent<BoxCollider>();
+            box.isTrigger = true;
+            box.size = new Vector3(7f, 3f, 7f);
+            zone.AddComponent<TriggerZone>();
+
+            GameObject item = SpawnInFrontOfCamera(1.3f);
+            item.AddComponent<PickupItem>().Configure("main_fuse", "Main fuse");
+            Physics.SyncTransforms();
+            yield return WaitForPhysicsThenFrame();
+
+            Assert.IsNotNull(interactor.Current, "Pickup must be targetable from inside a trigger volume. " + DescribeView());
+            Assert.AreEqual("Pick up Main fuse", interactor.Current.GetPrompt(interactor));
+        }
+
         [UnityTest]
         public IEnumerator Flashlight_RequiresPickup_ThenToggles()
         {

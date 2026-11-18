@@ -89,6 +89,9 @@ namespace LastSignal.Interaction
             {
                 Collider c = hits[i].collider;
                 if (c == null || c.transform.IsChildOf(transform)) continue;
+                // Invisible trigger volumes (story zones, checkpoints, water) must not block the view.
+                // Triggers only count when they belong to an interactable (e.g. a pickup's grab box).
+                if (c.isTrigger && c.GetComponentInParent<IInteractable>() == null) continue;
                 if (nearest < 0 || hits[i].distance < hits[nearest].distance) nearest = i;
             }
 

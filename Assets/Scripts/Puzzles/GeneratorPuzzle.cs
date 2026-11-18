@@ -30,8 +30,24 @@ namespace LastSignal.Puzzles
 
         private void Start()
         {
-            if (WorldFlags.Has(Flag)) IsSolved = true;
+            if (WorldFlags.Has(Flag)) { IsSolved = true; StartEngineLoop(); }
             foreach (ItemSlot p in parts) if (p != null) p.Installed += OnPartInstalled;
+        }
+
+        /// <summary>Running-engine loop at the generator (only when a recording exists).</summary>
+        private void StartEngineLoop()
+        {
+            AudioClip loop = PlaceholderClips.Generator;
+            if (loop == null || GetComponent<AudioSource>() != null) return;
+            var src = gameObject.AddComponent<AudioSource>();
+            src.clip = loop;
+            src.loop = true;
+            src.spatialBlend = 1f;
+            src.rolloffMode = AudioRolloffMode.Linear;
+            src.minDistance = 2f;
+            src.maxDistance = 18f;
+            src.volume = 0.55f * Save.GameSettings.SfxVolume;
+            src.Play();
         }
 
         private void OnDestroy()
@@ -88,6 +104,7 @@ namespace LastSignal.Puzzles
             WorldFlags.Set(Flag);
             HudMessage.Show("The generator roars to life.");
             AudioManager.Instance?.PlayAt(PlaceholderClips.Buzz, transform.position, 1f);
+            StartEngineLoop();
             onSolved.Invoke();
         }
     }

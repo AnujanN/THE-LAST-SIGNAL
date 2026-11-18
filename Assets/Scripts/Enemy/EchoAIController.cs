@@ -329,8 +329,22 @@ namespace LastSignal.Enemy
             AudioManager.Instance.ReportThreat(level);
         }
 
+        private float voiceTimer = 6f;
+
+        /// <summary>Occasional ghostly vocalisation so the player can locate The Echo by ear.</summary>
+        private void PlayVoice()
+        {
+            if (voice == null) return;
+            voiceTimer -= Time.deltaTime;
+            if (voiceTimer > 0f) return;
+            voiceTimer = UnityEngine.Random.Range(9f, 16f);
+            AudioClip clip = PlaceholderClips.EchoVoice;
+            if (clip != null) voice.PlayOneShot(clip, 0.7f);
+        }
+
         private void PlaySteps()
         {
+            PlayVoice();
             if (voice == null || agent.velocity.sqrMagnitude < 0.1f) return;
             stepTimer -= Time.deltaTime;
             if (stepTimer > 0f) return;

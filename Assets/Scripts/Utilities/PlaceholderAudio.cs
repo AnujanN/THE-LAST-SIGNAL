@@ -10,8 +10,14 @@ namespace LastSignal.Utilities
         private static AudioClip click;
         private static AudioClip pickup;
 
-        public static AudioClip Click => click != null ? click : (click = Tone("Placeholder_Click", 1800f, 0.03f, 60f));
-        public static AudioClip Pickup => pickup != null ? pickup : (pickup = Sweep("Placeholder_Pickup", 500f, 900f, 0.12f));
+        public static AudioClip Click => Recorded("click") ?? (click != null ? click : (click = Tone("Placeholder_Click", 1800f, 0.03f, 60f)));
+        public static AudioClip Pickup => Recorded("pickup") ?? (pickup != null ? pickup : (pickup = Sweep("Placeholder_Pickup", 500f, 900f, 0.12f)));
+
+        private static AudioClip Recorded(string name)
+        {
+            AudioClip c = Audio.SoundBank.Pick(name);
+            return c != null ? c : null;
+        }
 
         private static AudioClip Tone(string name, float freq, float seconds, float decay)
         {

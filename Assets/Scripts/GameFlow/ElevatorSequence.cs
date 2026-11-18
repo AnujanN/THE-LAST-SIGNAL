@@ -35,6 +35,7 @@ namespace LastSignal.GameFlow
             PlayerController player = FindAnyObjectByType<PlayerController>();
             if (player != null) player.MovementLocked = true;
             AudioManager.Instance?.PlayUI(PlaceholderClips.Buzz, 0.8f);
+            AudioManager.Instance?.PlayUI(PlaceholderClips.LiftDoors, 0.9f);
             yield return new WaitForSeconds(0.6f);
 
             if (echo != null && echoAppearPoint != null)

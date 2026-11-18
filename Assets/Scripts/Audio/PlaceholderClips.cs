@@ -3,8 +3,9 @@ using UnityEngine;
 namespace LastSignal.Audio
 {
     /// <summary>
-    /// Generated placeholder sounds (no audio files needed). Each clip is built once on first use.
-    /// Replace with licensed or original recordings later; nothing story-critical relies on them.
+    /// All game sounds. Each one uses a recorded file from Assets/Audio/Resources/Sounds when present
+    /// (see SoundBank and Docs/Project_Report.md for sources/licences) and otherwise falls back to a
+    /// sound generated in code, so the game is never silent if a file is missing.
     /// </summary>
     public static class PlaceholderClips
     {
@@ -12,23 +13,36 @@ namespace LastSignal.Audio
         private static AudioClip rain, hum, drips, interference, dawn, drone, heartbeat;
         private static AudioClip staticBurst, spark, thud, scream, footstep, splash, beep, buzz, doorCreak;
 
-        public static AudioClip Rain => Get(ref rain, () => Make("Rain", 4f, RainSample));
-        public static AudioClip Hum => Get(ref hum, () => Make("Hum", 4f, HumSample));
-        public static AudioClip Drips => Get(ref drips, () => Make("Drips", 6f, DripSample));
-        public static AudioClip Interference => Get(ref interference, () => Make("Interference", 4f, InterferenceSample));
-        public static AudioClip Dawn => Get(ref dawn, () => Make("Dawn", 6f, DawnSample));
-        public static AudioClip ThreatDrone => Get(ref drone, () => Make("ThreatDrone", 4f, DroneSample));
-        public static AudioClip Heartbeat => Get(ref heartbeat, () => Make("Heartbeat", 1f, HeartSample));
+        public static AudioClip Rain => Real("rain") ?? Get(ref rain, () => Make("Rain", 4f, RainSample));
+        public static AudioClip Hum => Real("hum") ?? Get(ref hum, () => Make("Hum", 4f, HumSample));
+        public static AudioClip Drips => Real("drips") ?? Get(ref drips, () => Make("Drips", 6f, DripSample));
+        public static AudioClip Interference => Real("interference") ?? Get(ref interference, () => Make("Interference", 4f, InterferenceSample));
+        public static AudioClip Dawn => Real("dawn") ?? Get(ref dawn, () => Make("Dawn", 6f, DawnSample));
+        public static AudioClip ThreatDrone => Real("threat") ?? Get(ref drone, () => Make("ThreatDrone", 4f, DroneSample));
+        public static AudioClip Heartbeat => Real("heartbeat") ?? Get(ref heartbeat, () => Make("Heartbeat", 1f, HeartSample));
 
-        public static AudioClip StaticBurst => Get(ref staticBurst, () => Make("Static", 0.6f, (t, n) => Noise(n) * 0.5f * Env(t, 0.6f)));
-        public static AudioClip Spark => Get(ref spark, () => Make("Spark", 0.35f, (t, n) => Noise(n) * Mathf.Exp(-t * 14f) * (Mathf.Sin(t * 900f) > 0f ? 0.8f : 0.3f)));
-        public static AudioClip Thud => Get(ref thud, () => Make("Thud", 0.4f, (t, n) => Mathf.Sin(2f * Mathf.PI * 70f * t) * Mathf.Exp(-t * 10f) * 0.9f));
-        public static AudioClip Scream => Get(ref scream, () => Make("Scream", 1.8f, ScreamSample));
-        public static AudioClip Footstep => Get(ref footstep, () => Make("Footstep", 0.14f, (t, n) => (Noise(n) * 0.5f + Mathf.Sin(2f * Mathf.PI * 110f * t)) * Mathf.Exp(-t * 40f) * 0.5f));
-        public static AudioClip Splash => Get(ref splash, () => Make("Splash", 0.4f, (t, n) => Noise(n) * Mathf.Exp(-t * 8f) * 0.5f));
-        public static AudioClip Beep => Get(ref beep, () => Make("Beep", 0.15f, (t, n) => Mathf.Sin(2f * Mathf.PI * 880f * t) * Env(t, 0.15f) * 0.4f));
-        public static AudioClip Buzz => Get(ref buzz, () => Make("Buzz", 0.5f, (t, n) => Mathf.Sign(Mathf.Sin(2f * Mathf.PI * 120f * t)) * Env(t, 0.5f) * 0.25f));
-        public static AudioClip DoorCreak => Get(ref doorCreak, () => Make("Door", 0.9f, (t, n) => Mathf.Sin(2f * Mathf.PI * (180f + 90f * Mathf.Sin(t * 9f)) * t) * Env(t, 0.9f) * 0.3f));
+        public static AudioClip StaticBurst => Real("static") ?? Get(ref staticBurst, () => Make("Static", 0.6f, (t, n) => Noise(n) * 0.5f * Env(t, 0.6f)));
+        public static AudioClip Spark => Real("spark") ?? Get(ref spark, () => Make("Spark", 0.35f, (t, n) => Noise(n) * Mathf.Exp(-t * 14f) * (Mathf.Sin(t * 900f) > 0f ? 0.8f : 0.3f)));
+        public static AudioClip Thud => Real("thud") ?? Get(ref thud, () => Make("Thud", 0.4f, (t, n) => Mathf.Sin(2f * Mathf.PI * 70f * t) * Mathf.Exp(-t * 10f) * 0.9f));
+        public static AudioClip Scream => Real("scream") ?? Get(ref scream, () => Make("Scream", 1.8f, ScreamSample));
+        public static AudioClip Footstep => Real("footstep") ?? Get(ref footstep, () => Make("Footstep", 0.14f, (t, n) => (Noise(n) * 0.5f + Mathf.Sin(2f * Mathf.PI * 110f * t)) * Mathf.Exp(-t * 40f) * 0.5f));
+        public static AudioClip Splash => Real("splash") ?? Get(ref splash, () => Make("Splash", 0.4f, (t, n) => Noise(n) * Mathf.Exp(-t * 8f) * 0.5f));
+        public static AudioClip Beep => Real("beep") ?? Get(ref beep, () => Make("Beep", 0.15f, (t, n) => Mathf.Sin(2f * Mathf.PI * 880f * t) * Env(t, 0.15f) * 0.4f));
+        public static AudioClip Buzz => Real("buzz") ?? Get(ref buzz, () => Make("Buzz", 0.5f, (t, n) => Mathf.Sign(Mathf.Sin(2f * Mathf.PI * 120f * t)) * Env(t, 0.5f) * 0.25f));
+        public static AudioClip DoorCreak => Real("door") ?? Get(ref doorCreak, () => Make("Door", 0.9f, (t, n) => Mathf.Sin(2f * Mathf.PI * (180f + 90f * Mathf.Sin(t * 9f)) * t) * Env(t, 0.9f) * 0.3f));
+
+        /// <summary>A recorded sound from Resources/Sounds if present (null otherwise).</summary>
+        private static AudioClip Real(string name)
+        {
+            AudioClip c = SoundBank.Pick(name);
+            return c != null ? c : null; // normalise Unity-null to C# null for "??"
+        }
+
+        // Extra sounds that only exist as recordings (null when the file is missing).
+        public static AudioClip Wind => Real("wind");
+        public static AudioClip Generator => Real("generator");
+        public static AudioClip LiftDoors => Real("lift");
+        public static AudioClip EchoVoice => Real("echo_voice");
 
         private delegate float Sampler(float t, int n);
 

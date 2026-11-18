@@ -21,7 +21,10 @@ namespace LastSignal.EditorTools
             "<b>Game design & development</b>\nAnujan N\n\n" +
             "<b>Characters</b>\nAlex\nMaya\nThe Echo\n\n" +
             "<b>Built with</b>\nUnity 6 - Universal Render Pipeline\nClaude Code + Unity MCP\n\n" +
-            "<b>Audio</b>\nPlaceholder sounds generated in code\n\n" +
+            "<b>Sound effects</b>\nKenney (kenney.nl) - CC0\nJoseph Sardin (BigSoundBank / LaSonotheque) - CC0\n" +
+            "OpenGameArt.org contributors - CC0\n\"Rain and Thunder Loop\" by DoKashiteru - CC BY 3.0\n" +
+            "\"Heartbeat\" by HerbertBoland (Wikimedia Commons) - CC BY 3.0\n" +
+            "CC BY 3.0: creativecommons.org/licenses/by/3.0\n\n" +
             "<b>Fonts</b>\nLiberation Sans (TextMeshPro)\n\n\n" +
             "For everyone who is still listening.\n\n\nThank you for playing.";
 

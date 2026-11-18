@@ -98,8 +98,9 @@ namespace LastSignal.Audio
                 case Ambience.RainAndWind: return PlaceholderClips.Rain;
                 case Ambience.IndoorHum: return PlaceholderClips.Hum;
                 case Ambience.BasementDrips: return PlaceholderClips.Drips;
-                case Ambience.TowerInterference: return PlaceholderClips.Interference;
-                case Ambience.Dawn: return PlaceholderClips.Dawn;
+                case Ambience.TowerInterference: return PlaceholderClips.Wind ?? PlaceholderClips.Interference;
+                // Prefer a dawn recording; otherwise soft recorded wind rather than generated chirps.
+                case Ambience.Dawn: return SoundBank.Has("dawn") ? PlaceholderClips.Dawn : PlaceholderClips.Wind ?? PlaceholderClips.Dawn;
                 default: return null;
             }
         }

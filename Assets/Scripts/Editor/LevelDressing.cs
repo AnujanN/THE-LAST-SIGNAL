@@ -19,6 +19,16 @@ namespace LastSignal.EditorTools
 
         public static void Level1(Transform env)
         {
+            // Box stand-ins -> real furniture (surfaces, routes and navigation unchanged).
+            Dress(env, "SecurityDesk", "metal_office_desk");
+            Dress(env, "Bench", "painted_wooden_bench", fitHeight: false);
+            Dress(env, "ReceptionDesk", "metal_office_desk");
+            Dress(env, "FilingCabinet", "drawer_cabinet");
+            Dress(env, "Sofa", "sofa_02", fitHeight: false);
+            Dress(env, "OfficeDesk", "metal_office_desk");
+            Dress(env, "Bookshelf", "wooden_bookshelf_worn");
+            Dress(env, "ControlDesk", "metal_office_desk", tiles: 3);
+
             Transform p = Group(env);
             Place(p, "cardboard_box_01", new Vector3(-11.0f, 0f, -5.2f), 10f);
             Place(p, "cardboard_box_01", new Vector3(-10.2f, 0f, -5.4f), -25f);
@@ -44,6 +54,13 @@ namespace LastSignal.EditorTools
 
         public static void Level2(Transform env)
         {
+            Dress(env, "Shelf_Storage1", "wooden_crate_02", tiles: 2, stack: 2);
+            Dress(env, "Crates_Storage1", "wooden_crate_02", stack: 2);
+            Dress(env, "Table_Storage2", "WoodenTable_03");
+            Dress(env, "Crate_Flood", "wooden_crate_02", stack: 2);
+            Dress(env, "Crate_Flood2", "wooden_crate_02", stack: 2);
+            Dress(env, "Desk_Generator", "metal_office_desk");
+
             Transform p = Group(env);
             Place(p, "barrel_03", new Vector3(-14.0f, 0f, 8.0f), 0f);
             Place(p, "barrel_03", new Vector3(-13.2f, 0f, 8.3f), 50f);
@@ -70,6 +87,23 @@ namespace LastSignal.EditorTools
 
         public static void Level3(Transform env)
         {
+            // The bunk bed becomes two stacked bed frames.
+            Dress(env, "Bunk_Lower", "old_bed_frame", fitHeight: false);
+            Dress(env, "Bunk_Upper", "old_bed_frame", fitHeight: false);
+            Hide(env, "Bunk_Post");
+            Hide(env, "Bunk_Post2");
+            Dress(env, "KidsDesk", "WoodenTable_03");
+            Dress(env, "ToyChest", "wooden_crate_02");
+            Dress(env, "ParentsBed", "GothicBed_01", fitHeight: false);
+            Dress(env, "Nightstand", "ClassicNightstand_01");
+            Dress(env, "KitchenTable", "painted_wooden_table");
+            Dress(env, "Counter", "modern_wooden_cabinet");
+            Dress(env, "Sofa", "sofa_02", fitHeight: false);
+            Dress(env, "StudyDesk", "WoodenTable_03");
+            Dress(env, "Bookshelf", "wooden_bookshelf_worn");
+            Dress(env, "StorageShelf", "steel_frame_shelves_01", tiles: 3);
+            Dress(env, "Boxes", "wooden_crate_02", stack: 2);
+
             Transform p = Group(env);
             Place(p, "drawer_cabinet", new Vector3(-2.5f, 0f, 24.35f), 180f);
             Place(p, "painted_wooden_chair_01", new Vector3(4.1f, 0f, 6.9f), 20f);
@@ -92,6 +126,13 @@ namespace LastSignal.EditorTools
 
         public static void Level4(Transform env)
         {
+            Dress(env, "OfficeDesk", "metal_office_desk", charredLook: true);
+            Dress(env, "OfficeDesk2", "metal_office_desk", charredLook: true);
+            Dress(env, "FilingCabinet", "drawer_cabinet", charredLook: true);
+            Dress(env, "RecorderDesk", "WoodenTable_03", charredLook: true);
+            Dress(env, "StudioChair", "painted_wooden_chair_01", fitHeight: false, charredLook: true);
+            Dress(env, "Crates", "wooden_crate_02", stack: 2, charredLook: true);
+
             Transform p = Group(env);
             Place(p, "painted_wooden_chair_01", new Vector3(-6.0f, 0.22f, 14.0f), 30f, OnSide, charredLook: true);
             Place(p, "painted_wooden_chair_01", new Vector3(4.0f, 0.22f, 10.2f), 160f, OnSide, charredLook: true);
@@ -112,6 +153,12 @@ namespace LastSignal.EditorTools
 
         public static void Level5(Transform env)
         {
+            Dress(env, "Workbench", "WoodenTable_03", tiles: 2);
+            Dress(env, "EquipRack", "metal_office_desk");
+            Dress(env, "AntennaDesk", "metal_office_desk");
+            Dress(env, "RecorderDesk", "WoodenTable_03");
+            Dress(env, "EquipRack2", "steel_frame_shelves_01", tiles: 2);
+
             Transform p = Group(env);
             Place(p, "steel_frame_shelves_01", new Vector3(7.5f, 0f, 13.4f), 180f);
             Place(p, "cardboard_box_01", new Vector3(2.5f, 0f, 13.2f), 10f);

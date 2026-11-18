@@ -65,7 +65,10 @@ namespace LastSignal.EditorTools
                 float a = R() * Mathf.PI * 2f;
                 var dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
                 if (!Physics.Raycast(p, dir, out wall, 7f, ~0, QueryTriggerInteraction.Ignore)) return false;
-                return Mathf.Abs(wall.normal.y) < 0.1f && wall.collider.bounds.size.y >= 2f && wall.collider.transform.IsChildOf(envRoot);
+                // Real walls only: tall, part of the level, and visible (not a hidden furniture stand-in).
+                var shown = wall.collider.GetComponent<Renderer>();
+                return Mathf.Abs(wall.normal.y) < 0.1f && wall.collider.bounds.size.y >= 2f && wall.collider.transform.IsChildOf(envRoot)
+                    && shown != null && shown.enabled;
             }
 
             Quaternion OnWall(Vector3 normal, float roll = 0f) => Quaternion.LookRotation(-normal) * Quaternion.Euler(0f, 0f, roll);

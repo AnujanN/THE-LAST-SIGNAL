@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Level04_BurnedWing_PostFX
   m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.VolumeProfile
   components:
-  - {fileID: 3436972771531735486}
-  - {fileID: 2389421673992489601}
---- !u!114 &2389421673992489601
+  - {fileID: 8239118238424478615}
+  - {fileID: 3436914268954839566}
+--- !u!114 &3436914268954839566
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_CorrespondingSourceObject: {fileID: 0}
@@ -43,7 +43,7 @@ MonoBehaviour:
   rounded:
     m_OverrideState: 1
     m_Value: 0
---- !u!114 &3436972771531735486
+--- !u!114 &8239118238424478615
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_CorrespondingSourceObject: {fileID: 0}

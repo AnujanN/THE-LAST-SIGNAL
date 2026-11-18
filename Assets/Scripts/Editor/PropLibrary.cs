@@ -113,6 +113,62 @@ namespace LastSignal.EditorTools
             return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         }
 
+        /// <summary>
+        /// Replace a box stand-in with a real prop. The box keeps its collider (so surfaces that items sit on,
+        /// routes and the NavMesh are unchanged) but is hidden; the prop is fitted to its footprint and height,
+        /// tiled along long counters and stacked for piles of crates.
+        /// </summary>
+        public static void Dress(Transform env, string boxName, string id, int tiles = 1, int stack = 1,
+            bool fitHeight = true, float yawOffset = 0f, bool charredLook = false)
+        {
+            Transform box = FindDeep(env, boxName);
+            GameObject prefab = Prefab(id);
+            if (box == null || prefab == null) { Debug.LogWarning("[PropLibrary] Cannot dress " + boxName + " with " + id); return; }
+            var bc = prefab.GetComponent<BoxCollider>();
+            Vector3 n = bc != null ? bc.size : Vector3.one;
+            Vector3 size = box.lossyScale;
+            size = new Vector3(Mathf.Abs(size.x), Mathf.Abs(size.y), Mathf.Abs(size.z));
+            var r = box.GetComponent<Renderer>();
+            if (r != null) r.enabled = false;
+
+            bool boxLongX = size.x >= size.z, propLongX = n.x >= n.z;
+            float yaw = box.eulerAngles.y + (boxLongX == propLongX ? 0f : 90f) + yawOffset;
+            float longLen = boxLongX ? size.x : size.z, shortLen = boxLongX ? size.z : size.x;
+            float propLong = propLongX ? n.x : n.z, propShort = propLongX ? n.z : n.x;
+            float sLong = longLen / tiles / Mathf.Max(0.01f, propLong), sShort = shortLen / Mathf.Max(0.01f, propShort);
+            float layer = size.y / stack;
+            float sY = fitHeight ? layer / Mathf.Max(0.01f, n.y) : Mathf.Clamp((sLong + sShort) * 0.5f, 0.75f, 1.25f);
+            Vector3 scale = propLongX ? new Vector3(sLong, sY, sShort) : new Vector3(sShort, sY, sLong);
+            Vector3 longDir = boxLongX ? box.right : box.forward;
+            Vector3 bottom = box.position - Vector3.up * size.y / 2f;
+            for (int t = 0; t < tiles; t++)
+            for (int k = 0; k < stack; k++)
+            {
+                float offset = (t + 0.5f) / tiles - 0.5f;
+                Vector3 pos = bottom + longDir * offset * longLen + Vector3.up * (k * (fitHeight ? layer : n.y * sY));
+                GameObject go = Place(box.parent, id, pos, yaw + (k % 2 == 1 ? 7f : 0f), collider: false, charredLook: charredLook);
+                if (go != null) go.transform.localScale = scale;
+            }
+        }
+
+        /// <summary>Hide a box stand-in that a dressed prop already covers (keeps its collider).</summary>
+        public static void Hide(Transform env, string boxName)
+        {
+            Transform box = FindDeep(env, boxName);
+            if (box != null && box.GetComponent<Renderer>() is Renderer r) r.enabled = false;
+        }
+
+        private static Transform FindDeep(Transform t, string name)
+        {
+            if (t.name == name) return t;
+            foreach (Transform c in t)
+            {
+                Transform f = FindDeep(c, name);
+                if (f != null) return f;
+            }
+            return null;
+        }
+
         /// <summary>Place a prop (world position, yaw; optional tilt for fallen things; charred = burned look).</summary>
         public static GameObject Place(Transform parent, string id, Vector3 pos, float yaw, Vector3 tilt = default,
             float scale = 1f, bool collider = true, bool charredLook = false)

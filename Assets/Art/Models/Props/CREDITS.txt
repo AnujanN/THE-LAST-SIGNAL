@@ -3,3 +3,5 @@ barrel_03, can_rusted, cardboard_box_01, drawer_cabinet, metal_office_desk, old_
 painted_wooden_chair_01, russian_food_cans_01, steel_frame_shelves_01, street_rat, television_02,
 trashbag, wheelchair_01, wooden_bookshelf_worn, wooden_crate_01
 Downloaded 18 Nov 2026: FBX, 1K colour (diff) and OpenGL normal (nor_gl) maps only.
+Added 18 Nov 2026 (furniture swap): WoodenTable_03, painted_wooden_table, sofa_02, ClassicNightstand_01,
+painted_wooden_bench, GothicBed_01, wooden_crate_02, modern_wooden_cabinet (same source, CC0).

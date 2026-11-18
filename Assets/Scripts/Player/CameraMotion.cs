@@ -27,6 +27,20 @@ namespace LastSignal.Player
         [SerializeField] private float calmBreathsPerSecond = 0.25f;
         [SerializeField] private float scaredBreathsPerSecond = 0.75f;
 
+        private static float shakeAmount;
+        private static float shakeTimer;
+        private static float shakeDuration = 1f;
+
+        /// <summary>Violent camera shake (being grabbed), fading out over the given time.</summary>
+        public static void Shake(float amount, float seconds)
+        {
+            shakeAmount = amount;
+            shakeTimer = shakeDuration = Mathf.Max(0.01f, seconds);
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics() => shakeTimer = 0f;
+
         private Vector3 basePosition;
         private Quaternion baseRotation;
         private float stepPhase;
@@ -63,8 +77,17 @@ namespace LastSignal.Player
             float x = Mathf.Cos(stepPhase) * amplitude * 0.5f;
             float roll = Mathf.Cos(stepPhase) * rollDegrees * (amplitude / Mathf.Max(0.0001f, walkBob));
 
-            transform.localPosition = basePosition + new Vector3(x, y + breathe, 0f);
-            transform.localRotation = baseRotation * Quaternion.Euler(0f, 0f, roll);
+            Vector3 shake = Vector3.zero;
+            float shakeRoll = 0f;
+            if (shakeTimer > 0f)
+            {
+                shakeTimer -= Time.deltaTime;
+                float k = shakeAmount * Mathf.Clamp01(shakeTimer / shakeDuration + 0.3f);
+                shake = Random.insideUnitSphere * k;
+                shakeRoll = Random.Range(-1f, 1f) * k * 60f;
+            }
+            transform.localPosition = basePosition + new Vector3(x, y + breathe, 0f) + shake;
+            transform.localRotation = baseRotation * Quaternion.Euler(0f, 0f, roll + shakeRoll);
         }
     }
 }

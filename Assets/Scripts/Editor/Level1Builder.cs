@@ -89,6 +89,8 @@ namespace LastSignal.EditorTools
             for (int i = 0; i < 4; i++)
                 Box(env, "StairStep", new Vector3(4.2f + i * 0.35f, 0.02f - i * 0.001f, 6f), new Vector3(0.35f, 0.04f, 2.6f), Mat("Black", new Color(0.03f, 0.03f, 0.03f)));
 
+            LevelDressing.Level1(env);
+
             // ------------------------------------------------------------------ lights
             Transform lights = Group(null, "Lighting");
             PointLight(lights, "StreetLamp", new Vector3(1.6f, 3.4f, -10f), new Color(0.6f, 0.7f, 1f), 1.4f, 10f);

@@ -555,6 +555,13 @@ namespace LastSignal.Enemy
         {
             SetState(State.Caught);
             if (agent.isOnNavMesh) agent.ResetPath();
+            // The catch is a short, horrible moment in your face (EchoCatchSequence), then game over.
+            EchoCatchSequence sequence = GetComponent<EchoCatchSequence>();
+            if (sequence != null && isActiveAndEnabled)
+            {
+                sequence.Play(() => GameFlowManager.Instance?.PlayerCaught());
+                return;
+            }
             AudioManager.Instance?.PlayUI(PlaceholderClips.Scream, 1f);
             GameFlowManager.Instance?.PlayerCaught();
         }

@@ -1,5 +1,6 @@
 using System.Text;
 using LastSignal.Audio;
+using LastSignal.Enemy;
 using LastSignal.GameFlow;
 using LastSignal.Interaction;
 using LastSignal.Inventory;
@@ -47,6 +48,8 @@ namespace LastSignal.UI
         [Tooltip("Breath meter shown while hidden (hold Space / BREATH).")]
         [SerializeField] private GameObject breathRoot;
         [SerializeField] private Image breathFill;
+        [Tooltip("Full-screen static that tears the picture when The Echo catches you.")]
+        [SerializeField] private RawImage catchOverlay;
 
         private PlayerInputRouter router;
         private InventoryManager inventory;
@@ -55,6 +58,8 @@ namespace LastSignal.UI
         private float objectiveFlash;
         private float titleTimer;
         private float gameOverDelay = -1f;
+        private float catchTimer, catchDuration = 1f;
+        private Texture2D staticTexture;
         private readonly StringBuilder sb = new StringBuilder(256);
         private readonly object noteOwner = new object();
         private readonly object inventoryOwner = new object();
@@ -75,6 +80,7 @@ namespace LastSignal.UI
             SetActive(gameOverPanel, false);
             SetActive(hiddenLabel, false);
             SetActive(breathRoot, false);
+            if (catchOverlay != null) catchOverlay.gameObject.SetActive(false);
             if (titleGroup != null) titleGroup.alpha = 0f;
             if (threatVignette != null) threatVignette.color = new Color(1f, 1f, 1f, 0f);
         }
@@ -95,6 +101,7 @@ namespace LastSignal.UI
             }
             NoteInteractable.ReadRequested += OpenNote;
             HidingSpot.HiddenChanged += OnHidden;
+            EchoCatchSequence.Started += OnCaught;
             if (ObjectiveManager.Instance != null && !string.IsNullOrEmpty(ObjectiveManager.Instance.CurrentText))
                 OnObjective(ObjectiveManager.Instance.CurrentText, false);
         }
@@ -115,6 +122,7 @@ namespace LastSignal.UI
             }
             NoteInteractable.ReadRequested -= OpenNote;
             HidingSpot.HiddenChanged -= OnHidden;
+            EchoCatchSequence.Started -= OnCaught;
             ModalStack.Close(noteOwner);
             ModalStack.Close(inventoryOwner);
             ModalStack.Close(gameOverOwner);
@@ -142,6 +150,8 @@ namespace LastSignal.UI
                 gameOverDelay -= dt;
                 if (gameOverDelay <= 0f) ShowGameOver();
             }
+
+            UpdateCatchOverlay(dt);
 
             if (threatVignette != null && AudioManager.Instance != null)
             {
@@ -284,14 +294,68 @@ namespace LastSignal.UI
             else
             {
                 gameOverDelay = -1f;
+                if (catchOverlay != null) catchOverlay.gameObject.SetActive(false);
                 SetActive(gameOverPanel, false);
                 ModalStack.Close(gameOverOwner);
             }
         }
 
+        // ---------------------------------------------------------------- caught
+
+        private void OnCaught(float seconds)
+        {
+            if (catchOverlay == null) return;
+            if (staticTexture == null) staticTexture = MakeStatic();
+            catchOverlay.texture = staticTexture;
+            catchDuration = Mathf.Max(0.1f, seconds);
+            catchTimer = catchDuration;
+            catchOverlay.gameObject.SetActive(true);
+        }
+
+        private void UpdateCatchOverlay(float dt)
+        {
+            if (catchOverlay == null || !catchOverlay.gameObject.activeSelf) return;
+            if (catchTimer <= 0f) return; // hold black until the game-over screen replaces it
+            catchTimer -= dt;
+            float p = 1f - Mathf.Clamp01(catchTimer / catchDuration);
+            catchOverlay.uvRect = new Rect(Random.value, Random.value, Random.Range(1f, 2.5f), Random.Range(0.3f, 1.2f));
+            if (p < 0.75f)
+            {
+                // Torn static, flashing between white and blood red.
+                Color c = Color.Lerp(new Color(0.9f, 0.9f, 0.95f), new Color(0.75f, 0.02f, 0.02f), Random.value);
+                c.a = Random.Range(0.06f, 0.42f) * (p < 0.12f ? 1.8f : 1f);
+                catchOverlay.color = c;
+            }
+            else
+            {
+                catchOverlay.color = new Color(0f, 0f, 0f, Mathf.Lerp(0.5f, 1f, (p - 0.75f) / 0.25f));
+            }
+        }
+
+        private static Texture2D MakeStatic()
+        {
+            const int w = 128, h = 128;
+            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Repeat };
+            var px = new Color32[w * h];
+            for (int y = 0; y < h; y++)
+            {
+                // Some rows are bright "tearing" lines.
+                bool tear = Random.value < 0.08f;
+                for (int x = 0; x < w; x++)
+                {
+                    byte v = (byte)(tear ? Random.Range(170, 255) : Random.Range(0, 255));
+                    px[y * w + x] = new Color32(v, v, v, (byte)(tear ? 255 : Random.Range(60, 255)));
+                }
+            }
+            tex.SetPixels32(px);
+            tex.Apply(false, true);
+            return tex;
+        }
+
         private void ShowGameOver()
         {
             gameOverDelay = -1f;
+            if (catchOverlay != null) catchOverlay.gameObject.SetActive(false);
             CloseNote();
             CloseInventory();
             SetActive(gameOverPanel, true);

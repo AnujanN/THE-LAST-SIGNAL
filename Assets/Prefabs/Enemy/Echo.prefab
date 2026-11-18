@@ -3940,6 +3940,7 @@ GameObject:
   - component: {fileID: 3732139667952951502}
   - component: {fileID: 4951725778424977903}
   - component: {fileID: 6539630841494149276}
+  - component: {fileID: 5504914211382670824}
   - component: {fileID: 8520134229727451018}
   m_Layer: 0
   m_Name: Echo
@@ -4129,6 +4130,30 @@ MonoBehaviour:
   animator: {fileID: 1366669830428857764}
   safeRestartDistance: 15
   restartGraceSeconds: 4
+--- !u!114 &5504914211382670824
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7227945006717455651}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9c38a43709e33842a41cfa48c81b085, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: LastSignal.Runtime::LastSignal.Enemy.EchoCatchSequence
+  head: {fileID: 6900835104866092641}
+  leftArm:
+  - {fileID: 4931338755113681552}
+  - {fileID: 4033863332035367609}
+  - {fileID: 7617411550975383591}
+  rightArm:
+  - {fileID: 1974490890836456339}
+  - {fileID: 5319144369023473309}
+  - {fileID: 2030094159982847943}
+  voice: {fileID: 4951725778424977903}
+  duration: 1.4
+  faceDistance: 0.7
 --- !u!114 &8520134229727451018
 MonoBehaviour:
   m_ObjectHideFlags: 0

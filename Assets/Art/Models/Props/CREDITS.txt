@@ -1,0 +1,5 @@
+Props in this folder are from Poly Haven (https://polyhaven.com), licensed CC0 (public domain).
+barrel_03, can_rusted, cardboard_box_01, drawer_cabinet, metal_office_desk, old_bed_frame,
+painted_wooden_chair_01, russian_food_cans_01, steel_frame_shelves_01, street_rat, television_02,
+trashbag, wheelchair_01, wooden_bookshelf_worn, wooden_crate_01
+Downloaded 18 Nov 2026: FBX, 1K colour (diff) and OpenGL normal (nor_gl) maps only.

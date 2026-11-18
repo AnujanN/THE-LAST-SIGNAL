@@ -511,7 +511,7 @@ namespace LastSignal.EditorTools
         public static NoteInteractable Note(Transform parent, string name, Vector3 pos, float yaw, string id,
             string title, string body, Material mat)
         {
-            GameObject go = Prim(parent, name, PrimitiveType.Cube, pos, new Vector3(0.22f, 0.01f, 0.3f), mat, new Vector3(0f, yaw, 0f));
+            GameObject go = Prim(parent, name, PrimitiveType.Cube, pos, new Vector3(0.22f, 0.01f, 0.3f), PaperArt.ForNote(mat), new Vector3(0f, yaw, 0f));
             AddGrabTrigger(go, 0.4f);
             var n = go.AddComponent<NoteInteractable>();
             SetValue(n, "id", id);
@@ -525,7 +525,7 @@ namespace LastSignal.EditorTools
             string title, string body, Material mat, Vector2? size = null)
         {
             Vector2 s = size ?? new Vector2(0.5f, 0.4f);
-            GameObject go = Prim(parent, name, PrimitiveType.Cube, pos, new Vector3(s.x, s.y, 0.02f), mat, new Vector3(0f, yaw, 0f));
+            GameObject go = Prim(parent, name, PrimitiveType.Cube, pos, new Vector3(s.x, s.y, 0.02f), PaperArt.ForNote(mat), new Vector3(0f, yaw, 0f));
             var n = go.AddComponent<NoteInteractable>();
             SetValue(n, "id", id);
             SetValue(n, "title", title);

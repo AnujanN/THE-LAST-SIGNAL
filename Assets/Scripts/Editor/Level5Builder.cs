@@ -81,6 +81,7 @@ namespace LastSignal.EditorTools
             Box(env, "RecorderDesk", new Vector3(-4.5f, 0.45f, 26.8f), new Vector3(1.8f, 0.9f, 0.9f), wood);
             Box(env, "CableRun", new Vector3(4.5f, 0.15f, 22f), new Vector3(0.4f, 0.3f, 8f), black);
 
+            LevelDressing.Level5(env);
             BakeNavMesh(envGo, "Level05_Tower");
 
             // ------------------------------------------------------------------ lights

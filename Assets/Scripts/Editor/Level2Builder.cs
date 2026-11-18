@@ -98,6 +98,7 @@ namespace LastSignal.EditorTools
                 Box(env, "Pipe", new Vector3(-12f + i * 5f, H - 0.3f, 6.6f), new Vector3(4.6f, 0.2f, 0.2f), pipe);
 
             // ------------------------------------------------------------------ NavMesh (environment only)
+            LevelDressing.Level2(env);
             BakeNavMesh(envGo, "Level02_Basement");
 
             // ------------------------------------------------------------------ water (not walkable geometry)

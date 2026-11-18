@@ -90,6 +90,7 @@ namespace LastSignal.EditorTools
             Box(env, "CableTray", new Vector3(5.5f, 2.6f, 22.5f), new Vector3(0.4f, 0.15f, 9f), black);
             Box(env, "Crates", new Vector3(-5f, 0.5f, 25f), new Vector3(1.4f, 1f, 1.4f), wood);
 
+            LevelDressing.Level4(env);
             BakeNavMesh(envGo, SceneName);
 
             // ------------------------------------------------------------------ lights + embers

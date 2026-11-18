@@ -1,0 +1,410 @@
+using System.Collections.Generic;
+using System.IO;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.Rendering;
+using static LastSignal.EditorTools.BuildKit;
+
+namespace LastSignal.EditorTools
+{
+    /// <summary>
+    /// Makes rooms look abandoned instead of clean: water streaks and grime along walls, floor stains,
+    /// puddles, mould, cracks, cobwebs in corners, soot (burned wing), claw scratches, scattered papers and
+    /// small debris. Decals are generated textures on quads placed by raycasting against the real walls and
+    /// floors, then merged into one mesh per material (a handful of draw calls per level on the phone).
+    /// </summary>
+    public static class Dressing
+    {
+        private const string Dir = "Assets/Art/Textures/Generated/Grime";
+        private const string Ver = "_v1";
+
+        public enum Kind { Streaks, BaseGrime, Stain, Puddle, Mould, Cracks, Cobweb, Soot, Scratches, Papers }
+
+        public class Theme
+        {
+            public float ceiling = 3.2f;
+            public int streaks = 18, baseGrime = 30, stains = 22, puddles = 4, mould = 0, cracks = 10, cobwebs = 10,
+                soot = 0, scratches = 0, papers = 18, debris = 0;
+            public Color stainTint = new Color(0.25f, 0.2f, 0.15f);
+        }
+
+        /// <summary>Rooms as (xMin, zMin, xMax, zMax) in world space.</summary>
+        public static void Apply(Transform envRoot, Rect[] rooms, int seed, Theme t)
+        {
+            Physics.SyncTransforms();
+            var rng = new System.Random(seed);
+            var holder = new GameObject("Grime").transform;
+            holder.SetParent(envRoot, false);
+            var batches = new Dictionary<Kind, List<CombineInstance>>();
+            Mesh quad = QuadMesh();
+
+            void Add(Kind k, Vector3 pos, Quaternion rot, Vector2 size)
+            {
+                if (!batches.TryGetValue(k, out var list)) batches[k] = list = new List<CombineInstance>();
+                list.Add(new CombineInstance { mesh = quad, transform = Matrix4x4.TRS(pos, rot, new Vector3(size.x, size.y, 1f)) });
+            }
+
+            float R() => (float)rng.NextDouble();
+            Vector3 RandomPoint(out Rect room)
+            {
+                room = rooms[rng.Next(rooms.Length)];
+                return new Vector3(Mathf.Lerp(room.xMin + 0.4f, room.xMax - 0.4f, R()), 1.2f, Mathf.Lerp(room.yMin + 0.4f, room.yMax - 0.4f, R()));
+            }
+
+            bool Floor(Vector3 p, out Vector3 hitPoint)
+            {
+                hitPoint = default;
+                if (!Physics.Raycast(p + Vector3.up * 0.5f, Vector3.down, out RaycastHit h, 3f, ~0, QueryTriggerInteraction.Ignore)) return false;
+                if (h.normal.y < 0.9f || h.point.y > 0.1f || !h.collider.transform.IsChildOf(envRoot)) return false;
+                hitPoint = h.point;
+                return true;
+            }
+
+            bool Wall(Vector3 p, out RaycastHit wall)
+            {
+                float a = R() * Mathf.PI * 2f;
+                var dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+                if (!Physics.Raycast(p, dir, out wall, 7f, ~0, QueryTriggerInteraction.Ignore)) return false;
+                return Mathf.Abs(wall.normal.y) < 0.1f && wall.collider.bounds.size.y >= 2f && wall.collider.transform.IsChildOf(envRoot);
+            }
+
+            Quaternion OnWall(Vector3 normal, float roll = 0f) => Quaternion.LookRotation(-normal) * Quaternion.Euler(0f, 0f, roll);
+            Quaternion OnFloor(float yaw) => Quaternion.Euler(90f, yaw, 0f);
+
+            // Walls: water streaks from the ceiling, grime along the bottom, mould, cracks, scratches.
+            for (int i = 0; i < t.streaks; i++)
+                if (Wall(RandomPoint(out _), out RaycastHit w))
+                {
+                    float h = 1.2f + R() * 1.4f;
+                    Add(Kind.Streaks, new Vector3(w.point.x, t.ceiling - h / 2f, w.point.z) + w.normal * 0.012f, OnWall(w.normal), new Vector2(0.6f + R() * 1.2f, h));
+                }
+            for (int i = 0; i < t.baseGrime; i++)
+                if (Wall(RandomPoint(out _), out RaycastHit w))
+                    Add(Kind.BaseGrime, new Vector3(w.point.x, 0.3f, w.point.z) + w.normal * 0.01f, OnWall(w.normal), new Vector2(1.4f + R() * 1.6f, 0.6f));
+            for (int i = 0; i < t.mould; i++)
+                if (Wall(RandomPoint(out _), out RaycastHit w))
+                    Add(Kind.Mould, new Vector3(w.point.x, Random(rng, 0.4f, t.ceiling - 0.6f), w.point.z) + w.normal * 0.014f, OnWall(w.normal, R() * 360f), Vector2.one * (0.6f + R() * 0.9f));
+            for (int i = 0; i < t.cracks; i++)
+                if (Wall(RandomPoint(out _), out RaycastHit w))
+                    Add(Kind.Cracks, new Vector3(w.point.x, Random(rng, 0.8f, t.ceiling - 0.4f), w.point.z) + w.normal * 0.016f, OnWall(w.normal, R() * 360f), Vector2.one * (0.5f + R() * 0.8f));
+            for (int i = 0; i < t.soot; i++)
+                if (Wall(RandomPoint(out _), out RaycastHit w))
+                {
+                    float h = 1.5f + R() * 1.5f;
+                    Add(Kind.Soot, new Vector3(w.point.x, t.ceiling - h / 2f, w.point.z) + w.normal * 0.018f, OnWall(w.normal), new Vector2(1.2f + R() * 1.6f, h));
+                }
+            for (int i = 0; i < t.scratches; i++)
+                if (Wall(RandomPoint(out _), out RaycastHit w))
+                    Add(Kind.Scratches, new Vector3(w.point.x, Random(rng, 0.9f, 1.8f), w.point.z) + w.normal * 0.02f, OnWall(w.normal, Random(rng, -25f, 25f)), new Vector2(0.45f, 0.6f));
+
+            // Cobwebs in wall corners near the ceiling.
+            for (int i = 0; i < t.cobwebs * 3 && CountOf(batches, Kind.Cobweb) < t.cobwebs; i++)
+            {
+                if (!Wall(RandomPoint(out _), out RaycastHit w)) continue;
+                Vector3 tangent = Vector3.Cross(Vector3.up, w.normal) * (R() < 0.5f ? 1f : -1f);
+                Vector3 from = new Vector3(w.point.x, t.ceiling - 0.35f, w.point.z) + w.normal * 0.15f;
+                if (!Physics.Raycast(from, tangent, out RaycastHit w2, 1.6f, ~0, QueryTriggerInteraction.Ignore)) continue;
+                if (Mathf.Abs(w2.normal.y) > 0.1f) continue;
+                Vector3 bisector = (w.normal + w2.normal).normalized;
+                Vector3 corner = w2.point - w.normal * 0.15f + w.normal * 0.02f;
+                Add(Kind.Cobweb, corner + bisector * 0.25f + Vector3.up * 0.05f, Quaternion.LookRotation(-bisector) * Quaternion.Euler(0f, 0f, R() * 30f - 15f), Vector2.one * (0.7f + R() * 0.5f));
+            }
+
+            // Floors: stains, puddles, scattered papers.
+            for (int i = 0; i < t.stains; i++)
+                if (Floor(RandomPoint(out _), out Vector3 f))
+                    Add(Kind.Stain, f + Vector3.up * (0.004f + i * 0.00005f), OnFloor(R() * 360f), Vector2.one * (0.8f + R() * 1.6f));
+            for (int i = 0; i < t.puddles; i++)
+                if (Floor(RandomPoint(out _), out Vector3 f))
+                    Add(Kind.Puddle, f + Vector3.up * 0.007f, OnFloor(R() * 360f), new Vector2(1f + R() * 1.6f, 0.8f + R() * 1.2f));
+            for (int i = 0; i < t.papers; i++)
+                if (Floor(RandomPoint(out _), out Vector3 f))
+                    Add(Kind.Papers, f + Vector3.up * (0.009f + i * 0.0001f), OnFloor(R() * 360f), new Vector2(0.21f, 0.29f) * (0.8f + R() * 0.4f));
+
+            foreach (var kv in batches) Combine(holder, kv.Key, kv.Value);
+
+            // Small debris chunks (real colliders off; they are just clutter).
+            if (t.debris > 0)
+            {
+                var debris = new GameObject("Debris").transform;
+                debris.SetParent(envRoot, false);
+                Material chunk = Mat("Charred", new Color(0.05f, 0.045f, 0.04f), smoothness: 0.05f);
+                Material plaster = Mat("Rubble", new Color(0.32f, 0.3f, 0.28f), smoothness: 0.1f);
+                for (int i = 0; i < t.debris; i++)
+                    if (Floor(RandomPoint(out _), out Vector3 f))
+                    {
+                        float s = 0.06f + R() * 0.22f;
+                        GameObject c = Box(debris, "Chunk", f + Vector3.up * s * 0.4f, new Vector3(s, s * (0.4f + R() * 0.6f), s * (0.6f + R())), R() < 0.6f ? chunk : plaster, collider: false);
+                        c.transform.rotation = Quaternion.Euler(R() * 30f, R() * 360f, R() * 30f);
+                        c.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+                    }
+            }
+        }
+
+        private static float Random(System.Random rng, float a, float b) => Mathf.Lerp(a, b, (float)rng.NextDouble());
+        private static int CountOf(Dictionary<Kind, List<CombineInstance>> b, Kind k) => b.TryGetValue(k, out var l) ? l.Count : 0;
+
+        private static void Combine(Transform holder, Kind kind, List<CombineInstance> parts)
+        {
+            if (parts.Count == 0) return;
+            var mesh = new Mesh { name = "Grime_" + kind, indexFormat = IndexFormat.UInt32 };
+            mesh.CombineMeshes(parts.ToArray(), true, true);
+            mesh.RecalculateBounds();
+            var go = new GameObject("Grime_" + kind);
+            go.transform.SetParent(holder, false);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var r = go.AddComponent<MeshRenderer>();
+            r.sharedMaterial = DecalMaterial(kind);
+            r.shadowCastingMode = ShadowCastingMode.Off;
+            r.receiveShadows = true;
+            go.isStatic = true;
+        }
+
+        private static Mesh quadCache;
+        private static Mesh QuadMesh()
+        {
+            if (quadCache != null) return quadCache;
+            var m = new Mesh { name = "GrimeQuad" };
+            m.vertices = new[] { new Vector3(-0.5f, -0.5f, 0f), new Vector3(0.5f, -0.5f, 0f), new Vector3(-0.5f, 0.5f, 0f), new Vector3(0.5f, 0.5f, 0f) };
+            m.uv = new[] { new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 1f), new Vector2(1f, 1f) };
+            m.normals = new[] { Vector3.back, Vector3.back, Vector3.back, Vector3.back };
+            m.tangents = new[] { new Vector4(1f, 0f, 0f, -1f), new Vector4(1f, 0f, 0f, -1f), new Vector4(1f, 0f, 0f, -1f), new Vector4(1f, 0f, 0f, -1f) };
+            m.triangles = new[] { 0, 2, 1, 2, 3, 1 };
+            quadCache = m;
+            return m;
+        }
+
+        // ------------------------------------------------------------------ materials and textures
+
+        public static Material DecalMaterial(Kind kind)
+        {
+            EnsureFolder(MaterialDir);
+            string path = MaterialDir + "/Grime_" + kind + ".mat";
+            Material m = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (m == null)
+            {
+                m = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                AssetDatabase.CreateAsset(m, path);
+            }
+            Texture2D tex = kind == Kind.Papers ? AssetDatabase.LoadAssetAtPath<Texture2D>(PaperArt.WrittenPath) : Texture(kind);
+            if (kind == Kind.Papers) PaperArt.WrittenMaterial(); // make sure the paper texture exists
+            tex = kind == Kind.Papers ? AssetDatabase.LoadAssetAtPath<Texture2D>(PaperArt.WrittenPath) : tex;
+            m.SetTexture("_BaseMap", tex);
+            Color c;
+            float smooth = 0.1f;
+            switch (kind)
+            {
+                case Kind.Puddle: c = new Color(0.02f, 0.025f, 0.03f, 0.85f); smooth = 0.95f; break;
+                case Kind.Mould: c = new Color(0.12f, 0.14f, 0.08f, 0.9f); break;
+                case Kind.Cobweb: c = new Color(0.8f, 0.8f, 0.78f, 0.55f); break;
+                case Kind.Papers: c = new Color(0.8f, 0.78f, 0.72f, 1f); break;
+                case Kind.Soot: c = new Color(0.02f, 0.02f, 0.02f, 0.95f); break;
+                case Kind.Scratches: c = new Color(0.08f, 0.06f, 0.05f, 0.9f); break;
+                default: c = new Color(0.12f, 0.1f, 0.07f, 0.85f); break;
+            }
+            m.SetColor("_BaseColor", c);
+            m.SetFloat("_Smoothness", smooth);
+            m.SetFloat("_Cull", (float)CullMode.Back);
+            m.SetShaderPassEnabled("ShadowCaster", false);
+            if (kind == Kind.Puddle)
+            {
+                // Wet patches: opaque cut-out shape so the shine stays inside the puddle.
+                m.SetFloat("_Surface", 0f);
+                m.SetFloat("_AlphaClip", 1f);
+                m.SetFloat("_Cutoff", 0.35f);
+                m.SetFloat("_ZWrite", 1f);
+                m.SetFloat("_SrcBlend", (float)BlendMode.One);
+                m.SetFloat("_DstBlend", (float)BlendMode.Zero);
+                m.SetOverrideTag("RenderType", "TransparentCutout");
+                m.EnableKeyword("_ALPHATEST_ON");
+                m.DisableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                m.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                m.renderQueue = (int)RenderQueue.AlphaTest;
+            }
+            else
+            {
+                // Plain alpha blending with no specular or reflections: URP's default "preserve specular"
+                // premultiplied mode would add shine over the whole quad, including its transparent parts.
+                m.SetFloat("_Surface", 1f);
+                m.SetFloat("_Blend", 0f);
+                m.SetFloat("_BlendModePreserveSpecular", 0f);
+                m.SetFloat("_AlphaClip", 0f);
+                m.SetFloat("_ZWrite", 0f);
+                m.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+                m.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
+                m.SetFloat("_SrcBlendAlpha", (float)BlendMode.One);
+                m.SetFloat("_DstBlendAlpha", (float)BlendMode.OneMinusSrcAlpha);
+                m.SetFloat("_SpecularHighlights", 0f);
+                m.SetFloat("_EnvironmentReflections", 0f);
+                m.SetOverrideTag("RenderType", "Transparent");
+                m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                m.EnableKeyword("_SPECULARHIGHLIGHTS_OFF");
+                m.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
+                m.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                m.DisableKeyword("_ALPHATEST_ON");
+                m.renderQueue = (int)RenderQueue.Transparent - 50;
+            }
+            EditorUtility.SetDirty(m);
+            return m;
+        }
+
+        private static Texture2D Texture(Kind kind)
+        {
+            EnsureFolder(Dir);
+            string path = Dir + "/" + kind + Ver + ".png";
+            if (!File.Exists(path))
+            {
+                Texture2D tex = Generate(kind, 256);
+                File.WriteAllBytes(path, tex.EncodeToPNG());
+                Object.DestroyImmediate(tex);
+                AssetDatabase.ImportAsset(path);
+                var ti = (TextureImporter)AssetImporter.GetAtPath(path);
+                ti.alphaIsTransparency = true;
+                ti.wrapMode = TextureWrapMode.Clamp;
+                ti.maxTextureSize = 256;
+                ti.SaveAndReimport();
+            }
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        }
+
+        private static Texture2D Generate(Kind kind, int n)
+        {
+            var rng = new System.Random((int)kind * 97 + 13);
+            float R() => (float)rng.NextDouble();
+            float ox = R() * 50f, oy = R() * 50f;
+            var px = new Color[n * n];
+            for (int i = 0; i < px.Length; i++) px[i] = new Color(1f, 1f, 1f, 0f);
+
+            for (int y = 0; y < n; y++)
+            for (int x = 0; x < n; x++)
+            {
+                float u = x / (float)(n - 1), v = y / (float)(n - 1);
+                float cu = u - 0.5f, cv = v - 0.5f, r = Mathf.Sqrt(cu * cu + cv * cv) * 2f;
+                float noise = Mathf.PerlinNoise(ox + u * 6f, oy + v * 6f), fine = Mathf.PerlinNoise(ox + u * 25f, oy + v * 25f);
+                float a = 0f;
+                switch (kind)
+                {
+                    case Kind.Streaks:
+                    {
+                        // Vertical drips running down from the top, uneven widths and lengths.
+                        float col = Mathf.PerlinNoise(ox + u * 18f, 3f);
+                        float len = 0.25f + 0.75f * Mathf.PerlinNoise(ox + u * 9f, 7f);
+                        float fromTop = 1f - v;
+                        a = Mathf.Clamp01((col - 0.35f) * 2.2f) * Mathf.Clamp01(1f - fromTop / len) * (0.6f + 0.4f * fine);
+                        a *= Mathf.SmoothStep(0f, 1f, Mathf.Min(u, 1f - u) * 6f);
+                        break;
+                    }
+                    case Kind.BaseGrime:
+                        a = Mathf.Pow(1f - v, 1.6f) * (0.5f + 0.5f * noise) * Mathf.SmoothStep(0f, 1f, Mathf.Min(u, 1f - u) * 5f);
+                        break;
+                    case Kind.Stain:
+                    case Kind.Puddle:
+                    {
+                        float edge = 0.55f + 0.35f * noise;
+                        a = Mathf.Clamp01((edge - r) * (kind == Kind.Puddle ? 9f : 3f));
+                        if (kind == Kind.Stain) a *= 0.45f + 0.55f * fine;
+                        break;
+                    }
+                    case Kind.Mould:
+                    {
+                        float blob = Mathf.Clamp01((0.6f + 0.3f * noise - r) * 3f);
+                        float speck = Mathf.PerlinNoise(ox + u * 60f, oy + v * 60f);
+                        a = blob * Mathf.Clamp01((speck - 0.35f) * 3f);
+                        break;
+                    }
+                    case Kind.Soot:
+                        a = Mathf.Pow(v, 0.9f) * (0.55f + 0.45f * noise) * Mathf.SmoothStep(0f, 1f, Mathf.Min(u, 1f - u) * 3f);
+                        break;
+                }
+                px[y * n + x] = new Color(1f, 1f, 1f, a);
+            }
+
+            if (kind == Kind.Cracks) DrawCracks(px, n, rng);
+            if (kind == Kind.Cobweb) DrawCobweb(px, n, rng);
+            if (kind == Kind.Scratches) DrawScratches(px, n, rng);
+
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+            tex.SetPixels(px);
+            tex.Apply();
+            return tex;
+        }
+
+        private static void Line(Color[] px, int n, Vector2 a, Vector2 b, float width, float alpha)
+        {
+            int steps = Mathf.CeilToInt(Vector2.Distance(a, b) * n * 1.5f) + 1;
+            for (int s = 0; s <= steps; s++)
+            {
+                Vector2 p = Vector2.Lerp(a, b, s / (float)steps) * (n - 1);
+                int w = Mathf.CeilToInt(width);
+                for (int dy = -w; dy <= w; dy++)
+                for (int dx = -w; dx <= w; dx++)
+                {
+                    int x = Mathf.RoundToInt(p.x) + dx, y = Mathf.RoundToInt(p.y) + dy;
+                    if (x < 0 || y < 0 || x >= n || y >= n) continue;
+                    float d = Mathf.Sqrt(dx * dx + dy * dy);
+                    float k = Mathf.Clamp01(width + 0.5f - d) * alpha;
+                    Color c = px[y * n + x];
+                    c.a = Mathf.Max(c.a, k);
+                    px[y * n + x] = c;
+                }
+            }
+        }
+
+        private static void DrawCracks(Color[] px, int n, System.Random rng)
+        {
+            void Branch(Vector2 p, float angle, float length, int depth)
+            {
+                while (length > 0.02f)
+                {
+                    float step = 0.03f + (float)rng.NextDouble() * 0.03f;
+                    angle += ((float)rng.NextDouble() - 0.5f) * 0.9f;
+                    Vector2 q = p + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * step;
+                    Line(px, n, p, q, depth == 0 ? 1.2f : 0.7f, 0.95f);
+                    if (depth < 2 && rng.NextDouble() < 0.18) Branch(q, angle + ((float)rng.NextDouble() - 0.5f) * 2f, length * 0.5f, depth + 1);
+                    p = q;
+                    length -= step;
+                    if (p.x < 0.02f || p.y < 0.02f || p.x > 0.98f || p.y > 0.98f) break;
+                }
+            }
+            for (int i = 0; i < 3; i++) Branch(new Vector2(0.5f, 0.5f), (float)rng.NextDouble() * Mathf.PI * 2f, 0.5f, 0);
+        }
+
+        private static void DrawCobweb(Color[] px, int n, System.Random rng)
+        {
+            // Corner web: radial threads from one corner with sagging cross threads.
+            Vector2 c = new Vector2(0.02f, 0.98f);
+            int spokes = 9;
+            var dirs = new Vector2[spokes];
+            for (int i = 0; i < spokes; i++)
+            {
+                float a = Mathf.Lerp(-Mathf.PI / 2f + 0.08f, -0.08f, i / (float)(spokes - 1)) + ((float)rng.NextDouble() - 0.5f) * 0.1f;
+                dirs[i] = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+                Line(px, n, c, c + dirs[i] * 1.1f, 0.5f, 0.6f);
+            }
+            for (float rr = 0.12f; rr < 1f; rr += 0.09f + (float)rng.NextDouble() * 0.05f)
+                for (int i = 0; i < spokes - 1; i++)
+                {
+                    Vector2 a = c + dirs[i] * rr, b = c + dirs[i + 1] * rr;
+                    Vector2 mid = (a + b) / 2f + new Vector2(0.01f, -0.015f);
+                    Line(px, n, a, mid, 0.4f, 0.5f);
+                    Line(px, n, mid, b, 0.4f, 0.5f);
+                }
+        }
+
+        private static void DrawScratches(Color[] px, int n, System.Random rng)
+        {
+            // Four long parallel gouges, as if something dragged its fingers down the wall.
+            for (int i = 0; i < 4; i++)
+            {
+                float x = 0.25f + i * 0.15f + ((float)rng.NextDouble() - 0.5f) * 0.03f;
+                Vector2 prev = new Vector2(x, 0.95f);
+                for (float v = 0.95f; v > 0.05f; v -= 0.04f)
+                {
+                    Vector2 next = new Vector2(x + Mathf.Sin(v * 6f + i) * 0.02f, v - 0.04f);
+                    Line(px, n, prev, next, Mathf.Lerp(0.6f, 1.6f, Mathf.Sin(v * Mathf.PI)), 0.95f);
+                    prev = next;
+                }
+            }
+        }
+    }
+}

@@ -104,6 +104,7 @@ namespace LastSignal.EditorTools
             Box(env, "StorageShelf", new Vector3(5f, 0.9f, 24.5f), new Vector3(3f, 1.8f, 0.6f), wood);
             Box(env, "Boxes", new Vector3(7.8f, 0.4f, 21.2f), new Vector3(1f, 0.8f, 1f), wood);
 
+            LevelDressing.Level3(env);
             BakeNavMesh(envGo, SceneName);
 
             // ------------------------------------------------------------------ lights

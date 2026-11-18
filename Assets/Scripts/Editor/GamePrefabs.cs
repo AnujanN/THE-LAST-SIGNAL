@@ -418,6 +418,16 @@ namespace LastSignal.EditorTools
             Set(ai, "voice", voice);
             if (animator != null) Set(ai, "animator", animator);
 
+            var catchSequence = root.AddComponent<EchoCatchSequence>();
+            Set(catchSequence, "head", head);
+            Set(catchSequence, "voice", voice);
+            if (animator != null)
+            {
+                Transform b = animator.transform;
+                SetArray(catchSequence, "leftArm", new Object[] { FindDeep(b, "DEF-upper_arm.L"), FindDeep(b, "DEF-forearm.L"), FindDeep(b, "DEF-hand.L") });
+                SetArray(catchSequence, "rightArm", new Object[] { FindDeep(b, "DEF-upper_arm.R"), FindDeep(b, "DEF-forearm.R"), FindDeep(b, "DEF-hand.R") });
+            }
+
             var presence = root.AddComponent<EchoPresence>();
             Set(presence, "ai", ai);
             Set(presence, "head", head);
@@ -505,7 +515,7 @@ namespace LastSignal.EditorTools
         /// </summary>
         private static UnityEditor.Animations.AnimatorController EnsureEchoAnimator()
         {
-            const string version = "echo-animator-v1";
+            const string version = "echo-animator-v2";
             var existing = AssetDatabase.LoadAssetAtPath<UnityEditor.Animations.AnimatorController>(EchoAnimatorPath);
             if (existing != null && AssetImporter.GetAtPath(EchoAnimatorPath).userData == version) return existing;
             if (existing != null) AssetDatabase.DeleteAsset(EchoAnimatorPath);
@@ -524,7 +534,8 @@ namespace LastSignal.EditorTools
             sm.defaultState = move;
             AddStatePose(sm, move, "Listen", EchoClip("Crouch_Idle_Loop"), (int)EchoAIController.State.Listen, 0.35f);
             AddStatePose(sm, move, "Inspect", EchoClip("Push_Loop"), (int)EchoAIController.State.Inspect, 0.3f);
-            AddStatePose(sm, move, "Caught", EchoClip("Punch_Cross"), (int)EchoAIController.State.Caught, 0.08f);
+            // Caught: no punch. It stands over you; EchoCatchSequence drives the grabbing hands and head.
+            AddStatePose(sm, move, "Caught", EchoClip("Idle_Loop"), (int)EchoAIController.State.Caught, 0.08f);
             EditorUtility.SetDirty(ctrl);
             AssetDatabase.SaveAssets();
             AssetImporter.GetAtPath(EchoAnimatorPath).userData = version;
@@ -692,17 +703,42 @@ namespace LastSignal.EditorTools
             titleGroup.alpha = 0f;
             titleGroup.blocksRaycasts = false;
 
+            // Static that tears the screen when The Echo catches you (above the HUD, below the menus).
+            RectTransform catchRect = UIRect(root.transform, "CatchStatic");
+            Stretch(catchRect);
+            var catchStatic = catchRect.gameObject.AddComponent<RawImage>();
+            catchStatic.raycastTarget = false;
+            catchStatic.color = new Color(1f, 1f, 1f, 0f);
+            catchRect.gameObject.SetActive(false);
+
             // ---------------- modal panels (on top)
-            RectTransform notePanel = UIPanel(root.transform, "NotePanel", new Color(0f, 0f, 0f, 0.8f));
+            // Note reader: a sheet of aged, stained paper held up in the torch light, handwritten in ink.
+            RectTransform notePanel = UIPanel(root.transform, "NotePanel", new Color(0f, 0f, 0f, 0.88f));
             RectTransform paper = UIRect(notePanel, "Paper");
-            Place(paper, new Vector2(0.5f, 0.5f), new Vector2(0f, 30f), new Vector2(1150f, 760f));
-            UIImage(paper, square, new Color(0.86f, 0.82f, 0.7f, 0.97f), raycast: true);
-            TMP_Text noteTitle = UIText(paper, "Title", "", 40, new Vector2(0.5f, 1f), new Vector2(0f, -55f), new Vector2(1050f, 70f));
-            noteTitle.color = new Color(0.12f, 0.1f, 0.08f);
-            TMP_Text noteBody = UIText(paper, "Body", "", 30, new Vector2(0.5f, 0.5f), new Vector2(0f, -35f), new Vector2(1030f, 580f),
+            Place(paper, new Vector2(0.5f, 0.5f), new Vector2(-40f, 50f), new Vector2(650f, 894f));
+            paper.localRotation = Quaternion.Euler(0f, 0f, -2.2f);
+            Image paperImage = UIImage(paper, PaperArt.PaperSprite() ?? square, Color.white, raycast: true);
+            paperImage.preserveAspect = false;
+            RectTransform torchSpot = UIRect(paper, "TorchLight");
+            Place(torchSpot, new Vector2(0.5f, 0.5f), new Vector2(-60f, 120f), new Vector2(760f, 760f));
+            UIImage(torchSpot, EnsureSprite("SoftDot", SpriteShape.Soft), new Color(1f, 0.96f, 0.82f, 0.22f), raycast: false);
+            TMP_FontAsset hand = PaperArt.HandwritingFont();
+            Color ink = new Color(0.11f, 0.09f, 0.13f);
+            TMP_Text noteTitle = UIText(paper, "Title", "", 46, new Vector2(0.5f, 1f), new Vector2(0f, -72f), new Vector2(560f, 80f));
+            noteTitle.color = ink;
+            TMP_Text noteBody = UIText(paper, "Body", "", 38, new Vector2(0.5f, 0.5f), new Vector2(0f, -38f), new Vector2(545f, 700f),
                 TextAlignmentOptions.TopLeft, wrap: true);
-            noteBody.color = new Color(0.12f, 0.1f, 0.08f);
-            UIButton(notePanel, "CloseButton", "CLOSE", new Vector2(0.5f, 0f), new Vector2(0f, 75f), new Vector2(320f, 90f), 34, story.CloseNote);
+            noteBody.color = ink;
+            noteBody.enableAutoSizing = true;
+            noteBody.fontSizeMin = 22f;
+            noteBody.fontSizeMax = 40f;
+            noteBody.lineSpacing = -8f;
+            if (hand != null)
+            {
+                noteTitle.font = hand;
+                noteBody.font = hand;
+            }
+            UIButton(notePanel, "CloseButton", "CLOSE", new Vector2(0.5f, 0f), new Vector2(0f, 70f), new Vector2(320f, 90f), 34, story.CloseNote);
 
             RectTransform invPanel = UIPanel(root.transform, "InventoryPanel", new Color(0f, 0f, 0f, 0.75f));
             UIText(invPanel, "Title", "INVENTORY", 48, new Vector2(0.5f, 0.5f), new Vector2(0f, 300f), new Vector2(800f, 80f));
@@ -750,7 +786,7 @@ namespace LastSignal.EditorTools
 
             RectTransform gameOver = UIPanel(root.transform, "GameOverPanel", new Color(0.08f, 0f, 0f, 0.88f));
             UIText(gameOver, "Title", "THE ECHO FOUND YOU", 64, new Vector2(0.5f, 0.5f), new Vector2(0f, 180f), new Vector2(1400f, 100f));
-            UIText(gameOver, "Hint", "Listen for its footsteps. Crouch to stay quiet, and hide when it gets close.", 30,
+            UIText(gameOver, "Hint", "Listen for its footsteps. Crouch to stay quiet, hide when it gets close - and hold your breath if it checks your hiding place.", 30,
                 new Vector2(0.5f, 0.5f), new Vector2(0f, 90f), new Vector2(1400f, 60f));
             UIButton(gameOver, "Retry", "RETRY CHECKPOINT", new Vector2(0.5f, 0.5f), new Vector2(0f, -40f), new Vector2(560f, 100f), 36, story.RetryCheckpoint);
             UIButton(gameOver, "MainMenu", "MAIN MENU", new Vector2(0.5f, 0.5f), new Vector2(0f, -160f), new Vector2(560f, 100f), 36, story.QuitToMenu);
@@ -785,6 +821,7 @@ namespace LastSignal.EditorTools
             Set(story, "threatVignette", vigImage);
             Set(story, "breathRoot", breathMeter.gameObject);
             Set(story, "breathFill", breathFill);
+            Set(story, "catchOverlay", catchStatic);
 
             notePanel.gameObject.SetActive(false);
             invPanel.gameObject.SetActive(false);

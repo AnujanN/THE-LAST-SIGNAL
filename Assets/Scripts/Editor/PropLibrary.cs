@@ -15,7 +15,7 @@ namespace LastSignal.EditorTools
     {
         public const string ModelDir = "Assets/Art/Models/Props";
         public const string PrefabDir = "Assets/Prefabs/Props";
-        private const string Version = "props-v1";
+        private const string Version = "props-v3";
 
         private static readonly Dictionary<string, Material> charred = new Dictionary<string, Material>();
 
@@ -41,14 +41,18 @@ namespace LastSignal.EditorTools
             string fbx = folder + "/" + id + ".fbx";
             var importer = AssetImporter.GetAtPath(fbx) as ModelImporter;
             if (importer == null) return null;
-            if (importer.materialImportMode != ModelImporterMaterialImportMode.None || importer.importAnimation)
+            // Models with several texture sets keep their material slot names so each slot gets its own textures.
+            List<string> sets = TextureSets(folder);
+            ModelImporterMaterialImportMode mode = sets.Count > 1
+                ? ModelImporterMaterialImportMode.ImportViaMaterialDescription : ModelImporterMaterialImportMode.None;
+            if (importer.materialImportMode != mode || importer.importAnimation)
             {
-                importer.materialImportMode = ModelImporterMaterialImportMode.None;
+                importer.materialImportMode = mode;
                 importer.importAnimation = false;
                 importer.SaveAndReimport();
             }
 
-            Material mat = PropMaterial(id, folder);
+            Material mat = PropMaterial(sets.Count > 0 ? sets[0] : id, folder);
             GameObject model = AssetDatabase.LoadAssetAtPath<GameObject>(fbx);
             if (model == null) return null;
 
@@ -60,10 +64,18 @@ namespace LastSignal.EditorTools
             inst.transform.SetParent(root.transform, false);
             var bounds = new Bounds();
             bool first = true;
+            // One texture set: merge all sub-meshes into one so each copy is a single draw call on the phone.
+            if (sets.Count <= 1)
+                foreach (MeshFilter mf in inst.GetComponentsInChildren<MeshFilter>())
+                    if (mf.sharedMesh != null && mf.sharedMesh.subMeshCount > 1)
+                        mf.sharedMesh = SingleSubmesh(mf.sharedMesh, id);
             foreach (Renderer r in inst.GetComponentsInChildren<Renderer>())
             {
-                var mats = new Material[r.sharedMaterials.Length];
-                for (int i = 0; i < mats.Length; i++) mats[i] = mat;
+                if (sets.Count <= 1 && r.sharedMaterials.Length > 1) r.sharedMaterials = new[] { mat };
+                Material[] slots = r.sharedMaterials;
+                var mats = new Material[slots.Length];
+                for (int i = 0; i < mats.Length; i++)
+                    mats[i] = sets.Count > 1 && slots[i] != null ? PropMaterial(BestSet(sets, slots[i].name), folder) : mat;
                 r.sharedMaterials = mats;
                 r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
                 if (first) { bounds = r.bounds; first = false; } else bounds.Encapsulate(r.bounds);
@@ -82,11 +94,71 @@ namespace LastSignal.EditorTools
             return prefab;
         }
 
+        private static Mesh SingleSubmesh(Mesh source, string id)
+        {
+            string dir = PrefabDir + "/Meshes";
+            EnsureFolder(dir);
+            string path = dir + "/" + id + "_" + source.name.Replace('/', '_').Replace(':', '_') + ".asset";
+            var tris = new List<int>();
+            for (int i = 0; i < source.subMeshCount; i++) tris.AddRange(source.GetTriangles(i));
+            Mesh m = Object.Instantiate(source);
+            m.name = source.name + "_merged";
+            m.subMeshCount = 1;
+            m.SetTriangles(tris, 0);
+            m.RecalculateBounds();
+            if (AssetDatabase.LoadAssetAtPath<Mesh>(path) != null) AssetDatabase.DeleteAsset(path);
+            AssetDatabase.CreateAsset(m, path);
+            return m;
+        }
+
+        /// <summary>Texture set base names in a model folder ("name" for name_diff_1k.jpg/png).</summary>
+        private static List<string> TextureSets(string folder)
+        {
+            var sets = new List<string>();
+            string dir = folder + "/textures";
+            if (!Directory.Exists(dir)) return sets;
+            foreach (string f in Directory.GetFiles(dir))
+            {
+                string name = Path.GetFileName(f);
+                int k = name.IndexOf("_diff_1k", System.StringComparison.Ordinal);
+                if (k > 0 && !name.EndsWith(".meta")) sets.Add(name.Substring(0, k));
+            }
+            sets.Sort((a, b) => a.Length.CompareTo(b.Length));
+            return sets;
+        }
+
+        /// <summary>The texture set whose name best matches a material slot name (longest shared prefix).</summary>
+        private static string BestSet(List<string> sets, string slot)
+        {
+            string s = slot.ToLowerInvariant();
+            string best = sets[0];
+            int bestScore = -1;
+            foreach (string set in sets)
+            {
+                string t = set.ToLowerInvariant();
+                int n = 0;
+                while (n < s.Length && n < t.Length && s[n] == t[n]) n++;
+                int score = n * 10 - Mathf.Abs(t.Length - s.Length);
+                if (score > bestScore) { bestScore = score; best = set; }
+            }
+            return best;
+        }
+
+        private static Texture2D LoadAny(string basePath, bool normal)
+        {
+            foreach (string ext in new[] { ".jpg", ".png", ".exr" })
+            {
+                Texture2D t = Load(basePath + ext, normal);
+                if (t != null) return t;
+            }
+            return null;
+        }
+
         private static Material PropMaterial(string id, string folder)
         {
             string tex = folder + "/textures/" + id;
-            Texture2D diff = Load(tex + "_diff_1k.jpg", normal: false);
-            Texture2D nor = Load(tex + "_nor_gl_1k.exr", normal: true);
+            Texture2D diff = LoadAny(tex + "_diff_1k", normal: false);
+            Texture2D nor = LoadAny(tex + "_nor_gl_1k", normal: true);
             // Slightly darkened: decades of dust and grime.
             Material m = Mat("Prop_" + id, new Color(0.74f, 0.72f, 0.68f), smoothness: 0.2f);
             if (diff != null) m.SetTexture("_BaseMap", diff);

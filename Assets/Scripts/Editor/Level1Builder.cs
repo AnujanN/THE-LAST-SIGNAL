@@ -331,6 +331,7 @@ namespace LastSignal.EditorTools
             Transform weather = Group(null, "Weather");
             Rain(weather, new Vector3(0f, 10f, -12f), new Vector3(24f, 12f, 1f));
 
+            LevelDressing.Finish(1, items);
             Instantiate(playerPrefab, scene, spawn.position, 0f);
             PrefabUtility.InstantiatePrefab(hudPrefab, scene);
             EventSystemObject();

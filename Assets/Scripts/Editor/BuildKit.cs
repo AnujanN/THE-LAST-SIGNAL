@@ -623,6 +623,7 @@ namespace LastSignal.EditorTools
                 if (missingFlagMessage != null) SetValue(t, "missingFlagMessage", missingFlagMessage);
             }
             SetValue(t, "lockPlayer", lockPlayer);
+            Fixtures.TapeDeck(go.transform, charred: deviceName.ToLowerInvariant().Contains("scorched"));
             return t;
         }
 
@@ -631,14 +632,40 @@ namespace LastSignal.EditorTools
         {
             Transform root = Group(parent, name, floorPos);
             root.localRotation = Quaternion.Euler(0f, yaw, 0f);
+            bool wood = spotName != "locker";
             const float w = 1.0f, d = 0.9f, h = 2.1f, t = 0.05f;
+            Material inside = Mat(wood ? "WardrobeInside" : "LockerInside", wood ? new Color(0.1f, 0.07f, 0.05f) : new Color(0.07f, 0.075f, 0.08f), smoothness: 0.2f);
+            Material handleMat = Mat("Metal", new Color(0.5f, 0.5f, 0.52f), smoothness: 0.6f);
             Box(root, "Back", new Vector3(0f, h / 2f, -d / 2f), new Vector3(w, h, t), mat, isStatic: false);
             Box(root, "Left", new Vector3(-w / 2f, h / 2f, 0f), new Vector3(t, h, d), mat, isStatic: false);
             Box(root, "Right", new Vector3(w / 2f, h / 2f, 0f), new Vector3(t, h, d), mat, isStatic: false);
             Box(root, "Top", new Vector3(0f, h, 0f), new Vector3(w, t, d), mat, isStatic: false);
-            // Door slats: visual only (no collider) so the camera can look out between them.
-            for (int i = 0; i < 6; i++)
-                Box(root, "Slat", new Vector3(0f, 0.3f + i * 0.3f, d / 2f), new Vector3(w, 0.12f, 0.02f), mat, collider: false, isStatic: false);
+            Box(root, "Plinth", new Vector3(0f, 0.04f, 0f), new Vector3(w, 0.08f, d), mat, collider: false, isStatic: false);
+            // Dark lining so the inside reads as a cramped box.
+            Box(root, "Lining", new Vector3(0f, h / 2f, -d / 2f + t / 2f + 0.006f), new Vector3(w - 2f * t, h - 0.1f, 0.01f), inside, collider: false, isStatic: false);
+
+            // Door on a hinge at the left front edge (visual only; HidingDoor swings it when you get in or out).
+            // Solid below and above; louvred vents at eye height are all you can see through while hidden.
+            Transform hinge = Group(root, "DoorHinge", new Vector3(-w / 2f, 0f, d / 2f));
+            float dw = w - 0.02f, cx = dw / 2f + 0.01f, dt = 0.025f;
+            Box(hinge, "DoorLower", new Vector3(cx, 0.75f, 0f), new Vector3(dw, 1.38f, dt), mat, collider: false, isStatic: false);
+            Box(hinge, "DoorUpper", new Vector3(cx, 2.0f, 0f), new Vector3(dw, 0.18f, dt), mat, collider: false, isStatic: false);
+            Box(hinge, "DoorStileL", new Vector3(0.07f, 1.67f, 0f), new Vector3(0.14f, 0.48f, dt), mat, collider: false, isStatic: false);
+            Box(hinge, "DoorStileR", new Vector3(dw - 0.05f, 1.67f, 0f), new Vector3(0.14f, 0.48f, dt), mat, collider: false, isStatic: false);
+            for (int i = 0; i < 5; i++)
+            {
+                GameObject v = Box(hinge, "Vent", new Vector3(cx, 1.47f + i * 0.09f, 0f), new Vector3(dw - 0.26f, 0.03f, 0.05f), mat, collider: false, isStatic: false);
+                v.transform.localRotation = Quaternion.Euler(wood ? 35f : 25f, 0f, 0f);
+            }
+            Box(hinge, "Handle", new Vector3(dw - 0.09f, 1.15f, 0.03f), new Vector3(0.03f, 0.2f, 0.03f), handleMat, collider: false, isStatic: false);
+            if (!wood)
+            {
+                Box(hinge, "NumberPlate", new Vector3(cx, 2.0f, 0.016f), new Vector3(0.16f, 0.07f, 0.006f),
+                    Mat("LockerPlate", new Color(0.55f, 0.52f, 0.42f), smoothness: 0.5f), collider: false, isStatic: false);
+                for (int i = 0; i < 3; i++)
+                    Box(hinge, "LowVent", new Vector3(cx, 0.18f + i * 0.05f, 0.014f), new Vector3(dw - 0.4f, 0.015f, 0.006f), inside, collider: false, isStatic: false);
+            }
+
             var trigger = root.gameObject.AddComponent<BoxCollider>();
             trigger.isTrigger = true;
             trigger.center = new Vector3(0f, h / 2f, 0.05f);
@@ -655,6 +682,9 @@ namespace LastSignal.EditorTools
             SetValue(spot, "spotName", spotName);
             Set(spot, "hidePoint", hide);
             Set(spot, "exitPoint", exit);
+            var door = root.gameObject.AddComponent<HidingDoor>();
+            Set(door, "spot", spot);
+            Set(door, "hinge", hinge);
             return spot;
         }
 

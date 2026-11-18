@@ -336,6 +336,7 @@ namespace LastSignal.EditorTools
             SetValue(level, "ambience", Ambience.BasementDrips);
             SetValue(level, "ambienceVolume", 0.65f);
 
+            LevelDressing.Finish(2, items);
             Instantiate(playerPrefab, scene, spawn.position, 0f);
             PrefabUtility.InstantiatePrefab(hudPrefab, scene);
             EventSystemObject();

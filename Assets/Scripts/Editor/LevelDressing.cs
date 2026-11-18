@@ -17,6 +17,30 @@ namespace LastSignal.EditorTools
         // Tipped-over furniture lies on its side a little above the floor.
         private static readonly Vector3 OnSide = new Vector3(0f, 0f, 88f);
 
+        /// <summary>
+        /// Last pass, after lights and interactables exist: fittings above every ceiling lamp, the safe in
+        /// Level 3, and equipment on desks.
+        /// </summary>
+        public static void Finish(int level, Transform items)
+        {
+            Fixtures.CeilingFittings(GameObject.Find("Lighting")?.transform);
+            Transform props = GameObject.Find("Environment/Props")?.transform ?? items;
+            switch (level)
+            {
+                case 1:
+                    Place(props, "vintage_radio_transceiver", new Vector3(-2.7f, 1.0f, 21.3f), 180f, collider: false);
+                    break;
+                case 3:
+                    Transform env = GameObject.Find("Environment")?.transform;
+                    if (env != null) Fixtures.Safe(env, "Safe", items, "SafeDoor", "SafeDial", Vector3.left);
+                    break;
+                case 5:
+                    Place(props, "vintage_radio_transceiver", new Vector3(-10.0f, 0.9f, 12.45f), 90f, collider: false);
+                    Place(props, "circuit_board", new Vector3(4.9f, 0.9f, 5.25f), 10f, collider: false);
+                    break;
+            }
+        }
+
         public static void Level1(Transform env)
         {
             // Box stand-ins -> real furniture (surfaces, routes and navigation unchanged).
@@ -28,6 +52,8 @@ namespace LastSignal.EditorTools
             Dress(env, "OfficeDesk", "metal_office_desk");
             Dress(env, "Bookshelf", "wooden_bookshelf_worn");
             Dress(env, "ControlDesk", "metal_office_desk", tiles: 3);
+            Dress(env, "RadioRack_L", "worn_metal_rack", tiles: 3);
+            Dress(env, "RadioRack_R", "worn_metal_rack", tiles: 3);
 
             Transform p = Group(env);
             Place(p, "cardboard_box_01", new Vector3(-11.0f, 0f, -5.2f), 10f);
@@ -44,6 +70,8 @@ namespace LastSignal.EditorTools
             Place(p, "steel_frame_shelves_01", new Vector3(-7.45f, 0f, 17.2f), 90f);
             Place(p, "television_02", new Vector3(6.6f, 0f, 15.3f), -30f);
             Place(p, "metal_office_desk", new Vector3(5.8f, 0f, 17.6f), -90f);
+            Place(p, "utility_box_02", new Vector3(-7.55f, 0f, 21.3f), 90f);
+            Place(p, "power_box_01", new Vector3(-1.15f, 0f, 12.1f), 90f);
 
             Dressing.Apply(env, new[]
             {
@@ -60,6 +88,9 @@ namespace LastSignal.EditorTools
             Dress(env, "Crate_Flood", "wooden_crate_02", stack: 2);
             Dress(env, "Crate_Flood2", "wooden_crate_02", stack: 2);
             Dress(env, "Desk_Generator", "metal_office_desk");
+            Dress(env, "ControlPanel", "utility_box_02");
+            Fixtures.Machine(env, "Generator", Vector3.back, exhaust: true, warning: "DANGER\nDIESEL GENERATOR");
+            Fixtures.Machine(env, "PumpHousing", Vector3.right, exhaust: false, warning: "SUMP PUMP\nNO ENTRY");
 
             Transform p = Group(env);
             Place(p, "barrel_03", new Vector3(-14.0f, 0f, 8.0f), 0f);
@@ -77,6 +108,15 @@ namespace LastSignal.EditorTools
             Place(p, "street_rat", new Vector3(-3.0f, 0f, 22.4f), 75f, collider: false);
             Place(p, "can_rusted", new Vector3(-2.1f, 0.04f, 18.0f), 0f, new Vector3(90f, 0f, 0f), collider: false);
             Place(p, "russian_food_cans_01", new Vector3(-9.6f, 0f, 9.0f), 40f, collider: false);
+            Place(p, "old_military_compressor", new Vector3(5.6f, 0f, 32.1f), 90f);
+            Place(p, "modular_industrial_pipes_01", new Vector3(-0.9f, 0f, 32.72f), 0f, collider: false);
+            Place(p, "modular_industrial_pipes_01", new Vector3(0.9f, 0f, 32.72f), 0f, collider: false);
+            Place(p, "propane_tank", new Vector3(-7.3f, 0f, 28.6f), 0f);
+            Place(p, "propane_tank", new Vector3(-7.25f, 0f, 28.0f), 40f);
+            Place(p, "propane_tank", new Vector3(-7.4f, 0.17f, 27.4f), 75f, new Vector3(90f, 0f, 0f), collider: false);
+            Place(p, "power_box_01", new Vector3(-2.2f, 0f, 22.4f), 180f);
+            Place(p, "portable_generator", new Vector3(2.5f, 0f, 14.2f), 15f);
+            Place(p, "WetFloorSign_01", new Vector3(6.4f, 0f, 5.6f), 30f, collider: false);
 
             Dressing.Apply(env, new[]
             {
@@ -103,6 +143,10 @@ namespace LastSignal.EditorTools
             Dress(env, "Bookshelf", "wooden_bookshelf_worn");
             Dress(env, "StorageShelf", "steel_frame_shelves_01", tiles: 3);
             Dress(env, "Boxes", "wooden_crate_02", stack: 2);
+            Fixtures.Fridge(env, "Fridge", Vector3.left);
+            Fixtures.Bathtub(env, "Bathtub", Vector3.forward);
+            Fixtures.Sink(env, "Sink", Vector3.back);
+            Hide(env, "MirrorGlass");
 
             Transform p = Group(env);
             Place(p, "drawer_cabinet", new Vector3(-2.5f, 0f, 24.35f), 180f);
@@ -116,6 +160,9 @@ namespace LastSignal.EditorTools
             Place(p, "wooden_bookshelf_worn", new Vector3(-7.0f, 0f, 1.4f), 0f);
             Place(p, "street_rat", new Vector3(-4.6f, 0f, 10.3f), 140f, collider: false);
             Place(p, "can_rusted", new Vector3(3.2f, 0.04f, 4.0f), 30f, new Vector3(90f, 0f, 0f), collider: false);
+            Place(p, "electric_stove", new Vector3(8.55f, 0f, 7.4f), -90f);
+            Place(p, "rubber_duck_toy", new Vector3(-6.95f, 0.6f, 11.98f), 200f, collider: false, scale: 0.6f);
+            Place(p, "ornate_mirror_01", new Vector3(-3f, 1.3f, 13.88f), 0f, collider: false);
 
             Dressing.Apply(env, new[]
             {
@@ -132,6 +179,7 @@ namespace LastSignal.EditorTools
             Dress(env, "RecorderDesk", "WoodenTable_03", charredLook: true);
             Dress(env, "StudioChair", "painted_wooden_chair_01", fitHeight: false, charredLook: true);
             Dress(env, "Crates", "wooden_crate_02", stack: 2, charredLook: true);
+            Dress(env, "StudioConsole", "metal_office_desk", tiles: 2, charredLook: true);
 
             Transform p = Group(env);
             Place(p, "painted_wooden_chair_01", new Vector3(-6.0f, 0.22f, 14.0f), 30f, OnSide, charredLook: true);
@@ -143,6 +191,11 @@ namespace LastSignal.EditorTools
             Place(p, "television_02", new Vector3(7.3f, 0f, 16.2f), 200f, charredLook: true);
             Place(p, "wheelchair_01", new Vector3(-0.85f, 0f, 4.6f), 20f, charredLook: true);
             Place(p, "cardboard_box_01", new Vector3(3.3f, 0f, 25.8f), 40f, charredLook: true);
+            Place(p, "utility_box_01", new Vector3(-2.7f, 0f, 26.65f), 0f, charredLook: true);
+            Place(p, "utility_box_02", new Vector3(2.95f, 0f, 26.65f), 0f, charredLook: true);
+            Place(p, "modular_industrial_pipes_01", new Vector3(5.5f, 0f, 26.72f), 0f, collider: false, charredLook: true);
+            Place(p, "circuit_board", new Vector3(5.2f, 1.0f, 12.4f), 20f, collider: false, charredLook: true);
+            Place(p, "circuit_board", new Vector3(6.7f, 1.0f, 12.6f), -35f, collider: false, charredLook: true);
 
             Dressing.Apply(env, new[]
             {
@@ -158,6 +211,9 @@ namespace LastSignal.EditorTools
             Dress(env, "AntennaDesk", "metal_office_desk");
             Dress(env, "RecorderDesk", "WoodenTable_03");
             Dress(env, "EquipRack2", "steel_frame_shelves_01", tiles: 2);
+            Dress(env, "TuningConsole", "utility_box_02", tiles: 3);
+            Dress(env, "AntennaConsole", "utility_box_02", tiles: 3);
+            Fixtures.Machine(env, "Transmitter", Vector3.back, exhaust: false, warning: "DANGER\nRF RADIATION");
 
             Transform p = Group(env);
             Place(p, "steel_frame_shelves_01", new Vector3(7.5f, 0f, 13.4f), 180f);
@@ -169,6 +225,9 @@ namespace LastSignal.EditorTools
             Place(p, "television_02", new Vector3(5.8f, 0f, 26.8f), 160f);
             Place(p, "street_rat", new Vector3(-12.5f, 0f, 24.0f), 90f, collider: false);
             Place(p, "can_rusted", new Vector3(-9.6f, 0.04f, 5.2f), 0f, new Vector3(90f, 0f, 0f), collider: false);
+            Place(p, "utility_box_02", new Vector3(-2.95f, 0f, 25.75f), 0f);
+            Place(p, "utility_box_02", new Vector3(2.95f, 0f, 25.75f), 0f);
+            Place(p, "modular_industrial_pipes_01", new Vector3(11.7f, 0f, 7.0f), -90f, collider: false);
 
             Dressing.Apply(env, new[]
             {

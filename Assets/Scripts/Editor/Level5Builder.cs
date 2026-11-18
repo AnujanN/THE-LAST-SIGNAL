@@ -287,6 +287,7 @@ namespace LastSignal.EditorTools
             SetValue(level, "ambience", Ambience.TowerInterference);
             SetValue(level, "ambienceVolume", 0.55f);
 
+            LevelDressing.Finish(5, items);
             Instantiate(playerPrefab, scene, spawn.position, 0f);
             PrefabUtility.InstantiatePrefab(hudPrefab, scene);
             EventSystemObject();

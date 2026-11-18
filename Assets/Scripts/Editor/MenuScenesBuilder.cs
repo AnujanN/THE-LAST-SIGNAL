@@ -39,9 +39,28 @@ namespace LastSignal.EditorTools
             Level1Builder.Build();
             Level2Builder.Build();
             Level3Builder.Build();
+            Level4Builder.Build();
+            Level5Builder.Build();
             BuildEnding();
+            ApplyBuildScenes();
             EditorSceneManagerOpen(MainMenuPath);
             Debug.Log("[Build] All game scenes rebuilt.");
+        }
+
+        /// <summary>The scene order in the build: menu, the five levels, ending.</summary>
+        public static readonly string[] BuildScenes =
+        {
+            MainMenuPath, Level1Builder.ScenePath, Level2Builder.ScenePath, Level3Builder.ScenePath,
+            Level4Builder.ScenePath, Level5Builder.ScenePath, EndingPath,
+        };
+
+        [MenuItem("The Last Signal/Build/Apply Build Scene List")]
+        public static void ApplyBuildScenes()
+        {
+            var list = new EditorBuildSettingsScene[BuildScenes.Length];
+            for (int i = 0; i < BuildScenes.Length; i++) list[i] = new EditorBuildSettingsScene(BuildScenes[i], true);
+            EditorBuildSettings.scenes = list;
+            Debug.Log("[Build] Build scene list: " + string.Join(", ", BuildScenes));
         }
 
         private static void EditorSceneManagerOpen(string path) =>

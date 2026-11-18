@@ -156,9 +156,10 @@ namespace LastSignal.EditorTools
                 Mat("Fuse", new Color(0.8f, 0.8f, 0.85f), smoothness: 0.6f), PrimitiveType.Cylinder, new Vector3(0.06f, 0.08f, 0.06f));
 
             // Clue notes.
-            Note(items, "Note_VisitorLog", new Vector3(-7.4f, 0.91f, -4.1f), 10f, "l1_visitor_log", "Visitor log",
+            NoteInteractable visitorLog = Note(items, "Note_VisitorLog", new Vector3(-7.4f, 0.91f, -4.1f), 10f, "l1_visitor_log", "Visitor log",
                 "STORM NIGHT - 14 OCTOBER\n\n23:10  IN   Maya R. (staff family)\n23:10  IN   Alex R. (staff family)\n02:47  OUT  Alex R.\n" +
                 "--:--  OUT  Maya R.  ________\n\nThe last line was never signed.", paper);
+            On(visitorLog, "onRead", events.AddClue, "Storm night (14 Oct): Alex signed out at 02:47. Maya never signed out.");
             Note(items, "Note_ManagerMemo", new Vector3(7.4f, 0.81f, -0.9f), -15f, "l1_memo", "Station manager's memo",
                 "To all staff:\n\nThe experimental broadcast rig in the tower stays OFF during storms. " +
                 "Lightning took out the old mast last year and the rig nearly caught fire.\n\n" +
@@ -167,10 +168,11 @@ namespace LastSignal.EditorTools
                 "STORM RULE\n\nAnything that feeds the TOWER stays DOWN.\nEverything else UP.\n\n" +
                 "(The breaker labels burned off in the '09 fire. The circuit diagram is pinned up in the manager's office.)\n\n" +
                 "Insert the main fuse first, then pull the main lever.", paper, new Vector2(0.5f, 0.45f));
-            WallNote(items, "Note_CircuitDiagram", new Vector3(9.5f, 1.6f, 1.88f), 180f, "l1_circuits", "Circuit diagram (manager's office)",
+            NoteInteractable circuits = WallNote(items, "Note_CircuitDiagram", new Vector3(9.5f, 1.6f, 1.88f), 180f, "l1_circuits", "Circuit diagram (manager's office)",
                 "MAIN PANEL - SERVICE CORRIDOR\n\nB1  Corridor and room lights\nB2  Control room door lock\n" +
                 "B3  Roof antenna (tower mast)\nB4  Heating\nB5  Broadcast rig (tower)\nB6  Tower lift motor\n\n" +
                 "Maya - stop switching the rig back on. I mean it.\n- Dad", paper, new Vector2(0.6f, 0.5f));
+            On(circuits, "onRead", events.AddClue, "Circuits: B1 lights, B2 door lock, B3 antenna (tower), B4 heating, B5 rig (tower), B6 lift (tower).");
             Note(items, "Note_Maya", new Vector3(2.6f, 1.01f, 20.8f), -8f, "l1_maya_note", "Note in Maya's handwriting",
                 "Alex,\n\nThe transmitter keeps talking back. It knows our names.\n\n" +
                 "I put the spare basement key in the control desk. If anything goes wrong tonight, " +

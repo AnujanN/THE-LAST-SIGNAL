@@ -228,10 +228,11 @@ namespace LastSignal.EditorTools
                 L("MAYA (TAPE)", "Lightning hit the mast. The broadcast rig caught fire and the signal won't stop.", 5f),
                 L("MAYA (TAPE)", "The smoke's so thick. I can't see Alex anywhere.", 4f),
                 L("MAYA (TAPE)", "I'm trapped near the broadcasting room. The fire's between me and the stairs.", 5f),
-                L("MAYA (TAPE)", "If the signal won't stop, the emergency shutdown only works on 103.7. One-oh-three point seven.", 6f),
+                L("MAYA (TAPE)", "If the signal won't stop, the emergency shutdown only works on Dad's channel. One-oh-three point- [static]", 6f),
                 L("RECORDING", "[The recording ends.]", 2f),
             }, requiredFlag: "power:generator", missingFlagMessage: "It needs power. The generator is down.");
-            On(tape, "onFinished", events.SetObjective, "l2_lift|Take the elevator up to the transmission tower");
+            On(tape, "onFinished", events.SetObjective, "l2_lift|Take the elevator up towards the transmission tower");
+            On(tape, "onFinished", events.AddClue, "Basement tape: the emergency shutdown channel is one-oh-three point... (lost in static)");
             On(tape, "onFinished", events.Say, "ALEX|103.7. Dad's old frequency. I need to get up to the tower.|4");
 
             // Elevator.

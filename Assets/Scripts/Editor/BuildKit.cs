@@ -627,7 +627,7 @@ namespace LastSignal.EditorTools
         }
 
         /// <summary>Hollow locker (0.9 x 0.8 x 2.1) the player can hide in. Opening faces local +Z.</summary>
-        public static HidingSpot Locker(Transform parent, string name, Vector3 floorPos, float yaw, Material mat)
+        public static HidingSpot Locker(Transform parent, string name, Vector3 floorPos, float yaw, Material mat, string spotName = "locker")
         {
             Transform root = Group(parent, name, floorPos);
             root.localRotation = Quaternion.Euler(0f, yaw, 0f);
@@ -652,7 +652,7 @@ namespace LastSignal.EditorTools
             Transform hide = Group(root, "HidePoint", new Vector3(0f, 0.02f, -0.05f));
             Transform exit = Group(root, "ExitPoint", new Vector3(0f, 0.02f, 1.0f));
             var spot = root.gameObject.AddComponent<HidingSpot>();
-            SetValue(spot, "spotName", "locker");
+            SetValue(spot, "spotName", spotName);
             Set(spot, "hidePoint", hide);
             Set(spot, "exitPoint", exit);
             return spot;
@@ -818,6 +818,15 @@ namespace LastSignal.EditorTools
             SerializedProperty p = Prop(so, target, field);
             p.arraySize = values.Length;
             for (int i = 0; i < values.Length; i++) p.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        public static void SetInts(Object target, string field, int[] values)
+        {
+            var so = new SerializedObject(target);
+            SerializedProperty p = Prop(so, target, field);
+            p.arraySize = values.Length;
+            for (int i = 0; i < values.Length; i++) p.GetArrayElementAtIndex(i).intValue = values[i];
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 

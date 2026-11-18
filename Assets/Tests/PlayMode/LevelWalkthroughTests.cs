@@ -7,6 +7,7 @@ using LastSignal.Inventory;
 using LastSignal.Player;
 using LastSignal.Puzzles;
 using LastSignal.Save;
+using LastSignal.UI;
 using LastSignal.Utilities;
 using NUnit.Framework;
 using UnityEngine;
@@ -231,15 +232,100 @@ namespace LastSignal.Tests
             Assert.IsTrue(lift.Used);
             yield return WaitForScene(GameFlowManager.Level3Scene, 30f);
             Time.timeScale = 1f;
+            Assert.AreEqual("l3q_explore", Objective);
+        }
+
+        // ================================================================== Level 3 (The Living Quarters)
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator Level3_Quarters_CriticalPath_ReachesLevel4()
+        {
+            yield return StartLevel(GameFlowManager.Level3Scene);
+            EchoAIController echo = Get<EchoAIController>("Echo");
+            yield return WaitUntilTrue(() => echo.Started, 5f, "Echo start-up");
+            echo.Deactivate();
+            Assert.AreEqual("l3q_explore", Objective);
+
+            Door fireDoor = Get<Door>("FireDoor");
+            fireDoor.Interact(interactor);
+            yield return new WaitForSeconds(0.5f);
+            Assert.IsFalse(fireDoor.IsOpen, "Fire door needs Dad's key");
+
+            // Logbook: the safe combination is a date (the storm night), month first.
+            Get<NoteInteractable>("Note_DadLogbook").Interact(interactor);
+            Object.FindAnyObjectByType<StoryHUD>().CloseNote();
+            Assert.AreEqual("l3q_safe", Objective);
+            Assert.IsTrue(WorldFlags.Has("clue:Dad's safe: the night everything ended, month first (MM DD)."), "Journal should record the clue");
+
+            CodeLock safe = Get<CodeLock>("SafeDial");
+            PickupItem key = Get<PickupItem>("Pickup_FireKey");
+            Assert.IsFalse(key.gameObject.activeSelf, "Key is locked in the safe");
+            Assert.IsFalse(safe.TrySubmit("1410"), "Day-first is wrong (month first)");
+            Assert.IsTrue(safe.TrySubmit("1014"));
+            yield return null;
+            Assert.IsTrue(key.gameObject.activeSelf, "Key appears when the safe opens");
+            Assert.IsTrue(SaveManager.HasSave, "Safe checkpoint should save");
+
+            key.Interact(interactor);
+            Assert.AreEqual("l3q_fire", Objective);
+            fireDoor.Interact(interactor);
+            yield return WaitUntilTrue(() => fireDoor.IsOpen, 3f, "fire door open");
+            Assert.AreEqual("l3q_exit", Objective);
+
+            yield return WalkInto(new Vector3(0f, 0.05f, 26.2f));
+            yield return WaitForScene(GameFlowManager.Level4Scene);
+            CachePlayer();
+            Assert.AreEqual("l4_through", Objective);
+        }
+
+        // ================================================================== Level 4 (The Burned Wing)
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator Level4_BurnedWing_CriticalPath_ReachesLevel5()
+        {
+            yield return StartLevel(GameFlowManager.Level4Scene);
+            EchoAIController echo = Get<EchoAIController>("Echo");
+            yield return WaitUntilTrue(() => echo.Started, 5f, "Echo start-up");
+            echo.Deactivate();
+
+            Door stairs = Get<Door>("StairDoor");
+            stairs.Interact(interactor);
+            yield return new WaitForSeconds(0.5f);
+            Assert.IsFalse(stairs.IsOpen, "Stair door has no power yet");
+
+            JunctionPuzzle junction = Get<JunctionPuzzle>("JunctionPuzzle");
+            SelectorSwitch feed = Get<SelectorSwitch>("Selector_FEED");
+            SelectorSwitch line = Get<SelectorSwitch>("Selector_LINE");
+            SelectorSwitch load = Get<SelectorSwitch>("Selector_LOAD");
+            Assert.IsFalse(junction.TryEngage(), "Starting route must fail");
+            // Feed A is melted: A -> line 2 -> lift still fails.
+            feed.Set(0); line.Set(1); load.Set(2);
+            Assert.IsFalse(junction.TryEngage());
+            // Feed C -> line 3 is wired but C shorts.
+            feed.Set(2); line.Set(2); load.Set(2);
+            Assert.IsFalse(junction.TryEngage());
+            // Using the selectors through the interactor cycles them.
+            feed.Interact(interactor);
+            Assert.AreEqual("A", feed.Current, "Selectors wrap around");
+            feed.Interact(interactor);
+            Assert.AreEqual("B", feed.Current);
+            Assert.IsTrue(junction.TryEngage(), "FEED B -> LINE 3 -> LIFT is the only live route");
+            Assert.IsTrue(WorldFlags.Has("puzzle:l4_junction"));
+            yield return WaitUntilTrue(() => stairs.IsOpen, 3f, "stair door opens when powered");
+            Assert.AreEqual("l4_run", Objective);
+
+            yield return WalkInto(new Vector3(9f, 0.05f, 24f));
+            yield return WaitForScene(GameFlowManager.Level5Scene);
+            CachePlayer();
             Assert.AreEqual("l3_components", Objective);
         }
 
         // ================================================================== Level 3
 
         [UnityTest, Timeout(120000)]
-        public IEnumerator Level3_CriticalPath_ReachesEnding()
+        public IEnumerator Level5_Tower_CriticalPath_ReachesEnding()
         {
-            yield return StartLevel(GameFlowManager.Level3Scene);
+            yield return StartLevel(GameFlowManager.Level5Scene);
             EchoAIController echo = Get<EchoAIController>("Echo");
             yield return WaitUntilTrue(() => echo.Started, 5f, "Echo start-up");
             echo.Deactivate();
@@ -299,7 +385,7 @@ namespace LastSignal.Tests
         [UnityTest, Timeout(90000)]
         public IEnumerator Echo_RestartsFarAway_AfterCheckpointRetry()
         {
-            yield return StartLevel(GameFlowManager.Level3Scene);
+            yield return StartLevel(GameFlowManager.Level5Scene);
             EchoAIController echo = Get<EchoAIController>("Echo");
             yield return WaitUntilTrue(() => echo.Started, 5f, "Echo start-up");
 
@@ -307,7 +393,7 @@ namespace LastSignal.Tests
             yield return WaitUntilTrue(() => flow.Live.checkpointId == "l3_chamber", 3f, "chamber checkpoint reached");
 
             flow.RetryCheckpoint();
-            yield return WaitForScene(GameFlowManager.Level3Scene);
+            yield return WaitForScene(GameFlowManager.Level5Scene);
             CachePlayer();
             interactor.InputRouter.KeyboardMouseEnabled = false;
             echo = Get<EchoAIController>("Echo");

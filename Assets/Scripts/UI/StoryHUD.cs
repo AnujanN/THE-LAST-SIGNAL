@@ -254,6 +254,17 @@ namespace LastSignal.UI
                 }
             if (flashlight != null && flashlight.IsOwned)
                 sb.Append("\nFlashlight battery: ").Append(Mathf.RoundToInt(flashlight.Charge01 * 100f)).Append('%');
+            // Journal: key facts from notes and recordings, so earlier clues are never lost.
+            if (GameFlowManager.Instance != null)
+            {
+                bool header = false;
+                foreach (string f in GameFlowManager.Instance.Live.flags)
+                {
+                    if (!f.StartsWith("clue:")) continue;
+                    if (!header) { sb.Append("\n\n<b>JOURNAL</b>\n"); header = true; }
+                    sb.Append("<size=80%>-  ").Append(f, 5, f.Length - 5).Append("</size>\n");
+                }
+            }
             if (inventoryText != null) inventoryText.text = sb.ToString();
             inventoryPanel.SetActive(true);
             ModalStack.Open(inventoryOwner);

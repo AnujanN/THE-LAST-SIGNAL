@@ -18,7 +18,11 @@ namespace LastSignal.GameFlow
         public const string MainMenuScene = "MainMenu";
         public const string Level1Scene = "Level01_Station";
         public const string Level2Scene = "Level02_Basement";
-        public const string Level3Scene = "Level03_Tower";
+        public const string Level3Scene = "Level03_Quarters";
+        public const string Level4Scene = "Level04_BurnedWing";
+        public const string Level5Scene = "Level05_Tower";
+        /// <summary>Before the five-level update the tower was "Level03_Tower"; old saves are mapped to Level 5.</summary>
+        public const string LegacyTowerScene = "Level03_Tower";
         public const string EndingScene = "Ending";
 
         public static GameFlowManager Instance { get; private set; }
@@ -145,6 +149,7 @@ namespace LastSignal.GameFlow
         public void Continue()
         {
             if (!SaveManager.TryLoad(out GameState saved)) { NewGame(); return; }
+            if (saved.scene == LegacyTowerScene) saved.scene = Level5Scene;
             checkpointState = saved;
             Live = saved.Clone();
             Load(saved.scene);

@@ -33,6 +33,14 @@ namespace LastSignal.GameFlow
         /// <summary>"Speaker|Line|seconds"</summary>
         public void Say(string packed) => SubtitleManager.Instance?.SayPacked(packed);
 
+        /// <summary>Remember a key fact in the journal (shown in the inventory). Survives levels and saves.</summary>
+        public void AddClue(string text)
+        {
+            if (string.IsNullOrEmpty(text) || WorldFlags.Has("clue:" + text)) return;
+            GameFlowManager.Instance?.SetFlag("clue:" + text);
+            Utilities.HudMessage.Show("Noted in your journal.");
+        }
+
         public void ShowMessage(string text) => FindAnyObjectByType<PlayerInteractor>()?.ShowMessage(text);
 
         public void Checkpoint(string id) => GameFlowManager.Instance?.ReachCheckpoint(id);

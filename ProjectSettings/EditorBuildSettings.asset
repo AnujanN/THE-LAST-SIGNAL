@@ -15,8 +15,14 @@ EditorBuildSettings:
     path: Assets/Scenes/Level02_Basement.unity
     guid: 2b302fa877d4d2c4e9c113fd18fdd58b
   - enabled: 1
-    path: Assets/Scenes/Level03_Tower.unity
-    guid: 38f6d80e97937b4418d650bcf4d17c7d
+    path: Assets/Scenes/Level03_Quarters.unity
+    guid: 88a64b9dd8b6d0a419a64d14fda3b5c1
+  - enabled: 1
+    path: Assets/Scenes/Level04_BurnedWing.unity
+    guid: af610b92f06de5e48904e9a81e6314be
+  - enabled: 1
+    path: Assets/Scenes/Level05_Tower.unity
+    guid: 2c812e16f1ae039408fbe55244efef68
   - enabled: 1
     path: Assets/Scenes/Ending.unity
     guid: 388c0b8ab3332074a8665b64a5ed758c

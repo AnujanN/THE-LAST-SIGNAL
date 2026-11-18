@@ -81,5 +81,12 @@ namespace LastSignal.Interaction
 
         /// <summary>Clear static state (scene loads, tests).</summary>
         public static void ResetStatic() => Current = null;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetOnPlay()
+        {
+            Current = null;
+            HiddenChanged = null;
+        }
     }
 }

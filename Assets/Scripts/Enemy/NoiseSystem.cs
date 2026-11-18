@@ -8,6 +8,9 @@ namespace LastSignal.Enemy
     {
         public static event Action<Vector3, float> NoiseMade;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetOnPlay() => NoiseMade = null;
+
         public static void Emit(Vector3 position, float radius)
         {
             if (radius > 0f) NoiseMade?.Invoke(position, radius);

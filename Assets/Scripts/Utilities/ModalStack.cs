@@ -18,6 +18,15 @@ namespace LastSignal.Utilities
         public static object Top => open.Count > 0 ? open[open.Count - 1] : null;
         public static event Action<bool> Changed;
 
+        /// <summary>Fast Enter Play Mode keeps statics between sessions; start each session clean.</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics()
+        {
+            open.Clear();
+            pausesAudio.Clear();
+            Changed = null;
+        }
+
         public static void Open(object owner, bool pauseAudio = false)
         {
             if (owner == null || open.Contains(owner)) return;

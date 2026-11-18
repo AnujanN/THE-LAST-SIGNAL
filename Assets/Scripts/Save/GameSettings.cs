@@ -18,6 +18,9 @@ namespace LastSignal.Save
 
         public static event Action Changed;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetOnPlay() => Changed = null;
+
         /// <summary>Display names. "High" maps to the PC quality level and is not offered on phones.</summary>
         public static string[] QualityOptions =>
             Application.isMobilePlatform ? new[] { "Low", "Medium" } : new[] { "Low", "Medium", "High" };

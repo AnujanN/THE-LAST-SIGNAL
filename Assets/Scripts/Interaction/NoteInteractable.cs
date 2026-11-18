@@ -16,6 +16,9 @@ namespace LastSignal.Interaction
         /// <summary>The HUD's note reader listens for this (title, body).</summary>
         public static event Action<string, string> ReadRequested;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetOnPlay() => ReadRequested = null;
+
         private string prompt;
 
         public string Title => title;

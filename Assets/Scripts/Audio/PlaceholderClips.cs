@@ -12,25 +12,44 @@ namespace LastSignal.Audio
         private static AudioClip rain, hum, drips, interference, dawn, drone, heartbeat;
         private static AudioClip staticBurst, spark, thud, scream, footstep, splash, beep, buzz, doorCreak;
 
-        public static AudioClip Rain => rain ??= Make("Rain", 4f, RainSample);
-        public static AudioClip Hum => hum ??= Make("Hum", 4f, HumSample);
-        public static AudioClip Drips => drips ??= Make("Drips", 6f, DripSample);
-        public static AudioClip Interference => interference ??= Make("Interference", 4f, InterferenceSample);
-        public static AudioClip Dawn => dawn ??= Make("Dawn", 6f, DawnSample);
-        public static AudioClip ThreatDrone => drone ??= Make("ThreatDrone", 4f, DroneSample);
-        public static AudioClip Heartbeat => heartbeat ??= Make("Heartbeat", 1f, HeartSample);
+        public static AudioClip Rain => Get(ref rain, () => Make("Rain", 4f, RainSample));
+        public static AudioClip Hum => Get(ref hum, () => Make("Hum", 4f, HumSample));
+        public static AudioClip Drips => Get(ref drips, () => Make("Drips", 6f, DripSample));
+        public static AudioClip Interference => Get(ref interference, () => Make("Interference", 4f, InterferenceSample));
+        public static AudioClip Dawn => Get(ref dawn, () => Make("Dawn", 6f, DawnSample));
+        public static AudioClip ThreatDrone => Get(ref drone, () => Make("ThreatDrone", 4f, DroneSample));
+        public static AudioClip Heartbeat => Get(ref heartbeat, () => Make("Heartbeat", 1f, HeartSample));
 
-        public static AudioClip StaticBurst => staticBurst ??= Make("Static", 0.6f, (t, n) => Noise(n) * 0.5f * Env(t, 0.6f));
-        public static AudioClip Spark => spark ??= Make("Spark", 0.35f, (t, n) => Noise(n) * Mathf.Exp(-t * 14f) * (Mathf.Sin(t * 900f) > 0f ? 0.8f : 0.3f));
-        public static AudioClip Thud => thud ??= Make("Thud", 0.4f, (t, n) => Mathf.Sin(2f * Mathf.PI * 70f * t) * Mathf.Exp(-t * 10f) * 0.9f);
-        public static AudioClip Scream => scream ??= Make("Scream", 1.8f, ScreamSample);
-        public static AudioClip Footstep => footstep ??= Make("Footstep", 0.14f, (t, n) => (Noise(n) * 0.5f + Mathf.Sin(2f * Mathf.PI * 110f * t)) * Mathf.Exp(-t * 40f) * 0.5f);
-        public static AudioClip Splash => splash ??= Make("Splash", 0.4f, (t, n) => Noise(n) * Mathf.Exp(-t * 8f) * 0.5f);
-        public static AudioClip Beep => beep ??= Make("Beep", 0.15f, (t, n) => Mathf.Sin(2f * Mathf.PI * 880f * t) * Env(t, 0.15f) * 0.4f);
-        public static AudioClip Buzz => buzz ??= Make("Buzz", 0.5f, (t, n) => Mathf.Sign(Mathf.Sin(2f * Mathf.PI * 120f * t)) * Env(t, 0.5f) * 0.25f);
-        public static AudioClip DoorCreak => doorCreak ??= Make("Door", 0.9f, (t, n) => Mathf.Sin(2f * Mathf.PI * (180f + 90f * Mathf.Sin(t * 9f)) * t) * Env(t, 0.9f) * 0.3f);
+        public static AudioClip StaticBurst => Get(ref staticBurst, () => Make("Static", 0.6f, (t, n) => Noise(n) * 0.5f * Env(t, 0.6f)));
+        public static AudioClip Spark => Get(ref spark, () => Make("Spark", 0.35f, (t, n) => Noise(n) * Mathf.Exp(-t * 14f) * (Mathf.Sin(t * 900f) > 0f ? 0.8f : 0.3f)));
+        public static AudioClip Thud => Get(ref thud, () => Make("Thud", 0.4f, (t, n) => Mathf.Sin(2f * Mathf.PI * 70f * t) * Mathf.Exp(-t * 10f) * 0.9f));
+        public static AudioClip Scream => Get(ref scream, () => Make("Scream", 1.8f, ScreamSample));
+        public static AudioClip Footstep => Get(ref footstep, () => Make("Footstep", 0.14f, (t, n) => (Noise(n) * 0.5f + Mathf.Sin(2f * Mathf.PI * 110f * t)) * Mathf.Exp(-t * 40f) * 0.5f));
+        public static AudioClip Splash => Get(ref splash, () => Make("Splash", 0.4f, (t, n) => Noise(n) * Mathf.Exp(-t * 8f) * 0.5f));
+        public static AudioClip Beep => Get(ref beep, () => Make("Beep", 0.15f, (t, n) => Mathf.Sin(2f * Mathf.PI * 880f * t) * Env(t, 0.15f) * 0.4f));
+        public static AudioClip Buzz => Get(ref buzz, () => Make("Buzz", 0.5f, (t, n) => Mathf.Sign(Mathf.Sin(2f * Mathf.PI * 120f * t)) * Env(t, 0.5f) * 0.25f));
+        public static AudioClip DoorCreak => Get(ref doorCreak, () => Make("Door", 0.9f, (t, n) => Mathf.Sin(2f * Mathf.PI * (180f + 90f * Mathf.Sin(t * 9f)) * t) * Env(t, 0.9f) * 0.3f));
 
         private delegate float Sampler(float t, int n);
+
+        /// <summary>
+        /// Unity-aware cache: with domain reload disabled (fast Enter Play Mode), static fields survive
+        /// between Play sessions but generated clips are destroyed when Play stops. The Unity "==" check
+        /// detects that and the clip is rebuilt.
+        /// </summary>
+        private static AudioClip Get(ref AudioClip cache, System.Func<AudioClip> build)
+        {
+            if (cache == null) cache = build();
+            return cache;
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics()
+        {
+            rain = hum = drips = interference = dawn = drone = heartbeat = null;
+            staticBurst = spark = thud = scream = footstep = splash = beep = buzz = doorCreak = null;
+            lp1 = lp2 = 0f;
+        }
 
         private static AudioClip Make(string name, float seconds, Sampler sampler)
         {

@@ -300,6 +300,19 @@ namespace LastSignal.EditorTools
             TriggerZone floodZone = Trigger<TriggerZone>(story, "Zone_FloodHint", new Vector3(11f, 1f, 8f), new Vector3(3f, 2f, 1.5f));
             SetValue(floodZone, "id", "l2_flood_hint");
             On(floodZone, "onEnter", events.ShowMessage, "The water is loud. Move slowly.");
+            // A rusted pipe tears loose into the water: loud enough to bring The Echo.
+            Rigidbody looseSection = ScareKit.DropProp(story, "LoosePipe", new Vector3(12f, 2.9f, 12f), new Vector3(2.4f, 0.18f, 0.18f), pipe);
+            ScareEvent pipeFall = ScareKit.Scare(story, "l2_pipe", new Vector3(12f, 0.5f, 12f), 2.5f);
+            ScareKit.Drops(pipeFall, new Vector3(0f, -1f, 0f), looseSection);
+            ScareKit.Voice(pipeFall, "|[A pipe tears loose and crashes into the water.]|2.5", noiseRadius: 12f);
+            On(floodZone, "onEnter", pipeFall.Play);
+
+            // Maya, for a heartbeat, at the far end of the corridor.
+            ShadowSighting mayaCorridor = ScareKit.Apparition(story, "l2_maya_corridor", ScareKit.MayaGhost(), new Vector3(0f, 0f, 24.2f), 180f,
+                glimpse: true, maxSeconds: 6f, vanishDistance: 6f, whisper: "MAYA?|...Alex...|2");
+            TriggerZone corridorB = Trigger<TriggerZone>(story, "Zone_CorridorB", new Vector3(0f, 1f, 10f), new Vector3(3f, 2f, 1.5f));
+            SetValue(corridorB, "id", "l2_corridor_b");
+            On(corridorB, "onEnter", mayaCorridor.Show);
 
             // ------------------------------------------------------------------ checkpoints + level
             CheckpointZone(story, "l2_gen_room", new Vector3(0f, 1f, 24f), 0f, new Vector3(3f, 2f, 1.5f));

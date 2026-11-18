@@ -20,6 +20,7 @@ namespace LastSignal.Player
         [SerializeField] private AudioSource source;
 
         private float gaspTimer;
+        private AudioSource breathingLoop;
 
         public bool Holding { get; private set; }
         public float Breath01 { get; private set; } = 1f;
@@ -30,6 +31,29 @@ namespace LastSignal.Player
         private void Awake()
         {
             if (input == null) input = GetComponent<PlayerInputRouter>();
+        }
+
+        private void Start()
+        {
+            // Alex's breathing becomes audible, then ragged, as The Echo gets closer.
+            AudioClip clip = PlaceholderClips.Breathing;
+            if (clip == null) return;
+            breathingLoop = gameObject.AddComponent<AudioSource>();
+            breathingLoop.clip = clip;
+            breathingLoop.loop = true;
+            breathingLoop.spatialBlend = 0f;
+            breathingLoop.volume = 0f;
+            breathingLoop.playOnAwake = false;
+            breathingLoop.Play();
+        }
+
+        private void LateUpdate()
+        {
+            if (breathingLoop == null) return;
+            float threat = AudioManager.Instance != null ? AudioManager.Instance.ThreatLevel : 0f;
+            float target = Holding ? 0f : Mathf.Clamp01((threat - 0.15f) * 1.4f) * 0.55f * Save.GameSettings.SfxVolume;
+            breathingLoop.volume = Mathf.MoveTowards(breathingLoop.volume, target, Time.deltaTime * 0.8f);
+            breathingLoop.pitch = Mathf.Lerp(0.9f, 1.35f, threat);
         }
 
         private void Update()

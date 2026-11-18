@@ -65,6 +65,8 @@ namespace LastSignal.Interaction
 
         public void Interact(PlayerInteractor interactor)
         {
+            // Already unlocked once (e.g. slammed shut by a scare): just open it again.
+            if (WorldFlags.Has(OpenFlag)) { Open(); return; }
             if (!string.IsNullOrEmpty(requiredFlag) && !WorldFlags.Has(requiredFlag))
             {
                 interactor.ShowMessage(flagLockedMessage);
@@ -83,6 +85,32 @@ namespace LastSignal.Interaction
                 interactor.ShowMessage("Used the " + requiredItemName + ".");
             }
             Open();
+        }
+
+        /// <summary>Scare: an open door swings shut with a bang. It stays unlocked.</summary>
+        public void Slam()
+        {
+            if (!isOpen || moving) return;
+            StartCoroutine(SlamRoutine());
+        }
+
+        private IEnumerator SlamRoutine()
+        {
+            moving = true;
+            Quaternion start = hinge.localRotation;
+            Quaternion end = start * Quaternion.Euler(0f, -openAngle, 0f);
+            for (float t = 0f; t < 0.22f; t += Time.deltaTime)
+            {
+                hinge.localRotation = Quaternion.Slerp(start, end, t / 0.22f);
+                yield return null;
+            }
+            hinge.localRotation = end;
+            isOpen = false;
+            moving = false;
+            if (obstacle != null) obstacle.enabled = true;
+            AudioManager.Instance?.PlayAt(PlaceholderClips.Thud, transform.position, 1f);
+            AudioManager.Instance?.PlayAt(PlaceholderClips.DoorCreak, transform.position, 0.5f);
+            Enemy.NoiseSystem.Emit(transform.position, 9f);
         }
 
         /// <summary>Open from code or events (no lock checks).</summary>

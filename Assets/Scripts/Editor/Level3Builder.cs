@@ -134,7 +134,7 @@ namespace LastSignal.EditorTools
             MakeDoor(items, "BathDoor", new Vector3(-1.5f, 0f, 11.75f), 90f, "l3q_bath", "door", doorMat);
             MakeDoor(items, "ParentsDoor", new Vector3(-1.5f, 0f, 18f), 90f, "l3q_parents", "door", doorMat);
             MakeDoor(items, "KitchenDoor", new Vector3(1.5f, 0f, 6f), -90f, "l3q_kitchen", "door", doorMat);
-            MakeDoor(items, "StudyDoor", new Vector3(1.5f, 0f, 16f), -90f, "l3q_study", "study door", doorMat);
+            Door studyDoor = MakeDoor(items, "StudyDoor", new Vector3(1.5f, 0f, 16f), -90f, "l3q_study", "study door", doorMat);
             MakeDoor(items, "StorageDoor", new Vector3(1.5f, 0f, 22.5f), -90f, "l3q_storage", "door", doorMat);
             Door fireDoor = MakeDoor(items, "FireDoor", new Vector3(0f, 0f, 25f), 0f, "l3q_fire", "fire door", red,
                 requiredItemId: "fire_key", requiredItemName: "Fire door key");
@@ -238,6 +238,29 @@ namespace LastSignal.EditorTools
             TriggerZone fireDoorZone = Trigger<TriggerZone>(story, "Zone_FireDoor", new Vector3(0f, 1f, 23.5f), new Vector3(3f, 2f, 1.5f));
             SetValue(fireDoorZone, "id", "l3q_fire_door_seen");
             On(fireDoorZone, "onEnter", events.SetObjectiveIfNotFlag, "taken:l3q_key|l3q_key|The fire door is locked. Dad kept his keys locked up - search his study.");
+
+            // Bathroom: Maya standing by the tub, gone the moment you look.
+            ShadowSighting bathGhost = ScareKit.Apparition(story, "l3q_bath_ghost", ScareKit.MayaGhost(), new Vector3(-6.4f, 0f, 12.9f), 90f,
+                glimpse: true, maxSeconds: 8f, vanishDistance: 2f, whisper: "MAYA?|Don't look in the mirror, Alex.|3");
+            TriggerZone bath = Trigger<TriggerZone>(story, "Zone_Bathroom", new Vector3(-4.5f, 1f, 11.75f), new Vector3(5f, 2f, 3.5f));
+            SetValue(bath, "id", "l3q_bathroom");
+            On(bath, "onEnter", bathGhost.Show);
+
+            // Footsteps cross the floor above the parents' room.
+            ScareEvent parentsSteps = ScareKit.Scare(story, "l3q_steps_above", new Vector3(-5f, 3.3f, 20f), 0.8f);
+            ScareKit.Steps(parentsSteps, ScareKit.Path(story, "StepsAbove_Parents", new Vector3(-8f, 3.3f, 23f), new Vector3(-7f, 3.3f, 22f),
+                new Vector3(-6f, 3.3f, 21f), new Vector3(-5f, 3.3f, 20f), new Vector3(-4f, 3.3f, 19f), new Vector3(-3f, 3.3f, 18f)), 0.55f);
+            TriggerZone parents = Trigger<TriggerZone>(story, "Zone_ParentsRoom", new Vector3(-5f, 1f, 20f), new Vector3(6f, 2f, 8f));
+            SetValue(parents, "id", "l3q_parents_room");
+            On(parents, "onEnter", parentsSteps.Play);
+            On(parents, "onEnter", events.Say, "ALEX|Someone's upstairs. There IS no upstairs...|3");
+
+            // Opening the safe: the hallway lamps burst and the study door slams behind you. It heard that.
+            ScareEvent safeScare = ScareKit.Scare(story, "l3q_safe_scare", new Vector3(1.5f, 1f, 16f), 1.2f);
+            ScareKit.Lights(safeScare, hall2, hall1);
+            ScareKit.Slams(safeScare, studyDoor);
+            ScareKit.Voice(safeScare, "THE ECHO|I hear you, Alex.|2.5", staticBurst: true, noiseRadius: 10f);
+            On(safe, "onUnlocked", safeScare.Play);
 
             LevelExit exit = Trigger<LevelExit>(story, "Exit_BurnedWing", new Vector3(0f, 1f, 26.2f), new Vector3(2.6f, 2f, 1f));
             SetValue(exit, "nextScene", GameFlowManager.Level4Scene);

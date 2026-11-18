@@ -227,6 +227,19 @@ namespace LastSignal.EditorTools
             }, requiredFlag: "puzzle:l3_frequency", missingFlagMessage: "Only static. The broadcast isn't running.", lockPlayer: true);
             SetValue(finalTape, "replayable", false);
             On(finalTape, "onFinished", events.Say, "ALEX|You saved me. All this time... I'm sorry, Maya. I hear you.|4.5");
+            // While her last words play, Maya stands by the transmitter; she fades when it ends.
+            ShadowSighting mayaFinal = ScareKit.Apparition(story, "l5_maya_final", ScareKit.MayaGhost(), new Vector3(2.4f, 0f, 24.2f), 200f,
+                glimpse: false, maxSeconds: 45f, vanishDistance: 0.8f, silent: true);
+            On(finalTape, "onStarted", mayaFinal.Show);
+            On(finalTape, "onFinished", mayaFinal.Hide);
+
+            // Something walks the floor above the corridor.
+            ScareEvent towerSteps = ScareKit.Scare(story, "l5_steps_above", new Vector3(0f, 3.7f, 8f), 0.5f);
+            ScareKit.Steps(towerSteps, ScareKit.Path(story, "StepsAbove_Corridor", new Vector3(0f, 3.7f, 3f), new Vector3(0.3f, 3.7f, 4.6f),
+                new Vector3(0f, 3.7f, 6.2f), new Vector3(-0.3f, 3.7f, 7.8f), new Vector3(0f, 3.7f, 9.4f), new Vector3(0.3f, 3.7f, 11f)), 0.4f);
+            TriggerZone corridorSteps = Trigger<TriggerZone>(story, "Zone_CorridorSteps", new Vector3(0f, 1f, 2.5f), new Vector3(3f, 2f, 1.5f));
+            SetValue(corridorSteps, "id", "l5_corridor_steps");
+            On(corridorSteps, "onEnter", towerSteps.Play);
             On(finalTape, "onFinished", events.SetObjective, "l3_shutdown|Pull the master shutdown lever");
 
             var finale = story.gameObject.AddComponent<FinaleSequence>();

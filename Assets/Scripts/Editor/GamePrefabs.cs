@@ -1,4 +1,5 @@
 using LastSignal.Enemy;
+using LastSignal.Environment;
 using LastSignal.GameFlow;
 using LastSignal.Interaction;
 using LastSignal.Inventory;
@@ -28,7 +29,8 @@ namespace LastSignal.EditorTools
             BuildPlayer();
             BuildHud();
             BuildEcho();
-            Debug.Log("[GamePrefabs] Rebuilt Player, HUD and Echo prefabs.");
+            ScareKit.RebuildPrefabs();
+            Debug.Log("[GamePrefabs] Rebuilt Player, HUD, Echo and apparition prefabs.");
         }
 
         public static GameObject Player(bool rebuild = false) =>

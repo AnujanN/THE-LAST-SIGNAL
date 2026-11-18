@@ -23,6 +23,7 @@ namespace LastSignal.Interaction
         [SerializeField] private bool lockPlayer;
         [SerializeField] private bool replayable = true;
         [SerializeField] private SubtitleLine[] lines = new SubtitleLine[0];
+        [SerializeField] private UnityEvent onStarted = new UnityEvent();
         [SerializeField] private UnityEvent onFinished = new UnityEvent();
 
         private bool playing;
@@ -63,6 +64,7 @@ namespace LastSignal.Interaction
             playing = true;
             if (lockPlayer && player != null) player.MovementLocked = true;
             AudioManager.Instance?.PlayAt(PlaceholderClips.Beep, transform.position, 0.6f);
+            if (!HasPlayed) onStarted.Invoke();
 
             void Done()
             {

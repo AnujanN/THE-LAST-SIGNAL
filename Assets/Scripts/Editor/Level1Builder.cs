@@ -142,7 +142,7 @@ namespace LastSignal.EditorTools
             Vector3 tapeScale = new Vector3(0.2f, 0.04f, 0.13f);
             Pickup(items, "Tape_1", new Vector3(-8.6f, 0.93f, -4f), "tape_fragment", "Tape fragment", "l1_tape1", tapeMat, PrimitiveType.Cube, tapeScale);
             Pickup(items, "Tape_2", new Vector3(11.55f, 1.42f, -3.6f), "tape_fragment", "Tape fragment", "l1_tape2", tapeMat, PrimitiveType.Cube, tapeScale);
-            Pickup(items, "Tape_3", new Vector3(-11.2f, 1.22f, 1.2f), "tape_fragment", "Tape fragment", "l1_tape3", tapeMat, PrimitiveType.Cube, tapeScale);
+            PickupItem tape3 = Pickup(items, "Tape_3", new Vector3(-11.2f, 1.22f, 1.2f), "tape_fragment", "Tape fragment", "l1_tape3", tapeMat, PrimitiveType.Cube, tapeScale);
             var watcher = story.gameObject.AddComponent<InventoryWatcher>();
             SetValue(watcher, "id", "l1_tapes");
             SetValue(watcher, "itemId", "tape_fragment");
@@ -266,9 +266,28 @@ namespace LastSignal.EditorTools
             SetValue(officeSteps, "id", "l1_footsteps");
             On(officeSteps, "onEnter", events.PlayThud);
             On(officeSteps, "onEnter", events.Say, "|[Footsteps somewhere above.]|2.5");
+            ScareEvent stepsAbove = ScareKit.Scare(story, "l1_steps_above", new Vector3(8f, 3.4f, -2f), 0.6f);
+            ScareKit.Steps(stepsAbove, ScareKit.Path(story, "StepsAbove_Office", new Vector3(5f, 3.4f, -5f), new Vector3(6f, 3.4f, -4f),
+                new Vector3(7f, 3.4f, -3f), new Vector3(8f, 3.4f, -2f), new Vector3(9f, 3.4f, -1f), new Vector3(10f, 3.4f, 0f), new Vector3(11f, 3.4f, 1f)), 0.5f);
+            On(officeSteps, "onEnter", stepsAbove.Play);
 
-            GameObject figure = Prim(story, "ShadowFigure", PrimitiveType.Capsule, new Vector3(0f, 0.95f, 13f), new Vector3(0.6f, 0.95f, 0.5f),
-                Mat("EchoShadow", new Color(0.015f, 0.015f, 0.02f), smoothness: 0f), collider: false);
+            // Taking the last tape fragment: a binder slides off the cabinet behind you.
+            Rigidbody binder = ScareKit.DropProp(story, "Binder", new Vector3(-10.95f, 1.33f, 1.35f), new Vector3(0.08f, 0.24f, 0.3f), Mat("Binder", new Color(0.2f, 0.25f, 0.35f)));
+            ScareEvent binderFall = ScareKit.Scare(story, "l1_binder", new Vector3(-10.95f, 1.3f, 1.35f), 1.2f);
+            ScareKit.Drops(binderFall, new Vector3(1.6f, 0f, 0f), binder);
+            ScareKit.Voice(binderFall, "|[Something falls behind you.]|2");
+            On(tape3, "onPickedUp", binderFall.Play);
+
+            // A few seconds after the power comes back, the corridor bulb bursts.
+            ScareEvent bulb = ScareKit.Scare(story, "l1_bulb", new Vector3(0f, 2.9f, 8f), 7f);
+            ScareKit.Lights(bulb, corridorLight);
+            ScareKit.Voice(bulb, "RADIO|...kssh... Alex... the dark is safer...|3", staticBurst: true);
+            On(puzzle, "onSolved", bulb.Play);
+
+            GameObject figure = (GameObject)PrefabUtility.InstantiatePrefab(ScareKit.EchoShadow());
+            figure.transform.SetParent(story, false);
+            figure.transform.position = new Vector3(0f, 0f, 13f);
+            figure.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
             var shadow = story.gameObject.AddComponent<ShadowSighting>();
             SetValue(shadow, "id", "l1_shadow");
             Set(shadow, "figure", figure);

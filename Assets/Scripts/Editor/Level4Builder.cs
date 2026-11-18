@@ -238,6 +238,20 @@ namespace LastSignal.EditorTools
             On(studio, "onEnter", events.PlayStatic);
             On(studio, "onEnter", events.Say, "THE ECHO (MAYA'S VOICE)|It was so hot, Alex. You didn't come back for me.|4");
 
+            // Maya's silhouette in the smoke of the studio where she was trapped.
+            ShadowSighting studioGhost = ScareKit.Apparition(story, "l4_studio_ghost", ScareKit.MayaGhost(), new Vector3(7.8f, 0f, 11.4f), -90f,
+                glimpse: true, maxSeconds: 7f, vanishDistance: 2.5f);
+            On(studio, "onEnter", studioGhost.Show);
+
+            // West office: a burned beam gives way - loud enough to bring The Echo.
+            Rigidbody beam = ScareKit.DropProp(story, "FallingBeam", new Vector3(-4.5f, 2.95f, 13.2f), new Vector3(0.25f, 0.25f, 2.6f), charred);
+            ScareEvent beamFall = ScareKit.Scare(story, "l4_beam", new Vector3(-4.5f, 0.5f, 13.2f), 0.4f);
+            ScareKit.Drops(beamFall, new Vector3(0f, -0.5f, 0.6f), beam);
+            ScareKit.Voice(beamFall, "|[The ceiling groans. A burned beam crashes down.]|2.5", noiseRadius: 13f);
+            TriggerZone officeBeam = Trigger<TriggerZone>(story, "Zone_OfficeBeam", new Vector3(-5f, 1f, 12.6f), new Vector3(6f, 2f, 1.5f));
+            SetValue(officeBeam, "id", "l4_office_beam");
+            On(officeBeam, "onEnter", beamFall.Play);
+
             TriggerZone junctionZone = Trigger<TriggerZone>(story, "Zone_Junction", new Vector3(0f, 1f, 19.5f), new Vector3(3f, 2f, 1.5f));
             SetValue(junctionZone, "id", "l4_junction_seen");
             On(junctionZone, "onEnter", events.SetObjectiveIfNotFlag, "puzzle:l4_junction|l4_power|The stair door has no power. Re-route it at the junction box.");

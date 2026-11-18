@@ -11,7 +11,7 @@ namespace LastSignal.Audio
     {
         private const int Rate = 22050;
         private static AudioClip rain, hum, drips, interference, dawn, drone, heartbeat;
-        private static AudioClip staticBurst, spark, thud, scream, footstep, splash, beep, buzz, doorCreak, gasp;
+        private static AudioClip staticBurst, spark, thud, scream, footstep, splash, beep, buzz, doorCreak, gasp, breathing;
 
         public static AudioClip Rain => Real("rain") ?? Get(ref rain, () => Make("Rain", 4f, RainSample));
         public static AudioClip Hum => Real("hum") ?? Get(ref hum, () => Make("Hum", 4f, HumSample));
@@ -48,6 +48,8 @@ namespace LastSignal.Audio
         public static AudioClip EchoVoice => Real("echo_voice");
         /// <summary>Switch / key click (falls back to the beep).</summary>
         public static AudioClip Click => Real("click") ?? Beep;
+        /// <summary>Frightened breathing loop (in, out, pause), generated if no recording exists.</summary>
+        public static AudioClip Breathing => Real("breathing") ?? Get(ref breathing, () => Make("Breathing", 2.4f, BreathingSample));
 
         private delegate float Sampler(float t, int n);
 
@@ -66,7 +68,7 @@ namespace LastSignal.Audio
         private static void ResetStatics()
         {
             rain = hum = drips = interference = dawn = drone = heartbeat = null;
-            staticBurst = spark = thud = scream = footstep = splash = beep = buzz = doorCreak = gasp = null;
+            staticBurst = spark = thud = scream = footstep = splash = beep = buzz = doorCreak = gasp = breathing = null;
             lp1 = lp2 = 0f;
         }
 
@@ -97,6 +99,17 @@ namespace LastSignal.Audio
             lp2 += (Noise(n) - lp2) * 0.02f; // wind rumble
             float gust = 0.6f + 0.4f * Mathf.Sin(2f * Mathf.PI * 0.25f * t);
             return lp1 * 0.35f + lp2 * 1.2f * gust;
+        }
+
+        private static float BreathingSample(float t, int n)
+        {
+            // Two soft noise bursts per loop: a shorter inhale (brighter) and a longer exhale (darker).
+            lp1 += (Noise(n) - lp1) * 0.3f;
+            lp2 += (lp1 - lp2) * 0.12f;
+            float bright = lp1 - lp2, dark = lp2;
+            float inhale = t < 0.85f ? Mathf.Sin(Mathf.PI * t / 0.85f) : 0f;
+            float exhale = t > 0.95f && t < 2.05f ? Mathf.Sin(Mathf.PI * (t - 0.95f) / 1.1f) : 0f;
+            return bright * inhale * 0.9f + (dark * 1.6f + bright * 0.4f) * exhale * 0.8f;
         }
 
         private static float GaspSample(float t, int n)

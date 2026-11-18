@@ -210,6 +210,32 @@ namespace LastSignal.Tests
             Assert.IsFalse(spot.enabled);
         }
 
+        /// <summary>Using something makes Alex's right hand physically reach it (first-person body IK).</summary>
+        [UnityTest]
+        public IEnumerator Body_HandReachesForWhatIsUsed()
+        {
+            var body = player.GetComponent<PlayerBody>();
+            Assert.IsNotNull(body, "Player prefab needs a first-person body");
+            Assert.IsNotNull(body.RightHand, "Right arm bones must be wired");
+            GameObject box = SpawnInFrontOfCamera(0.55f);
+            box.AddComponent<SwitchInteractable>();
+            yield return WaitForPhysicsThenFrame();
+            Assert.IsNotNull(interactor.Current, DescribeView());
+
+            router.Press(PlayerAction.Interact);
+            float closest = float.MaxValue;
+            float end = Time.time + 0.9f;
+            while (Time.time < end)
+            {
+                yield return null;
+                closest = Mathf.Min(closest, Vector3.Distance(body.RightHand.position, body.ReachTarget));
+            }
+            Assert.AreEqual("Use", body.LastAction);
+            Assert.Less(closest, 0.15f, "The right hand should reach the switch");
+            yield return new WaitForSeconds(0.3f);
+            Assert.AreEqual(0f, body.ReachWeight, "The hand returns after the reach");
+        }
+
         [UnityTest]
         public IEnumerator Switch_TogglesLight_ThroughInteractor()
         {

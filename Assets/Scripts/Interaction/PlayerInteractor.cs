@@ -27,6 +27,8 @@ namespace LastSignal.Interaction
         private readonly RaycastHit[] hits = new RaycastHit[8];
 
         public IInteractable Current { get; private set; }
+        /// <summary>World point on the current target where the view ray touched it (for hand reach).</summary>
+        public Vector3 TargetPoint { get; private set; }
         public InventoryManager Inventory => inventory;
         public FlashlightController Flashlight => flashlight;
         public PlayerInputRouter InputRouter => input;
@@ -102,6 +104,8 @@ namespace LastSignal.Interaction
                 return null;
             }
             RaycastHit info = hits[nearest];
+            // A sphere cast that starts inside a collider reports a zero point; fall back to its centre.
+            TargetPoint = info.distance <= 0f && info.point == Vector3.zero ? info.collider.bounds.center : info.point;
 
             // Only cache positive results, so an interactable added or enabled later is still found.
             if (info.collider != lastCollider || lastHitInteractable == null)

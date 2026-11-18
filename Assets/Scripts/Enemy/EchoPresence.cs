@@ -82,8 +82,13 @@ namespace LastSignal.Enemy
             bool agitated = ai != null && (ai.Current == EchoAIController.State.Chase || ai.Current == EchoAIController.State.Hunt
                                            || ai.Current == EchoAIController.State.Inspect || ai.Current == EchoAIController.State.Caught);
             bool active = ai == null || ai.Current != EchoAIController.State.Inactive;
-            ApplyPosture();
-            UpdateTwitch(agitated);
+            // Only bend the bones when the animator rewrote them this frame (not while paused),
+            // otherwise the bends would pile up frame after frame.
+            if (Time.deltaTime > 0f)
+            {
+                ApplyPosture();
+                UpdateTwitch(agitated);
+            }
             UpdateEyes(agitated, active);
             UpdateSmoke(agitated, active);
             UpdateLamps(active);

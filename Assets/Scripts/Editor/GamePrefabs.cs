@@ -76,6 +76,8 @@ namespace LastSignal.EditorTools
             Transform cameraRoot = Group(root.transform, "CameraRoot", new Vector3(0f, 1.65f, 0f));
             var camGo = new GameObject("PlayerCamera") { tag = "MainCamera" };
             camGo.transform.SetParent(cameraRoot, false);
+            // Eyes sit just in front of the (hidden) head of the body model.
+            camGo.transform.localPosition = new Vector3(0f, 0f, 0.06f);
             var cam = camGo.AddComponent<Camera>();
             cam.nearClipPlane = 0.05f;
             cam.farClipPlane = 60f;
@@ -87,7 +89,8 @@ namespace LastSignal.EditorTools
 
             var flashGo = new GameObject("Flashlight");
             flashGo.transform.SetParent(cameraRoot, false);
-            flashGo.transform.localPosition = new Vector3(0.12f, -0.12f, 0.1f);
+            // Light comes from about where the left hand holds the torch.
+            flashGo.transform.localPosition = new Vector3(-0.14f, -0.2f, 0.22f);
             var spot = flashGo.AddComponent<Light>();
             spot.type = LightType.Spot;
             // Strong source with physical (inverse-square) falloff: a bright pool near the player, walls
@@ -102,6 +105,8 @@ namespace LastSignal.EditorTools
             spot.shadowStrength = 0.9f;
             spot.shadowNearPlane = 0.15f;
             spot.enabled = false;
+            // The beam lights the world (layer 0) but not Alex's own arms and torch (BodyLayer).
+            SetLightLayers(spot, 1u);
             var click = flashGo.AddComponent<AudioSource>();
             click.playOnAwake = false;
             click.spatialBlend = 0f;
@@ -119,10 +124,193 @@ namespace LastSignal.EditorTools
             Set(flashlight, "input", router);
             Set(flashlight, "inventory", inventory);
             Set(flashlight, "audioSource", click);
+            flashGo.AddComponent<HandheldSway>();
+
+            var motion = camGo.AddComponent<CameraMotion>();
+            Set(motion, "controller", controller);
+            Set(motion, "breath", breath);
+
+            BuildPlayerBody(root, controller, look, interactor, flashlight);
 
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, PlayerPath);
             Object.DestroyImmediate(root);
             return prefab;
+        }
+
+        public const string PlayerAnimatorPath = "Assets/Art/Models/Player/PlayerAnimator.controller";
+        /// <summary>Rendering layer used only by the first-person body and its props.</summary>
+        public const uint BodyLayer = 1u << 1;
+
+        private static void SetLightLayers(Light light, uint mask)
+        {
+            light.renderingLayerMask = (int)mask;
+            UniversalAdditionalLightData data = light.GetUniversalAdditionalLightData();
+            data.renderingLayers = mask;
+        }
+
+        /// <summary>
+        /// Alex's visible body (same CC0 mannequin, dark jacket and gloves). Head hidden at runtime by
+        /// PlayerBody; no shadows so it never blocks the torch beam.
+        /// </summary>
+        private static void BuildPlayerBody(GameObject root, PlayerController controller, PlayerLook look,
+            PlayerInteractor interactor, FlashlightController flashlight)
+        {
+            GameObject model = EnsureEchoModel();
+            if (model == null) return;
+            var body = (GameObject)PrefabUtility.InstantiatePrefab(model);
+            PrefabUtility.UnpackPrefabInstance(body, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+            body.name = "Body";
+            body.transform.SetParent(root.transform, false);
+            body.transform.localRotation = Quaternion.Euler(0f, 180f, 0f); // model faces -Z
+            body.transform.localScale = Vector3.one * 1.03f;
+
+            Material clothes = Mat("AlexClothes", new Color(0.075f, 0.08f, 0.09f), smoothness: 0.12f);
+            Material gloves = Mat("AlexGloves", new Color(0.03f, 0.03f, 0.032f), smoothness: 0.3f);
+            foreach (SkinnedMeshRenderer smr in body.GetComponentsInChildren<SkinnedMeshRenderer>())
+            {
+                var mats = new Material[smr.sharedMaterials.Length];
+                for (int i = 0; i < mats.Length; i++) mats[i] = i == 0 ? clothes : gloves;
+                smr.sharedMaterials = mats;
+                smr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                smr.receiveShadows = true;
+                smr.updateWhenOffscreen = true;
+                smr.renderingLayerMask = BodyLayer;
+            }
+
+            Animator animator = body.GetComponent<Animator>();
+            if (animator == null) animator = body.AddComponent<Animator>();
+            animator.runtimeAnimatorController = EnsurePlayerAnimator(model);
+            animator.applyRootMotion = false;
+            animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+
+            Transform head = FindDeep(body.transform, "DEF-head");
+            Transform[] spine = { FindDeep(body.transform, "DEF-spine.002"), FindDeep(body.transform, "DEF-spine.003") };
+
+            // Torch in the left hand, placed using the torch-holding pose.
+            GameObject torch = null, torchLens = null;
+            Transform hand = FindDeep(body.transform, "DEF-hand.L");
+            AnimationClip hold = EchoClip("Idle_Torch_Loop");
+            if (hand != null && hold != null)
+            {
+                hold.SampleAnimation(body, 0f);
+                Material torchMat = Mat("TorchBody", new Color(0.16f, 0.16f, 0.17f), smoothness: 0.65f);
+                torch = Prim(root.transform, "Torch", PrimitiveType.Cylinder, Vector3.zero, new Vector3(0.05f, 0.12f, 0.05f), torchMat, collider: false);
+                torch.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                torch.GetComponent<Renderer>().renderingLayerMask = BodyLayer;
+                torch.transform.position = hand.position + hand.up * 0.07f + root.transform.forward * 0.05f;
+                torch.transform.rotation = Quaternion.FromToRotation(Vector3.up, root.transform.forward);
+                torch.transform.SetParent(hand, true);
+                // Glowing lens at the front, shown while the torch is on.
+                GameObject lens = Prim(torch.transform, "Lens", PrimitiveType.Cylinder, new Vector3(0f, 1.0f, 0f), new Vector3(1.15f, 0.04f, 1.15f),
+                    UnlitMat("TorchLens", new Color(1f, 0.93f, 0.75f)), collider: false);
+                lens.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                lens.GetComponent<Renderer>().renderingLayerMask = BodyLayer;
+                lens.SetActive(false);
+                torchLens = lens;
+                AnimationClip idle = EchoClip("Idle_Loop");
+                if (idle != null) idle.SampleAnimation(body, 0f);
+            }
+
+            // Bounce light from the beam onto the hands; affects only the body layer.
+            Transform cameraRoot = root.transform.Find("CameraRoot");
+            var fillGo = new GameObject("BodyFill");
+            fillGo.transform.SetParent(cameraRoot != null ? cameraRoot : root.transform, false);
+            fillGo.transform.localPosition = new Vector3(0.05f, 0.05f, 0.55f);
+            var fill = fillGo.AddComponent<Light>();
+            fill.type = LightType.Point;
+            fill.range = 1.4f;
+            fill.intensity = 0.12f;
+            fill.color = new Color(1f, 0.92f, 0.8f);
+            fill.shadows = LightShadows.None;
+            SetLightLayers(fill, BodyLayer);
+
+            var pb = root.AddComponent<PlayerBody>();
+            Set(pb, "animator", animator);
+            Set(pb, "controller", controller);
+            Set(pb, "look", look);
+            Set(pb, "interactor", interactor);
+            Set(pb, "flashlight", flashlight);
+            Set(pb, "head", head);
+            SetArray(pb, "spine", spine);
+            SetArray(pb, "rightArm", new Object[] { FindDeep(body.transform, "DEF-upper_arm.R"), FindDeep(body.transform, "DEF-forearm.R"), FindDeep(body.transform, "DEF-hand.R") });
+            SetArray(pb, "leftArm", new Object[] { FindDeep(body.transform, "DEF-upper_arm.L"), FindDeep(body.transform, "DEF-forearm.L"), FindDeep(body.transform, "DEF-hand.L") });
+            if (torch != null) Set(pb, "torchModel", torch);
+            if (torchLens != null) Set(pb, "torchLens", torchLens);
+            Set(pb, "bodyFill", fill);
+            Camera eyesCam = root.GetComponentInChildren<Camera>();
+            if (eyesCam != null) Set(pb, "eyes", eyesCam.transform);
+        }
+
+        /// <summary>
+        /// Base layer: stand (idle / walk / jog) and crouch (idle / crouch-walk) blends.
+        /// Torch layer (left arm only): raise the torch; PlayerBody drives its weight. Hands reaching
+        /// for things are procedural (two-bone IK in PlayerBody), not clips.
+        /// </summary>
+        private static UnityEditor.Animations.AnimatorController EnsurePlayerAnimator(GameObject model)
+        {
+            const string version = "player-animator-v2";
+            EnsureFolder("Assets/Art/Models/Player");
+            var existing = AssetDatabase.LoadAssetAtPath<UnityEditor.Animations.AnimatorController>(PlayerAnimatorPath);
+            if (existing != null && AssetImporter.GetAtPath(PlayerAnimatorPath).userData == version) return existing;
+            if (existing != null) AssetDatabase.DeleteAsset(PlayerAnimatorPath);
+
+            AvatarMask leftArm = EnsureMask("Assets/Art/Models/Player/Mask_LeftArm.mask", model, "DEF-shoulder.L");
+
+            var ctrl = UnityEditor.Animations.AnimatorController.CreateAnimatorControllerAtPath(PlayerAnimatorPath);
+            ctrl.AddParameter("Speed", AnimatorControllerParameterType.Float);
+            ctrl.AddParameter("Crouch", AnimatorControllerParameterType.Bool);
+
+            // ---- base locomotion
+            UnityEditor.Animations.AnimatorState stand = ctrl.CreateBlendTreeInController("Stand", out UnityEditor.Animations.BlendTree standTree, 0);
+            standTree.blendParameter = "Speed";
+            standTree.useAutomaticThresholds = false;
+            standTree.AddChild(EchoClip("Idle_Loop"), 0f);
+            standTree.AddChild(EchoClip("Walk_Loop"), 2.2f);
+            standTree.AddChild(EchoClip("Jog_Fwd_Loop"), 4.0f);
+            UnityEditor.Animations.AnimatorState crouch = ctrl.CreateBlendTreeInController("Crouch", out UnityEditor.Animations.BlendTree crouchTree, 0);
+            crouchTree.blendParameter = "Speed";
+            crouchTree.useAutomaticThresholds = false;
+            crouchTree.AddChild(EchoClip("Crouch_Idle_Loop"), 0f);
+            crouchTree.AddChild(EchoClip("Crouch_Fwd_Loop"), 1.2f);
+            UnityEditor.Animations.AnimatorStateMachine baseSm = ctrl.layers[0].stateMachine;
+            baseSm.defaultState = stand;
+            var down = stand.AddTransition(crouch);
+            down.AddCondition(UnityEditor.Animations.AnimatorConditionMode.If, 0f, "Crouch");
+            down.hasExitTime = false;
+            down.duration = 0.25f;
+            var up = crouch.AddTransition(stand);
+            up.AddCondition(UnityEditor.Animations.AnimatorConditionMode.IfNot, 0f, "Crouch");
+            up.hasExitTime = false;
+            up.duration = 0.25f;
+
+            // ---- torch (left arm)
+            ctrl.AddLayer("Torch");
+            UnityEditor.Animations.AnimatorControllerLayer[] layers = ctrl.layers;
+            layers[1].avatarMask = leftArm;
+            layers[1].defaultWeight = 0f;
+            ctrl.layers = layers;
+            UnityEditor.Animations.AnimatorState holdState = ctrl.layers[1].stateMachine.AddState("Hold");
+            holdState.motion = EchoClip("Idle_Torch_Loop");
+
+            EditorUtility.SetDirty(ctrl);
+            AssetDatabase.SaveAssets();
+            AssetImporter.GetAtPath(PlayerAnimatorPath).userData = version;
+            AssetDatabase.WriteImportSettingsIfDirty(PlayerAnimatorPath);
+            return ctrl;
+        }
+
+        /// <summary>Generic-rig mask: only transforms whose path contains the given bone name animate.</summary>
+        private static AvatarMask EnsureMask(string path, GameObject model, string mustContain)
+        {
+            if (AssetDatabase.LoadAssetAtPath<AvatarMask>(path) != null) AssetDatabase.DeleteAsset(path);
+            var mask = new AvatarMask();
+            mask.AddTransformPath(model.transform, true);
+            for (int i = 0; i < mask.transformCount; i++)
+                mask.SetTransformActive(i, mask.GetTransformPath(i).Contains(mustContain));
+            for (int i = 0; i < (int)AvatarMaskBodyPart.LastBodyPart; i++)
+                mask.SetHumanoidBodyPartActive((AvatarMaskBodyPart)i, false);
+            AssetDatabase.CreateAsset(mask, path);
+            return mask;
         }
 
         // ================================================================== Echo

@@ -169,7 +169,9 @@ namespace LastSignal.Tests
         public IEnumerator Level2_CriticalPath_ReachesLevel3()
         {
             yield return StartLevel(GameFlowManager.Level2Scene);
-            Get<EchoAIController>("Echo").Deactivate();
+            EchoAIController echo2 = Get<EchoAIController>("Echo");
+            yield return WaitUntilTrue(() => echo2.Started, 5f, "Echo start-up");
+            echo2.Deactivate();
             Assert.IsTrue(interactor.Flashlight.DrainEnabled, "Battery should drain in Level 2");
 
             GeneratorPuzzle generator = Get<GeneratorPuzzle>("GeneratorPuzzle");
@@ -217,6 +219,7 @@ namespace LastSignal.Tests
         {
             yield return StartLevel(GameFlowManager.Level3Scene);
             EchoAIController echo = Get<EchoAIController>("Echo");
+            yield return WaitUntilTrue(() => echo.Started, 5f, "Echo start-up");
             echo.Deactivate();
 
             FrequencyPuzzle freq = Get<FrequencyPuzzle>("FrequencyPuzzle");
@@ -267,11 +270,41 @@ namespace LastSignal.Tests
 
         // ================================================================== The Echo
 
+        /// <summary>
+        /// Regression: after a catch, retrying at the Level 3 chamber checkpoint used to put The Echo
+        /// right in front of the player. It must restart far away and give a short grace period.
+        /// </summary>
+        [UnityTest, Timeout(90000)]
+        public IEnumerator Echo_RestartsFarAway_AfterCheckpointRetry()
+        {
+            yield return StartLevel(GameFlowManager.Level3Scene);
+            EchoAIController echo = Get<EchoAIController>("Echo");
+            yield return WaitUntilTrue(() => echo.Started, 5f, "Echo start-up");
+
+            yield return WalkInto(new Vector3(0f, 0.05f, 15f));
+            yield return WaitUntilTrue(() => flow.Live.checkpointId == "l3_chamber", 3f, "chamber checkpoint reached");
+
+            flow.RetryCheckpoint();
+            yield return WaitForScene(GameFlowManager.Level3Scene);
+            CachePlayer();
+            interactor.InputRouter.KeyboardMouseEnabled = false;
+            echo = Get<EchoAIController>("Echo");
+            yield return WaitUntilTrue(() => echo.Started, 5f, "Echo restart");
+
+            float distance = Vector3.Distance(echo.transform.position, player.transform.position);
+            Assert.Greater(distance, 14f, "The Echo must restart far from the checkpoint spawn (was " + distance.ToString("F1") + " m)");
+            Assert.IsTrue(echo.InGracePeriod, "Grace period after a restart");
+            Assert.IsFalse(echo.CanSeePlayerNow);
+            yield return new WaitForSeconds(2f);
+            Assert.IsFalse(flow.IsGameOver, "Player must not be caught right after respawning");
+        }
+
         [UnityTest, Timeout(90000)]
         public IEnumerator Echo_Chases_LosesHiddenPlayer_Investigates_AndCatches()
         {
             yield return StartLevel(GameFlowManager.Level2Scene);
             EchoAIController echo = Get<EchoAIController>("Echo");
+            yield return WaitUntilTrue(() => echo.Started && !echo.InGracePeriod, 8f, "Echo start-up grace period over");
 
             // Sight -> chase.
             yield return WalkInto(new Vector3(3f, 0.05f, 5.5f));

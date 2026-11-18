@@ -186,6 +186,9 @@ namespace LastSignal.EditorTools
             {
                 new Vector3(0f, 0f, 19f), new Vector3(0f, 0f, 9f), new Vector3(7f, 0f, 9f), new Vector3(0f, 0f, 3f),
                 new Vector3(-7f, 0f, 9f), new Vector3(0f, 0f, 12f), new Vector3(-4f, 0f, 21f), new Vector3(4f, 0f, 21f),
+                // Far end of the corridor (elevator arrival): gives The Echo a restart point well away
+                // from the chamber checkpoint.
+                new Vector3(0f, 0f, -0.5f),
             };
             var wpTransforms = new Object[wps.Length];
             for (int i = 0; i < wps.Length; i++) wpTransforms[i] = Marker(wpRoot, "WP_" + i, wps[i], 0f);

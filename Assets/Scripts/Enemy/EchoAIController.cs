@@ -84,10 +84,48 @@ namespace LastSignal.Enemy
         private void OnEnable() => NoiseSystem.NoiseMade += OnNoise;
         private void OnDisable() => NoiseSystem.NoiseMade -= OnNoise;
 
-        private void Start()
+        [Header("Fair restarts")]
+        [Tooltip("After a level start or checkpoint reload, The Echo is moved at least this far from the player.")]
+        [SerializeField] private float safeRestartDistance = 15f;
+        [Tooltip("Seconds after a (re)start during which The Echo cannot see, hear or catch the player.")]
+        [SerializeField] private float restartGraceSeconds = 4f;
+
+        private float graceTimer;
+        private string ActiveFlag => "echo:active:" + gameObject.scene.name;
+        public bool InGracePeriod => graceTimer > 0f;
+
+        private System.Collections.IEnumerator Start()
         {
+            // Wait for the LevelController to place the player at the checkpoint spawn.
+            yield return null;
+            yield return null;
             FindPlayer();
-            if (startActive) Activate();
+            MoveAwayFromPlayer();
+            graceTimer = restartGraceSeconds;
+            // Remembered activation: a one-shot trigger that woke it up must not be needed again after a reload.
+            if (startActive || WorldFlags.Has(ActiveFlag)) Activate();
+            Started = true;
+        }
+
+        /// <summary>True once the (re)start placement has run.</summary>
+        public bool Started { get; private set; }
+
+        /// <summary>Never restart right next to the player: jump to the patrol point farthest from them.</summary>
+        private void MoveAwayFromPlayer()
+        {
+            if (player == null || waypoints.Length == 0) return;
+            if (Vector3.Distance(transform.position, player.position) >= safeRestartDistance) return;
+            int best = -1;
+            float bestDist = -1f;
+            for (int i = 0; i < waypoints.Length; i++)
+            {
+                if (waypoints[i] == null) continue;
+                float d = Vector3.Distance(waypoints[i].position, player.position);
+                if (d > bestDist) { bestDist = d; best = i; }
+            }
+            if (best < 0) return;
+            waypointIndex = best;
+            WarpTo(waypoints[best].position);
         }
 
         private void FindPlayer()
@@ -107,6 +145,7 @@ namespace LastSignal.Enemy
             if (Current != State.Inactive) return;
             gameObject.SetActive(true);
             if (player == null) FindPlayer();
+            WorldFlags.Set(ActiveFlag);
             SetState(waypoints.Length > 0 ? State.Patrol : State.Search);
             searchCentre = transform.position;
         }
@@ -145,11 +184,12 @@ namespace LastSignal.Enemy
 
         private void Update()
         {
+            if (graceTimer > 0f) graceTimer -= Time.deltaTime;
             if (Current == State.Inactive || Current == State.Caught) return;
             if (player == null) { FindPlayer(); if (player == null) return; }
             if (GameFlowManager.Instance != null && GameFlowManager.Instance.IsGameOver) return;
 
-            CanSeePlayerNow = CanSeePlayer();
+            CanSeePlayerNow = !InGracePeriod && CanSeePlayer();
             if (CanSeePlayerNow)
             {
                 lastKnown = player.position;
@@ -265,6 +305,7 @@ namespace LastSignal.Enemy
         private void OnNoise(Vector3 position, float radius)
         {
             if (Current == State.Inactive || Current == State.Caught || Current == State.Chase || Current == State.Hunt) return;
+            if (InGracePeriod) return;
             float effective = radius * settings.hearingMultiplier;
             // Walls muffle sound.
             if (Physics.Linecast(eye.position, position + Vector3.up * 1f, out RaycastHit h, sightMask, QueryTriggerInteraction.Ignore)
@@ -309,7 +350,7 @@ namespace LastSignal.Enemy
 
         private void TryCatch()
         {
-            if (player == null || HidingSpot.PlayerHidden) return;
+            if (player == null || HidingSpot.PlayerHidden || InGracePeriod) return;
             if (Current != State.Chase && Current != State.Hunt) return;
             Vector3 flat = player.position - transform.position;
             flat.y = 0f;

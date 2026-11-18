@@ -31,6 +31,9 @@ namespace LastSignal.Enemy
         [SerializeField] private Transform[] lowerArms = new Transform[0];
         [SerializeField] private float upperArmStretch = 1.15f;
         [SerializeField] private float lowerArmStretch = 1.3f;
+        [Tooltip("Hand bones stretched along the fingers: long, thin fingers.")]
+        [SerializeField] private Transform[] hands = new Transform[0];
+        [SerializeField] private float handStretch = 1.45f;
 
         [Header("Twitches")]
         [SerializeField] private Vector2 twitchEverySeconds = new Vector2(1.5f, 5f);
@@ -107,6 +110,8 @@ namespace LastSignal.Enemy
                 if (b != null) b.localScale = new Vector3(1f, upperArmStretch, 1f);
             foreach (Transform b in lowerArms)
                 if (b != null) b.localScale = new Vector3(1f, lowerArmStretch, 1f);
+            foreach (Transform b in hands)
+                if (b != null) b.localScale = new Vector3(0.85f, handStretch, 0.85f);
         }
 
         private void UpdateTwitch(bool agitated)

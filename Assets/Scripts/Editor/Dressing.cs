@@ -18,7 +18,11 @@ namespace LastSignal.EditorTools
         private const string Dir = "Assets/Art/Textures/Generated/Grime";
         private const string Ver = "_v1";
 
-        public enum Kind { Streaks, BaseGrime, Stain, Puddle, Mould, Cracks, Cobweb, Soot, Scratches, Papers }
+        public enum Kind { Streaks, BaseGrime, Stain, Puddle, Mould, Cracks, Cobweb, Soot, Scratches, Papers, Strands }
+
+        /// <summary>Rooms and seed of the last level dressed (used by the wildlife pass in Finish).</summary>
+        public static Rect[] LastRooms { get; private set; } = new Rect[0];
+        public static int LastSeed { get; private set; }
 
         public class Theme
         {
@@ -32,6 +36,8 @@ namespace LastSignal.EditorTools
         public static void Apply(Transform envRoot, Rect[] rooms, int seed, Theme t)
         {
             Physics.SyncTransforms();
+            LastRooms = rooms;
+            LastSeed = seed;
             var rng = new System.Random(seed);
             var holder = new GameObject("Grime").transform;
             holder.SetParent(envRoot, false);
@@ -100,18 +106,35 @@ namespace LastSignal.EditorTools
                 if (Wall(RandomPoint(out _), out RaycastHit w))
                     Add(Kind.Scratches, new Vector3(w.point.x, Random(rng, 0.9f, 1.8f), w.point.z) + w.normal * 0.02f, OnWall(w.normal, Random(rng, -25f, 25f)), new Vector2(0.45f, 0.6f));
 
-            // Cobwebs in wall corners near the ceiling.
-            for (int i = 0; i < t.cobwebs * 3 && CountOf(batches, Kind.Cobweb) < t.cobwebs; i++)
-            {
-                if (!Wall(RandomPoint(out _), out RaycastHit w)) continue;
-                Vector3 tangent = Vector3.Cross(Vector3.up, w.normal) * (R() < 0.5f ? 1f : -1f);
-                Vector3 from = new Vector3(w.point.x, t.ceiling - 0.35f, w.point.z) + w.normal * 0.15f;
-                if (!Physics.Raycast(from, tangent, out RaycastHit w2, 1.6f, ~0, QueryTriggerInteraction.Ignore)) continue;
-                if (Mathf.Abs(w2.normal.y) > 0.1f) continue;
-                Vector3 bisector = (w.normal + w2.normal).normalized;
-                Vector3 corner = w2.point - w.normal * 0.15f + w.normal * 0.02f;
-                Add(Kind.Cobweb, corner + bisector * 0.25f + Vector3.up * 0.05f, Quaternion.LookRotation(-bisector) * Quaternion.Euler(0f, 0f, R() * 30f - 15f), Vector2.one * (0.7f + R() * 0.5f));
-            }
+            // Cobwebs: a web stretched across the upper corners of (nearly) every room, its plane cutting
+            // both walls and the ceiling, with loose strands hanging beside it.
+            float webChance = Mathf.Clamp01(0.55f + t.cobwebs * 0.025f);
+            foreach (Rect room in rooms)
+                for (int cx = 0; cx < 2; cx++)
+                for (int cz = 0; cz < 2; cz++)
+                {
+                    if (R() > webChance) continue;
+                    var inward = new Vector3(cx == 0 ? 1f : -1f, 0f, cz == 0 ? 1f : -1f);
+                    var probe = new Vector3(cx == 0 ? room.xMin : room.xMax, 1.5f, cz == 0 ? room.yMin : room.yMax) + inward * 0.6f;
+                    if (!Physics.Raycast(probe, Vector3.up, out RaycastHit ceil, 4f, ~0, QueryTriggerInteraction.Ignore) || ceil.normal.y > -0.9f) continue;
+                    float top = ceil.point.y;
+                    var high = new Vector3(probe.x, top - 0.15f, probe.z);
+                    if (!Physics.Raycast(high, new Vector3(-inward.x, 0f, 0f), out RaycastHit wx, 1.8f, ~0, QueryTriggerInteraction.Ignore) || Mathf.Abs(wx.normal.x) < 0.9f) continue;
+                    if (!Physics.Raycast(high, new Vector3(0f, 0f, -inward.z), out RaycastHit wz, 1.8f, ~0, QueryTriggerInteraction.Ignore) || Mathf.Abs(wz.normal.z) < 0.9f) continue;
+                    var corner = new Vector3(wx.point.x, top, wz.point.z);
+                    float size = 1.4f + R() * 0.9f;
+                    Vector3 n = (inward + Vector3.down).normalized;
+                    // Centre of the triangle the web plane cuts from the corner; the quad's overhang hides in the walls.
+                    Vector3 centre = corner + n * (size / 2.83f);
+                    Add(Kind.Cobweb, centre, Quaternion.LookRotation(-n) * Quaternion.Euler(0f, 0f, R() * 360f), Vector2.one * size);
+                    for (int k = 0; k < 2; k++)
+                    {
+                        float len = 0.35f + R() * 0.6f;
+                        Vector3 at = corner + new Vector3(inward.x * (0.3f + R() * 0.9f), -len / 2f - 0.01f, inward.z * (0.3f + R() * 0.9f));
+                        Vector3 facing = -Flat(at - corner);
+                        Add(Kind.Strands, at, Quaternion.LookRotation(facing), new Vector2(0.25f, len));
+                    }
+                }
 
             // Floors: stains, puddles, scattered papers.
             for (int i = 0; i < t.stains; i++)
@@ -145,6 +168,12 @@ namespace LastSignal.EditorTools
         }
 
         private static float Random(System.Random rng, float a, float b) => Mathf.Lerp(a, b, (float)rng.NextDouble());
+
+        private static Vector3 Flat(Vector3 v)
+        {
+            v.y = 0f;
+            return v.sqrMagnitude > 1e-6f ? v.normalized : Vector3.forward;
+        }
         private static int CountOf(Dictionary<Kind, List<CombineInstance>> b, Kind k) => b.TryGetValue(k, out var l) ? l.Count : 0;
 
         private static void Combine(Transform holder, Kind kind, List<CombineInstance> parts)
@@ -199,7 +228,8 @@ namespace LastSignal.EditorTools
             {
                 case Kind.Puddle: c = new Color(0.02f, 0.025f, 0.03f, 0.85f); smooth = 0.95f; break;
                 case Kind.Mould: c = new Color(0.12f, 0.14f, 0.08f, 0.9f); break;
-                case Kind.Cobweb: c = new Color(0.8f, 0.8f, 0.78f, 0.55f); break;
+                case Kind.Cobweb:
+                case Kind.Strands: c = new Color(0.86f, 0.86f, 0.83f, 0.9f); smooth = 0.3f; break;
                 case Kind.Papers: c = new Color(0.8f, 0.78f, 0.72f, 1f); break;
                 case Kind.Soot: c = new Color(0.02f, 0.02f, 0.02f, 0.95f); break;
                 case Kind.Scratches: c = new Color(0.08f, 0.06f, 0.05f, 0.9f); break;
@@ -207,7 +237,8 @@ namespace LastSignal.EditorTools
             }
             m.SetColor("_BaseColor", c);
             m.SetFloat("_Smoothness", smooth);
-            m.SetFloat("_Cull", (float)CullMode.Back);
+            // Webs hang in the air: visible from both sides.
+            m.SetFloat("_Cull", (float)(kind == Kind.Cobweb || kind == Kind.Strands ? CullMode.Off : CullMode.Back));
             m.SetShaderPassEnabled("ShadowCaster", false);
             if (kind == Kind.Puddle)
             {
@@ -254,17 +285,18 @@ namespace LastSignal.EditorTools
         private static Texture2D Texture(Kind kind)
         {
             EnsureFolder(Dir);
-            string path = Dir + "/" + kind + Ver + ".png";
+            bool web = kind == Kind.Cobweb || kind == Kind.Strands;
+            string path = Dir + "/" + kind + (web ? "_v2" : Ver) + ".png";
             if (!File.Exists(path))
             {
-                Texture2D tex = Generate(kind, 256);
+                Texture2D tex = Generate(kind, web ? 512 : 256);
                 File.WriteAllBytes(path, tex.EncodeToPNG());
                 Object.DestroyImmediate(tex);
                 AssetDatabase.ImportAsset(path);
                 var ti = (TextureImporter)AssetImporter.GetAtPath(path);
                 ti.alphaIsTransparency = true;
                 ti.wrapMode = TextureWrapMode.Clamp;
-                ti.maxTextureSize = 256;
+                ti.maxTextureSize = web ? 512 : 256;
                 ti.SaveAndReimport();
             }
             return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
@@ -324,6 +356,7 @@ namespace LastSignal.EditorTools
 
             if (kind == Kind.Cracks) DrawCracks(px, n, rng);
             if (kind == Kind.Cobweb) DrawCobweb(px, n, rng);
+            if (kind == Kind.Strands) DrawStrands(px, n, rng);
             if (kind == Kind.Scratches) DrawScratches(px, n, rng);
 
             var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
@@ -374,24 +407,61 @@ namespace LastSignal.EditorTools
 
         private static void DrawCobweb(Color[] px, int n, System.Random rng)
         {
-            // Corner web: radial threads from one corner with sagging cross threads.
-            Vector2 c = new Vector2(0.02f, 0.98f);
-            int spokes = 9;
+            float R() => (float)rng.NextDouble();
+            float w = n / 256f; // line widths scale with the texture size
+            Vector2 c = new Vector2(0.5f, 0.5f) + new Vector2(R() - 0.5f, R() - 0.5f) * 0.06f;
+            // Dusty haze thickest near the hub.
+            for (int y = 0; y < n; y++)
+            for (int x = 0; x < n; x++)
+            {
+                float d = Vector2.Distance(new Vector2(x / (float)n, y / (float)n), c);
+                float haze = Mathf.Clamp01(0.45f - d) * 0.35f * Mathf.PerlinNoise(x * 0.05f, y * 0.05f);
+                Color p = px[y * n + x];
+                p.a = Mathf.Max(p.a, haze);
+                px[y * n + x] = p;
+            }
+            int spokes = 18;
             var dirs = new Vector2[spokes];
             for (int i = 0; i < spokes; i++)
             {
-                float a = Mathf.Lerp(-Mathf.PI / 2f + 0.08f, -0.08f, i / (float)(spokes - 1)) + ((float)rng.NextDouble() - 0.5f) * 0.1f;
+                float a = i / (float)spokes * Mathf.PI * 2f + (R() - 0.5f) * 0.25f;
                 dirs[i] = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
-                Line(px, n, c, c + dirs[i] * 1.1f, 0.5f, 0.6f);
+                Line(px, n, c, c + dirs[i] * 0.75f, 0.9f * w, 0.95f);
             }
-            for (float rr = 0.12f; rr < 1f; rr += 0.09f + (float)rng.NextDouble() * 0.05f)
-                for (int i = 0; i < spokes - 1; i++)
+            // Spiral of sagging cross threads, some missing (broken web).
+            for (float rr = 0.04f; rr < 0.62f; rr += 0.028f + R() * 0.02f)
+                for (int i = 0; i < spokes; i++)
                 {
-                    Vector2 a = c + dirs[i] * rr, b = c + dirs[i + 1] * rr;
-                    Vector2 mid = (a + b) / 2f + new Vector2(0.01f, -0.015f);
-                    Line(px, n, a, mid, 0.4f, 0.5f);
-                    Line(px, n, mid, b, 0.4f, 0.5f);
+                    if (R() < 0.12f) continue;
+                    Vector2 a = c + dirs[i] * rr, b = c + dirs[(i + 1) % spokes] * (rr + 0.006f);
+                    Vector2 mid = (a + b) / 2f - ((a + b) / 2f - c).normalized * 0.012f;
+                    Line(px, n, a, mid, 0.6f * w, 0.85f);
+                    Line(px, n, mid, b, 0.6f * w, 0.85f);
                 }
+            // Loose torn threads drifting off.
+            for (int i = 0; i < 7; i++)
+            {
+                Vector2 a = c + new Vector2(R() - 0.5f, R() - 0.5f) * 0.6f;
+                Line(px, n, a, a + new Vector2(R() - 0.5f, R() - 0.8f) * 0.4f, 0.5f * w, 0.7f);
+            }
+        }
+
+        private static void DrawStrands(Color[] px, int n, System.Random rng)
+        {
+            // A few threads hanging from the top edge, with dust caught on them.
+            for (int i = 0; i < 4; i++)
+            {
+                float x = 0.2f + i * 0.2f + ((float)rng.NextDouble() - 0.5f) * 0.1f;
+                float len = 0.5f + (float)rng.NextDouble() * 0.5f;
+                Vector2 prev = new Vector2(x, 1f);
+                for (float v = 1f; v > 1f - len; v -= 0.05f)
+                {
+                    Vector2 next = new Vector2(x + Mathf.Sin(v * 9f + i) * 0.02f, v - 0.05f);
+                    Line(px, n, prev, next, 0.8f * n / 256f, 0.9f);
+                    prev = next;
+                }
+                Line(px, n, prev, prev + new Vector2(0f, -0.01f), 2.5f * n / 256f, 0.8f); // dust clump
+            }
         }
 
         private static void DrawScratches(Color[] px, int n, System.Random rng)

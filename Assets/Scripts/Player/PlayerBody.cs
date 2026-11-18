@@ -41,10 +41,16 @@ namespace LastSignal.Player
         [SerializeField] private float reachSeconds = 0.75f;
         [Tooltip("Hand stops this far short of the surface it touches.")]
         [SerializeField] private float touchOffset = 0.04f;
+        [Tooltip("Wrist-to-palm distance: the wrist stops this far short so the palm touches.")]
+        [SerializeField] private float palmLength = 0.07f;
+        [Tooltip("Most the chest leans (degrees) to bring a slightly-too-far target within reach.")]
+        [SerializeField] private float maxReachLean = 30f;
 
         [Header("Props")]
         [SerializeField] private GameObject torchModel;
         [SerializeField] private GameObject torchLens;
+        [Tooltip("If set, the torch hangs here (in front of the view) while on and the left hand is pulled to it by IK.")]
+        [SerializeField] private Transform torchGrip;
         [Tooltip("Dim light that only affects the body's rendering layer (the torch beam does not light the body).")]
         [SerializeField] private Light bodyFill;
         [SerializeField] private float fillWhenTorchOff = 0.12f;
@@ -55,6 +61,8 @@ namespace LastSignal.Player
 
         private static readonly int SpeedHash = Animator.StringToHash("Speed");
         private static readonly int CrouchHash = Animator.StringToHash("Crouch");
+        private static readonly int TorchHash = Animator.StringToHash("Torch");
+        private bool hasTorchParam;
 
         private float torchWeight;
         private float reachTimer;
@@ -79,6 +87,10 @@ namespace LastSignal.Player
         private void OnEnable()
         {
             if (interactor != null) interactor.Interacted += OnInteracted;
+            hasTorchParam = false;
+            if (animator != null)
+                foreach (AnimatorControllerParameter p in animator.parameters)
+                    if (p.nameHash == TorchHash) hasTorchParam = true;
         }
 
         private void OnDisable()
@@ -98,11 +110,14 @@ namespace LastSignal.Player
             torchWeight = Mathf.MoveTowards(torchWeight, torchOn ? 1f : 0f, dt * 4f);
             if (torchLayer < animator.layerCount) animator.SetLayerWeight(torchLayer, torchWeight);
             if (bodyFill != null) bodyFill.intensity = Mathf.Lerp(fillWhenTorchOff, fillWhenTorchOn, torchWeight);
+            if (hasTorchParam) animator.SetBool(TorchHash, torchOn);
 
             if (torchModel != null)
             {
                 bool owned = flashlight != null && flashlight.IsOwned;
-                if (torchModel.activeSelf != owned) torchModel.SetActive(owned);
+                // A torch held at the grip is only out while it is on; one in the hand is always carried.
+                bool show = torchGrip != null ? owned && torchWeight > 0.05f : owned;
+                if (torchModel.activeSelf != show) torchModel.SetActive(show);
             }
             if (torchLens != null && torchLens.activeSelf != torchOn) torchLens.SetActive(torchOn);
 
@@ -142,20 +157,41 @@ namespace LastSignal.Player
                 bodyRoot.position += delta;
             }
 
+            // Torch up in the left hand (unless both hands are pushing a door).
+            if (torchGrip != null && torchWeight > 0f && !(twoHanded && ReachWeight > 0f))
+                Reach(leftArm, torchGrip.position, -transform.right, torchWeight);
+
             if (ReachWeight > 0f)
             {
                 Vector3 side = transform.right * 0.11f;
-                Reach(rightArm, twoHanded ? reachTarget + side : reachTarget, transform.right);
-                if (twoHanded) Reach(leftArm, reachTarget - side, -transform.right);
+                Reach(rightArm, twoHanded ? reachTarget + side : reachTarget, transform.right, ReachWeight);
+                if (twoHanded) Reach(leftArm, reachTarget - side, -transform.right, ReachWeight);
             }
         }
 
-        private void Reach(Transform[] arm, Vector3 target, Vector3 outward)
+        private void Reach(Transform[] arm, Vector3 target, Vector3 outward, float weight)
         {
             if (arm == null || arm.Length < 3 || arm[0] == null || arm[1] == null || arm[2] == null) return;
+            // The palm, not the wrist, meets the target.
+            target -= (target - arm[0].position).normalized * palmLength;
+            // Just out of reach: lean the chest towards it, as a person would.
+            Transform chest = spine.Length > 0 ? spine[spine.Length - 1] : null;
+            if (chest != null && chest != arm[0])
+            {
+                float armLength = (arm[1].position - arm[0].position).magnitude + (arm[2].position - arm[1].position).magnitude;
+                Vector3 toTarget = target - arm[0].position;
+                Vector3 lever = arm[0].position - chest.position;
+                float deficit = toTarget.magnitude - armLength * 0.97f;
+                Vector3 axis = Vector3.Cross(lever, toTarget);
+                if (deficit > 0f && lever.magnitude > 0.05f && axis.sqrMagnitude > 1e-6f)
+                {
+                    float angle = Mathf.Min(deficit / lever.magnitude * Mathf.Rad2Deg, maxReachLean) * weight;
+                    chest.rotation = Quaternion.AngleAxis(angle, axis.normalized) * chest.rotation;
+                }
+            }
             // Elbow hint: out to the side and down, like a natural reach.
             Vector3 hint = arm[1].position + outward * 0.3f - transform.up * 0.3f;
-            SolveTwoBone(arm[0], arm[1], arm[2], target, hint, ReachWeight);
+            SolveTwoBone(arm[0], arm[1], arm[2], target, hint, weight);
         }
 
         private void OnInteracted(IInteractable target)

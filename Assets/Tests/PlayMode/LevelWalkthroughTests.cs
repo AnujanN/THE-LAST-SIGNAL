@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Linq;
 using LastSignal.Enemy;
+using LastSignal.Environment;
 using LastSignal.GameFlow;
 using LastSignal.Interaction;
 using LastSignal.Inventory;
@@ -512,5 +513,95 @@ namespace LastSignal.Tests
             yield return WaitForScene(GameFlowManager.Level2Scene);
             Assert.IsFalse(flow.IsGameOver);
         }
+
+        // ================================================================== crawling and wildlife
+
+        [UnityTest, Timeout(90000)]
+        public IEnumerator Echo_CrawlsOnCeiling_AndDropsToItsFeetToHunt()
+        {
+            yield return StartLevel(GameFlowManager.Level2Scene);
+            EchoAIController echo = Get<EchoAIController>("Echo");
+            EchoCrawler crawler = echo.GetComponent<EchoCrawler>();
+            Assert.IsNotNull(crawler, "The Echo should be able to crawl");
+            yield return WaitUntilTrue(() => echo.Started && !echo.InGracePeriod, 8f, "Echo start-up grace period over");
+
+            // Patrolling the long corridor, blind and deaf for the test, sent up onto the ceiling.
+            echo.Settings.sightRange = 0.1f;
+            echo.Settings.hearingMultiplier = 0f;
+            yield return WalkInto(new Vector3(0f, 0.05f, 31f));
+            echo.Deactivate();
+            echo.WarpTo(new Vector3(0f, 0f, 12f));
+            echo.Activate();
+            crawler.Crawl(EchoCrawler.Surface.Ceiling);
+            yield return WaitUntilTrue(() => crawler.Current == EchoCrawler.Surface.Ceiling && crawler.Weight >= 1f, 5f, "up on the ceiling");
+            yield return new WaitForSeconds(0.5f);
+            Animator body = echo.GetComponentInChildren<Animator>();
+            Assert.Less(crawler.SurfaceNormal.y, -0.9f, "Upside down under the ceiling");
+            Assert.Greater(body.GetBoneTransform(HumanBodyBones.Hips).position.y, 2.2f, "Body up at the ceiling");
+            Assert.Greater(body.GetBoneTransform(HumanBodyBones.LeftFoot).position.y, 2.5f, "Feet planted on the ceiling");
+            Assert.Greater(body.GetBoneTransform(HumanBodyBones.RightHand).position.y, 2.4f, "Hands planted on the ceiling");
+
+            // A hunt drops it to its feet at once (crawling is never allowed while it chases).
+            echo.StartHunt();
+            yield return WaitUntilTrue(() => crawler.Weight <= 0f, 1.5f, "dropped from the ceiling");
+            yield return null;
+            Assert.Less(body.GetBoneTransform(HumanBodyBones.Hips).position.y, 1.6f, "Back on its feet");
+            echo.Deactivate();
+        }
+
+        [UnityTest, Timeout(90000)]
+        public IEnumerator AmbientLife_MouseBirdsAndSpider_AppearAndLeave()
+        {
+            yield return StartLevel(GameFlowManager.Level2Scene);
+            EchoAIController echo = Get<EchoAIController>("Echo");
+            echo.WarpTo(new Vector3(0f, 0f, 30f));
+            echo.Deactivate();
+            AmbientLife life = Object.FindAnyObjectByType<AmbientLife>();
+            Assert.IsNotNull(life, "Level 2 should have ambient wildlife");
+
+            // In the long east-west corridor, looking along it.
+            yield return WalkInto(new Vector3(-12f, 0.05f, 5.5f));
+            player.GetComponent<PlayerLook>().SetAngles(90f, 0f);
+            yield return null;
+            Transform cam = Camera.main.transform;
+
+            string[] names = { "Mouse", "Pigeon", "Owl", "Spider" };
+            // Each event picks a random spot and flight line; in a clear corridor one of a few tries fits.
+            for (int i = 0; i < 4; i++)
+            {
+                bool started = false;
+                for (int attempt = 0; attempt < 20 && !started; attempt++) started = life.Trigger(i);
+                Assert.IsTrue(started, names[i] + " event should fit in a clear corridor");
+            }
+
+            Critter mouse = Object.FindAnyObjectByType<Critter>();
+            Bird[] birds = Object.FindObjectsByType<Bird>(FindObjectsInactive.Exclude);
+            Assert.AreEqual(2, birds.Length, "Pigeon and owl both out");
+            Vector3 mouseStart = mouse.transform.position;
+            float closestBird = float.MaxValue;
+            bool mouseMoved = false;
+            float end = Time.realtimeSinceStartup + 14f;
+            while (Time.realtimeSinceStartup < end)
+            {
+                foreach (Bird b in birds)
+                    if (b.gameObject.activeSelf) closestBird = Mathf.Min(closestBird, Vector3.Distance(b.transform.position, cam.position));
+                if (mouse.gameObject.activeSelf && Vector3.Distance(mouse.transform.position, mouseStart) > 0.5f) mouseMoved = true;
+                if (!mouse.Busy && birds.All(b => !b.Busy) && !SpiderDropping) break;
+                yield return null;
+            }
+            Assert.IsTrue(mouseMoved, "The mouse runs across the floor");
+            Assert.Less(closestBird, 1.6f, "A bird flies past close to Alex");
+            Assert.IsFalse(mouse.Busy, "The mouse is gone again");
+            Assert.IsTrue(birds.All(b => !b.Busy), "The birds have flown off");
+            Assert.IsNull(GameObject.Find("AmbientLife/DropSpider"), "The spider has climbed back up and gone");
+
+            // Dying tubes: dark when Alex is right under one.
+            DistantFlicker tube = Object.FindObjectsByType<DistantFlicker>(FindObjectsInactive.Exclude)[0];
+            yield return WalkInto(tube.transform.position + Vector3.down * (tube.transform.position.y - 0.05f));
+            yield return new WaitForSeconds(0.5f);
+            Assert.IsFalse(tube.GetComponentInChildren<Light>().enabled, "A tube goes dead when Alex comes close");
+        }
+
+        private static bool SpiderDropping => GameObject.Find("AmbientLife/DropSpider") != null;
     }
 }

@@ -106,9 +106,18 @@ with a 4-second grace period.
 Player noise per step: sprint 10 m, walk 4 m, crouch 1.2 m (×2 in water). Puzzle mistakes (keypad buzz,
 generator stall, junction arc) and some scares also make noise.
 
-**Body:** the Quaternius CC0 mannequin, stretched tall and thin, black, hunched, with long arms, a cocked head,
-random head twitches, glowing eyes (red when hunting) and smoke; animations blend idle / stiff walk / jog /
-sprint by speed, plus crouched listening, pressing against a hiding place, and a lunge.
+**Body:** a Mixamo character (`Echo.fbx`) stretched tall and thin, all black, hunched, with long arms and long
+fingers, a cocked head, random head twitches, glowing eyes (red when hunting) and smoke; Mixamo zombie animations
+blend idle / walk / run by speed, with the zombie idle for listening, the attack for inspecting a hiding place and
+the scream for the catch.
+
+**Crawling (`EchoCrawler`):** while it patrols, investigates, listens, searches or returns, it regularly drops onto
+all fours and climbs onto the ceiling (upside down), a wall, or crawls along the floor. Its four limbs plant and
+step in a diagonal gait with two-bone IK, elbows splayed like a spider, back arched, and on a wall or the ceiling
+its head twists round to stare at Alex. Scratching sounds while it moves up there. It is visual only: the agent
+still walks the floor NavMesh and it senses from the same eye point, so crawling never changes what it can see,
+hear or reach. The moment it starts a chase (or a hunt, inspection or catch) it drops to its feet with a thud and
+a small camera shake.
 
 ## 5. Visuals, first-person presence and fear
 
@@ -116,9 +125,13 @@ sprint by speed, plus crouched listening, pressing against a hiding place, and a
   (colour grading + vignette) on both presets. The flashlight is essential in most rooms.
 - Flashlight: spot light with **real-time hard shadows on Low and Medium** (owner's decision); battery drain
   from Level 2.
-- Alex's visible body: legs walk/crouch, the left hand holds the torch (lens glows when on), the right hand reaches
-  the exact point being used (switches, items, doors; both hands push doors when the torch is off). The torch
-  beam does not light the body (URP rendering layers); a dim body-only fill light does.
+- Alex's visible body: the Mixamo "Remy" character with walk, run, crouch and "running with torch" animations.
+  When the torch is on he holds it up in his left hand (IK to a grip in front of the view); the right hand reaches
+  the exact point being used (switches, items, doors), leaning the chest in when it is slightly out of reach; both
+  hands push doors when the torch is off. The torch beam does not light the body (URP rendering layers); a dim
+  body-only fill light does. Humanoid avatars are built from the scaled skeletons (`MixamoSetup.BuiltAvatar`)
+  because the importer's own avatars for these files kept a centimetre scale.
+- Flashlight beam: 68° cone (30° bright centre), 26 m range, brighter than before.
 - Camera: footstep bob and sway, breathing rise that quickens with danger, stillness while holding breath; the
   light lags slightly behind fast turns.
 - Abandoned, lived-in rooms: real CC0 props (boxes, crates, barrels, tipped chairs, shelves, a wheelchair, dead rats,
@@ -127,6 +140,20 @@ sprint by speed, plus crouched listening, pressing against a hiding place, and a
   papers and debris.
 - Notes are handwritten (Caveat font) on aged, stained, folded paper in the torch light; notes lying in the world
   show handwriting too.
+- Room and area names hang on burnt-edged wooden boards on wires (a little crooked; slid down clear of pipes and
+  wired to the real ceiling after the level is built); small labels on fuse boxes, controls and machines sit on
+  worn brass tags.
+- Keypads look like old mechanical door keypads: olive steel plate with screws, a counter window, black keys with
+  a cross (clear) and a tick (enter), and green/red indicator lamps (green holds a moment before it opens, red
+  flashes on a wrong code).
+- Cobwebs stretched across the upper corners of almost every room (15–29 per level), double-sided and dusty, with
+  loose strands hanging beside them.
+- Life in the building (`AmbientLife`): every 18–40 s, where Alex is looking and never during a chase, a mouse darts
+  across the floor squeaking, a pigeon or an owl (which hoots first, eyes glinting) bursts from high in the dark
+  over his shoulder, or a spider lowers itself on a thread in front of his face and climbs back up. 8–10 spiders
+  sit on the walls and ceilings of each level and scuttle now and then. None of it makes noise The Echo hears.
+- Distant flickering lights: three dying fluorescent tubes per level, far down the longest corridors and rooms.
+  They sputter on with a buzz, hold a few seconds and die, and go dark when Alex comes within 5 m.
 - Being caught: no punch — The Echo is suddenly in your face, towering; your view is wrenched up to it, its long hands
   close around your head, it shrieks and the picture tears into static and goes black.
 - Scripted fear: footsteps on the floor above, falling objects, slamming doors, bursting lamps, whispers and radio
@@ -137,7 +164,8 @@ sprint by speed, plus crouched listening, pressing against a hiding place, and a
 
 - URP **Low** and **Medium** presets (Android defaults to Medium). HDR off. Additional-light shadow atlas 512 (Low) / 1024 (Medium); soft shadows off.
 - Compact indoor levels with doors and bends; few practical lights; most lights without shadows.
-- Two skinned characters at most (Alex's body ~8.4k vertices, The Echo ~8.4k). Smoke and ember particle systems are capped at 30–50 particles; the Level 1 outdoor rain uses up to 1,200 tiny stretched particles.
+- Two skinned characters at most (Mixamo Remy for Alex and the Mixamo Echo character; vertex counts to be checked in the profiler on a phone). Smoke and ember particle systems are capped at 30–50 particles; the Level 1 outdoor rain uses up to 1,200 tiny stretched particles.
+- Creatures are a few primitive shapes each (the mouse is the CC0 rat model), pooled (one of each, reused), with no colliders or shadows. Each level gets three extra point lights for the flickering tubes; they are disabled whenever the tube is dead (most of the time).
 - Compressed audio (Vorbis; long ambiences streamed), 1K compressed textures.
 - 30 FPS target (`AppBootstrap`), screen kept awake, landscape only, safe-area aware HUD.
 - No per-frame allocations in gameplay code (cached strings, non-alloc physics queries).
@@ -145,7 +173,7 @@ sprint by speed, plus crouched listening, pressing against a hiding place, and a
 
 ## 7. Testing
 
-### Automated (Unity Test Framework, Play Mode) — 19 tests, all passing
+### Automated (Unity Test Framework, Play Mode) — 21 tests, all passing
 
 | Test | What it proves |
 |---|---|
@@ -167,6 +195,8 @@ sprint by speed, plus crouched listening, pressing against a hiding place, and a
 | Echo_Chases_LosesHiddenPlayer_Investigates_AndCatches | Sight → chase; hiding → search; noise → investigate; catch → game over → retry |
 | Echo_InspectsHidingSpot_HoldingBreathKeepsPlayerSafe | Inspection + holding breath = safe |
 | Echo_InspectsHidingSpot_FindsBreathingPlayer | Inspection without holding breath = found |
+| Echo_CrawlsOnCeiling_AndDropsToItsFeetToHunt | Upside down on the ceiling with hands and feet planted on it; a hunt drops it to its feet at once |
+| AmbientLife_MouseBirdsAndSpider_AppearAndLeave | Mouse, pigeon, owl and dropping spider all start in a clear corridor, a bird passes close to Alex, all leave again; a tube goes dark when Alex is under it |
 
 The walkthrough tests call interactions directly; they prove logic and scene flow, not that every object is
 easy to reach by walking and aiming. That needs a human play-through.
@@ -184,9 +214,11 @@ easy to reach by walking and aiming. That needs a human play-through.
 |---|---|
 | Level geometry, UI sprites, materials | Created in this project (generated by editor scripts) |
 | Surface textures (concrete, plaster, planks, rusty metal, tiles, carpet, burned ground …) | **Poly Haven** (polyhaven.com) — **CC0** (`Assets/Art/Textures/PolyHaven/CREDITS.txt`) |
-| The Echo, Alex's body, Maya's ghost (mesh + animations) | **Quaternius — Universal Animation Library (Standard)** — **CC0** (`Assets/Art/Models/Echo/Quaternius_UAL_License.txt`) |
+| Alex's body (Remy) and The Echo (character + zombie animations), Alex's walk/run/crouch/torch animations | **Adobe Mixamo** (mixamo.com) — free to use in games under the Adobe/Mixamo terms; the raw files must not be redistributed on their own (keep the repository private) |
+| Maya's ghost, fallback bodies (mesh + animations) | **Quaternius — Universal Animation Library (Standard)** — **CC0** (`Assets/Art/Models/Echo/Quaternius_UAL_License.txt`) |
 | Props and furniture (39 models): boxes, crates, barrels, chairs, desks, tables, beds, sofa, shelves, cabinets, TV, wheelchair, trash bags, cans, rats, electrical cabinets, compressor, generator, pipes, propane tanks, radio, circuit boards, stove, mirror, ceiling fittings, wet-floor sign | **Poly Haven** models — **CC0** (`Assets/Art/Models/Props/CREDITS.txt`) |
 | Fridge, bathtub, sink, safe, lockers and wardrobes (with swinging doors), reel-to-reel tape decks, machine vents/lights | Built in code from primitives and the CC0 textures (`Fixtures`, `BuildKit.Locker`) |
+| Pigeon, owl, spiders, flickering tube fittings, sign boards, keypad | Built in code from primitives (`Wildlife`, `BuildKit`, `GamePrefabs`) |
 | Handwriting font for notes: Caveat | Google Fonts, The Caveat Project Authors — **SIL Open Font License 1.1** (`Assets/Art/Fonts/Caveat/OFL.txt`) |
 | Aged paper, stains, drips, mould, cracks, cobwebs, soot, scratches, static | Generated in code by editor scripts (`PaperArt`, `Dressing`) |
 | Footsteps, doors, impacts, switches, latches, generator, elevator, glitches | Kenney (kenney.nl) — **CC0** |
@@ -196,7 +228,7 @@ easy to reach by walking and aiming. That needs a human play-through.
 | The Echo ghostly voice, wind | Joseph Sardin (BigSoundBank / LaSonotheque) via Wikimedia Commons — **CC0** |
 | Heartbeat | "Heartbeat.ogg" by HerbertBoland, Wikimedia Commons — **CC BY 3.0** (credited in game) |
 | Electrical hum | "MainsBrum50Hz.ogg", Wikimedia Commons — **Public domain** |
-| Breathing, gasp, fallback sounds | Generated in code (`PlaceholderClips`) |
+| Breathing, gasp, mouse squeak, wing flutter, owl hoot, pigeon coo, skittering, fallback sounds | Generated in code (`PlaceholderClips`) |
 | Font: Liberation Sans SDF | TextMeshPro default font (SIL Open Font License) |
 | Unity 6.6, URP, Input System, uGUI/TextMeshPro, AI Navigation, Test Framework | Unity packages (Unity Companion License / Unity terms) |
 | Unity MCP for Unity (CoplayDev, v10.3.0) | Editor-only development tool (MIT) — not part of the game build |
@@ -204,7 +236,9 @@ easy to reach by walking and aiming. That needs a human play-through.
 
 ## 9. Known limitations
 
-- Characters use one stylised CC0 mannequin (Alex, The Echo, Maya's ghost) rather than bespoke models.
+- Maya's ghost still uses the stylised CC0 mannequin. The birds and spiders are simple shapes (fine in the dark and
+  in motion, but not detailed up close); the owl/pigeon/mouse sounds are synthesised.
+- The Echo's crawl is procedural (IK on the zombie animation), not a hand-made crawl animation.
 - No voice acting; all story speech is subtitled. Breathing is a generated sound.
 - Not yet played end-to-end by a person after the five-level update; not tested on a physical Android device; FPS unmeasured.
 - Lighting is real-time only; baked lighting is a future optimisation.

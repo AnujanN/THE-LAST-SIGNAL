@@ -455,8 +455,117 @@ namespace LastSignal.EditorTools
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.color = color ?? new Color(0.34f, 0.33f, 0.3f); // unlit text: keep dim so it does not glow in the dark
             tmp.textWrappingMode = TextWrappingModes.Normal;
-            ((RectTransform)go.transform).sizeDelta = area ?? new Vector2(2.4f, 0.8f);
+            Vector2 size = area ?? new Vector2(2.4f, 0.8f);
+            ((RectTransform)go.transform).sizeDelta = size;
+            // Room and area names hang on wooden boards; small labels get worn brass tags. Displays and
+            // coloured readouts (frequency, selectors, warnings) stay as they are.
+            if (!string.IsNullOrEmpty(text))
+            {
+                if (size.x >= 0.95f && fontSize >= 1.5f) HangingBoard(go.transform, tmp, size, color.HasValue);
+                else if (!color.HasValue && fontSize <= 1.7f) LabelTag(go.transform, tmp, size);
+            }
             return tmp;
+        }
+
+        /// <summary>A burnt-edged wooden board hung on wires, slightly crooked. The text stays on one line.</summary>
+        private static void HangingBoard(Transform sign, TextMeshPro tmp, Vector2 area, bool keepColour)
+        {
+            tmp.fontStyle = FontStyles.Bold;
+            tmp.characterSpacing = 2f;
+            if (!keepColour) tmp.color = new Color(0.09f, 0.055f, 0.03f);
+            else tmp.color *= 0.75f;
+            // One line unless the text has its own line breaks: shrink the font to fit the width.
+            if (!tmp.text.Contains("\n"))
+            {
+                float wide = tmp.GetPreferredValues(tmp.text).x;
+                if (wide > area.x - 0.1f) tmp.fontSize *= (area.x - 0.1f) / wide;
+            }
+            Vector2 pref = tmp.GetPreferredValues(tmp.text, area.x, area.y);
+            float w = Mathf.Clamp(pref.x + 0.32f, 0.7f, area.x + 0.15f);
+            float h = Mathf.Clamp(pref.y + 0.16f, 0.24f, area.y + 0.1f);
+
+            Material wood = Mat("SignWood", new Color(0.62f, 0.45f, 0.3f), smoothness: 0.25f);
+            Texture2D planks = AssetDatabase.LoadAssetAtPath<Texture2D>(TextureDir + "/brown_planks_05_diff.jpg");
+            if (planks != null && wood.GetTexture("_BaseMap") == null) { wood.SetTexture("_BaseMap", planks); EditorUtility.SetDirty(wood); }
+            Material burnt = Mat("Charred", new Color(0.05f, 0.045f, 0.04f), smoothness: 0.05f);
+            Box(sign, "Board", new Vector3(0f, 0f, 0.016f), new Vector3(w, h, 0.025f), wood, collider: false);
+            Box(sign, "BurntRim", new Vector3(0f, 0f, 0.03f), new Vector3(w + 0.05f, h + 0.045f, 0.012f), burnt, collider: false);
+            HangWires(sign, w, h, -1f);
+            // A little crooked, different for every sign.
+            float tilt = ((Mathf.Abs(sign.name.GetHashCode()) % 100) / 100f - 0.5f) * 5f;
+            sign.localRotation *= Quaternion.Euler(0f, 0f, tilt);
+        }
+
+        /// <summary>
+        /// Wires for a board: up to the ceiling when it is close (ceilingGap &gt;= 0), otherwise to nails in
+        /// the wall above (one nail and a V for a small board, two straight wires for a wide one).
+        /// </summary>
+        private static void HangWires(Transform sign, float w, float h, float ceilingGap)
+        {
+            for (int i = sign.childCount - 1; i >= 0; i--)
+            {
+                Transform c = sign.GetChild(i);
+                if (c.name == "Wire" || c.name == "Nail") Object.DestroyImmediate(c.gameObject);
+            }
+            Material wire = Mat("Black", new Color(0.03f, 0.03f, 0.03f));
+            float rise = ceilingGap >= 0f && ceilingGap < 0.6f ? ceilingGap : 0.24f;
+            bool straight = w > 1.0f || (ceilingGap >= 0f && ceilingGap < 0.6f);
+            foreach (float side in new[] { -1f, 1f })
+            {
+                var from = new Vector3(side * (w / 2f - 0.07f), h / 2f, 0.02f);
+                Vector3 nail = straight ? from + Vector3.up * rise : new Vector3(0f, h / 2f + rise, 0.02f);
+                Vector3 d = nail - from;
+                GameObject strand = Box(sign, "Wire", (from + nail) / 2f, new Vector3(0.008f, Mathf.Max(0.01f, d.magnitude), 0.008f), wire, collider: false);
+                strand.transform.localRotation = Quaternion.Euler(0f, 0f, -Mathf.Atan2(d.x, d.y) * Mathf.Rad2Deg);
+                if (straight || side > 0f) Box(sign, "Nail", nail, new Vector3(0.02f, 0.02f, 0.03f), wire, collider: false);
+            }
+        }
+
+        /// <summary>
+        /// After a level is fully built: slide any hanging board down until no pipe, beam or fitting
+        /// crosses in front of it, and run its wires to the real ceiling.
+        /// </summary>
+        public static void SettleBoards()
+        {
+            Physics.SyncTransforms();
+            foreach (TextMeshPro tmp in Object.FindObjectsByType<TextMeshPro>(FindObjectsInactive.Exclude))
+            {
+                Transform sign = tmp.transform, board = sign.Find("Board");
+                if (board == null || sign.Find("BurntRim") == null) continue;
+                float w = board.localScale.x, h = board.localScale.y;
+                Vector3 right = sign.right, up = sign.up, toViewer = -sign.forward;
+                bool Blocked(Vector3 centre)
+                {
+                    foreach (float y in new[] { h / 2f + 0.03f, 0f, -h / 2f })
+                    foreach (float depth in new[] { 0.05f, 0.2f, 0.4f })
+                    {
+                        Vector3 o = centre + up * y + toViewer * depth - right * (w / 2f + 0.05f);
+                        if (Physics.Raycast(o, right, w + 0.1f, ~0, QueryTriggerInteraction.Ignore)) return true;
+                    }
+                    return false;
+                }
+                for (float drop = 0f; drop <= 0.5f; drop += 0.05f)
+                {
+                    if (Blocked(sign.position - Vector3.up * drop)) continue;
+                    sign.position -= Vector3.up * drop;
+                    break;
+                }
+                Physics.SyncTransforms();
+                Vector3 top = sign.position + up * (h / 2f) + toViewer * 0.02f;
+                float gap = Physics.Raycast(top, Vector3.up, out RaycastHit hit, 0.6f, ~0, QueryTriggerInteraction.Ignore) ? hit.distance : -1f;
+                HangWires(sign, w, h, gap);
+            }
+        }
+
+        /// <summary>A small worn brass tag behind a label (breakers, controls, sockets).</summary>
+        private static void LabelTag(Transform sign, TextMeshPro tmp, Vector2 area)
+        {
+            tmp.color = new Color(0.07f, 0.06f, 0.05f);
+            tmp.fontStyle = FontStyles.Bold;
+            Vector2 pref = tmp.GetPreferredValues(tmp.text, area.x, area.y);
+            float w = Mathf.Clamp(pref.x + 0.06f, 0.12f, area.x + 0.05f), h = Mathf.Clamp(pref.y + 0.03f, 0.06f, area.y + 0.04f);
+            Material brass = Mat("TagBrass", new Color(0.52f, 0.43f, 0.24f), smoothness: 0.55f);
+            Box(sign, "Tag", new Vector3(0f, 0f, 0.006f), new Vector3(w, h, 0.006f), brass, collider: false);
         }
 
         public static ParticleSystem Rain(Transform parent, Vector3 center, Vector3 size)

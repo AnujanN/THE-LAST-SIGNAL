@@ -12,6 +12,7 @@ namespace LastSignal.Audio
         private const int Rate = 22050;
         private static AudioClip rain, hum, drips, interference, dawn, drone, heartbeat;
         private static AudioClip staticBurst, spark, thud, scream, footstep, splash, beep, buzz, doorCreak, gasp, breathing;
+        private static AudioClip skitter, squeak, flutter, hoot, coo;
 
         public static AudioClip Rain => Real("rain") ?? Get(ref rain, () => Make("Rain", 4f, RainSample));
         public static AudioClip Hum => Real("hum") ?? Get(ref hum, () => Make("Hum", 4f, HumSample));
@@ -51,6 +52,18 @@ namespace LastSignal.Audio
         /// <summary>Frightened breathing loop (in, out, pause), generated if no recording exists.</summary>
         public static AudioClip Breathing => Real("breathing") ?? Get(ref breathing, () => Make("Breathing", 2.4f, BreathingSample));
 
+        // Creatures and crawling.
+        /// <summary>Dry scratching clicks: claws or fingernails on plaster.</summary>
+        public static AudioClip Skitter => Real("skitter") ?? Get(ref skitter, () => Make("Skitter", 0.32f, SkitterSample));
+        /// <summary>A mouse's thin squeak.</summary>
+        public static AudioClip Squeak => Real("squeak") ?? Get(ref squeak, () => Make("Squeak", 0.3f, SqueakSample));
+        /// <summary>Wings beating hard as a bird bursts away.</summary>
+        public static AudioClip Flutter => Real("flutter") ?? Get(ref flutter, () => Make("Flutter", 1.1f, FlutterSample));
+        /// <summary>An owl, two low hoots.</summary>
+        public static AudioClip Hoot => Real("owl") ?? Get(ref hoot, () => Make("Hoot", 1.2f, HootSample));
+        /// <summary>A pigeon's throaty coo.</summary>
+        public static AudioClip Coo => Real("pigeon") ?? Get(ref coo, () => Make("Coo", 1.1f, CooSample));
+
         private delegate float Sampler(float t, int n);
 
         /// <summary>
@@ -69,6 +82,7 @@ namespace LastSignal.Audio
         {
             rain = hum = drips = interference = dawn = drone = heartbeat = null;
             staticBurst = spark = thud = scream = footstep = splash = beep = buzz = doorCreak = gasp = breathing = null;
+            skitter = squeak = flutter = hoot = coo = null;
             lp1 = lp2 = 0f;
         }
 
@@ -174,6 +188,47 @@ namespace LastSignal.Audio
             float t2 = t - 0.25f;
             float b = t2 > 0f && t2 < 0.12f ? Mathf.Sin(2f * Mathf.PI * 50f * t2) * Mathf.Exp(-t2 * 30f) * 0.7f : 0f;
             return (a + b) * 0.9f;
+        }
+
+        private static float SkitterSample(float t, int n)
+        {
+            // Eight tiny scratches at uneven spacing.
+            float v = 0f;
+            for (int i = 0; i < 8; i++)
+            {
+                float at = i * 0.037f + Mathf.Sin(i * 12.9f) * 0.012f;
+                float d = t - at;
+                if (d >= 0f && d < 0.025f) v += Noise(n) * Mathf.Exp(-d * 220f);
+            }
+            return v * 0.6f;
+        }
+
+        private static float SqueakSample(float t, int n)
+        {
+            float a = t < 0.1f ? Env(t, 0.1f) : t > 0.15f && t < 0.28f ? Env(t - 0.15f, 0.13f) : 0f;
+            float f = 3600f + 600f * Mathf.Sin(t * 70f) + (t > 0.15f ? 400f : 0f);
+            return Mathf.Sin(2f * Mathf.PI * f * t) * a * 0.25f;
+        }
+
+        private static float FlutterSample(float t, int n)
+        {
+            float beat = Mathf.Pow(0.5f + 0.5f * Mathf.Sin(2f * Mathf.PI * 11f * t), 4f);
+            lp1 += (Noise(n) - lp1) * 0.35f;
+            return lp1 * beat * Mathf.Exp(-t * 1.6f) * 0.9f;
+        }
+
+        private static float HootSample(float t, int n)
+        {
+            float a = t < 0.32f ? Env(t, 0.32f) : t > 0.48f && t < 1.15f ? Env(t - 0.48f, 0.67f) * (1f - (t - 0.48f)) : 0f;
+            float f = t < 0.4f ? 390f : 370f - 25f * (t - 0.48f);
+            return (Mathf.Sin(2f * Mathf.PI * f * t) + Mathf.Sin(4f * Mathf.PI * f * t) * 0.15f) * a * 0.3f;
+        }
+
+        private static float CooSample(float t, int n)
+        {
+            float f = 480f + 90f * Mathf.Sin(t * 5.5f);
+            float trill = 0.6f + 0.4f * Mathf.Sin(2f * Mathf.PI * 28f * t);
+            return Mathf.Sin(2f * Mathf.PI * f * t) * trill * Env(t, 1.1f) * Mathf.Sin(Mathf.PI * t / 1.1f) * 0.28f;
         }
 
         private static float ScreamSample(float t, int n)

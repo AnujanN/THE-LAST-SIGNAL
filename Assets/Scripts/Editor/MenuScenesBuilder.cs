@@ -26,8 +26,10 @@ namespace LastSignal.EditorTools
             "\"Heartbeat\" by HerbertBoland (Wikimedia Commons) - CC BY 3.0\n" +
             "CC BY 3.0: creativecommons.org/licenses/by/3.0\n\n" +
             "<b>Art</b>\nTextures: Poly Haven (polyhaven.com) - CC0\n" +
-            "The Echo body and animations: Quaternius, Universal Animation Library - CC0\n\n" +
-            "<b>Fonts</b>\nLiberation Sans (TextMeshPro)\n\n\n" +
+            "Alex and The Echo, characters and animations: Mixamo (Adobe)\n" +
+            "Props: Poly Haven - CC0\n" +
+            "Maya's ghost: Quaternius, Universal Animation Library - CC0\n\n" +
+            "<b>Fonts</b>\nLiberation Sans (TextMeshPro)\nCaveat - The Caveat Project Authors, SIL Open Font License\n\n\n" +
             "For everyone who is still listening.\n\n\nThank you for playing.";
 
         [MenuItem("The Last Signal/Build/Build All Game Scenes", priority = 0)]

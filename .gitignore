@@ -115,3 +115,5 @@ InitTestScene*.unity*
 
 # Local screenshots captured during development
 /[Cc]aptures/
+/[Aa]ssets/[Ss]creenshots/
+/[Aa]ssets/[Ss]creenshots.meta

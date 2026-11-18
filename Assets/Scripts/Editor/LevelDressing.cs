@@ -24,6 +24,8 @@ namespace LastSignal.EditorTools
         public static void Finish(int level, Transform items)
         {
             Fixtures.CeilingFittings(GameObject.Find("Lighting")?.transform);
+            Wildlife.Apply(level, Dressing.LastRooms, Dressing.LastSeed);
+            BuildKit.SettleBoards();
             Transform props = GameObject.Find("Environment/Props")?.transform ?? items;
             switch (level)
             {

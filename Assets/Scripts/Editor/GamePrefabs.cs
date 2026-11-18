@@ -97,10 +97,10 @@ namespace LastSignal.EditorTools
             spot.type = LightType.Spot;
             // Strong source with physical (inverse-square) falloff: a bright pool near the player, walls
             // a few metres away clearly lit, the rest of the room stays black.
-            spot.range = 22f;
-            spot.spotAngle = 50f;
-            spot.innerSpotAngle = 18f;
-            spot.intensity = 30f;
+            spot.range = 26f;
+            spot.spotAngle = 68f;
+            spot.innerSpotAngle = 30f;
+            spot.intensity = 42f;
             spot.color = new Color(1f, 0.94f, 0.82f);
             // Real-time shadows on both presets (owner's decision): objects cast moving shadows in the beam.
             spot.shadows = LightShadows.Hard;
@@ -157,6 +157,11 @@ namespace LastSignal.EditorTools
         private static void BuildPlayerBody(GameObject root, PlayerController controller, PlayerLook look,
             PlayerInteractor interactor, FlashlightController flashlight)
         {
+            if (MixamoSetup.HasAlex)
+            {
+                BuildMixamoPlayerBody(root, controller, look, interactor, flashlight);
+                return;
+            }
             GameObject model = EnsureEchoModel();
             if (model == null) return;
             var body = (GameObject)PrefabUtility.InstantiatePrefab(model);
@@ -238,6 +243,69 @@ namespace LastSignal.EditorTools
             SetArray(pb, "leftArm", new Object[] { FindDeep(body.transform, "DEF-upper_arm.L"), FindDeep(body.transform, "DEF-forearm.L"), FindDeep(body.transform, "DEF-hand.L") });
             if (torch != null) Set(pb, "torchModel", torch);
             if (torchLens != null) Set(pb, "torchLens", torchLens);
+            Set(pb, "bodyFill", fill);
+            Camera eyesCam = root.GetComponentInChildren<Camera>();
+            if (eyesCam != null) Set(pb, "eyes", eyesCam.transform);
+        }
+
+        /// <summary>
+        /// Alex as a real person (Mixamo character, humanoid): walk / run / run-with-torch / crouch clips, the
+        /// torch held up by IK in the left hand while it is on (tucked away when off), the right hand reaching
+        /// for what you use. Head hidden; the beam does not light the body (rendering layers).
+        /// </summary>
+        private static void BuildMixamoPlayerBody(GameObject root, PlayerController controller, PlayerLook look,
+            PlayerInteractor interactor, FlashlightController flashlight)
+        {
+            GameObject body = MixamoSetup.Body(MixamoSetup.AlexModel, MixamoSetup.AlexAnimator(), root.transform);
+            if (body == null) return;
+            foreach (SkinnedMeshRenderer smr in body.GetComponentsInChildren<SkinnedMeshRenderer>())
+            {
+                smr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                smr.receiveShadows = true;
+                smr.updateWhenOffscreen = true;
+                smr.renderingLayerMask = BodyLayer;
+            }
+            Animator animator = body.GetComponent<Animator>();
+            Transform Bone(HumanBodyBones b) => MixamoSetup.Bone(body, b);
+
+            // The torch hangs in front of the view (where the left hand holds it); the hand is pulled to it by IK.
+            Transform cameraRoot = root.transform.Find("CameraRoot");
+            Transform grip = Group(cameraRoot != null ? cameraRoot : root.transform, "TorchGrip", new Vector3(-0.17f, -0.26f, 0.4f));
+            Material torchMat = Mat("TorchBody", new Color(0.16f, 0.16f, 0.17f), smoothness: 0.65f);
+            GameObject torch = Prim(grip, "Torch", PrimitiveType.Cylinder, new Vector3(0f, 0f, 0.05f), new Vector3(0.045f, 0.11f, 0.045f), torchMat,
+                new Vector3(90f, 0f, 0f), collider: false);
+            torch.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            torch.GetComponent<Renderer>().renderingLayerMask = BodyLayer;
+            GameObject lens = Prim(torch.transform, "Lens", PrimitiveType.Cylinder, new Vector3(0f, 1.0f, 0f), new Vector3(1.2f, 0.04f, 1.2f),
+                UnlitMat("TorchLens", new Color(1f, 0.93f, 0.75f)), collider: false);
+            lens.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            lens.SetActive(false);
+            torch.SetActive(false);
+
+            var fillGo = new GameObject("BodyFill");
+            fillGo.transform.SetParent(cameraRoot != null ? cameraRoot : root.transform, false);
+            fillGo.transform.localPosition = new Vector3(0.05f, 0.05f, 0.55f);
+            var fill = fillGo.AddComponent<Light>();
+            fill.type = LightType.Point;
+            fill.range = 1.4f;
+            fill.intensity = 0.12f;
+            fill.color = new Color(1f, 0.92f, 0.8f);
+            fill.shadows = LightShadows.None;
+            SetLightLayers(fill, BodyLayer);
+
+            var pb = root.AddComponent<PlayerBody>();
+            Set(pb, "animator", animator);
+            Set(pb, "controller", controller);
+            Set(pb, "look", look);
+            Set(pb, "interactor", interactor);
+            Set(pb, "flashlight", flashlight);
+            Set(pb, "head", Bone(HumanBodyBones.Head));
+            SetArray(pb, "spine", new Object[] { Bone(HumanBodyBones.Spine), Bone(HumanBodyBones.Chest) });
+            SetArray(pb, "rightArm", new Object[] { Bone(HumanBodyBones.RightUpperArm), Bone(HumanBodyBones.RightLowerArm), Bone(HumanBodyBones.RightHand) });
+            SetArray(pb, "leftArm", new Object[] { Bone(HumanBodyBones.LeftUpperArm), Bone(HumanBodyBones.LeftLowerArm), Bone(HumanBodyBones.LeftHand) });
+            Set(pb, "torchModel", torch);
+            Set(pb, "torchLens", lens);
+            Set(pb, "torchGrip", grip);
             Set(pb, "bodyFill", fill);
             Camera eyesCam = root.GetComponentInChildren<Camera>();
             if (eyesCam != null) Set(pb, "eyes", eyesCam.transform);
@@ -333,8 +401,41 @@ namespace LastSignal.EditorTools
             Transform[] spine = new Transform[0], upperArms = new Transform[0], lowerArms = new Transform[0];
             Renderer[] eyeRenderers;
             Animator animator = null;
-            GameObject model = EnsureEchoModel();
-            if (model != null)
+            Transform[] hands = new Transform[0];
+            string humanoid = MixamoSetup.HasEcho ? MixamoSetup.EchoModel : MixamoSetup.HasAlex ? MixamoSetup.AlexModel : null;
+            GameObject model = humanoid == null ? EnsureEchoModel() : null;
+            if (humanoid != null)
+            {
+                // Mixamo body (Echo.fbx, or until it exists a black silhouette of a person), driven by the zombie
+                // animations, stretched tall and thin; EchoPresence adds the hunch, long arms and fingers, twitches.
+                GameObject body = MixamoSetup.Body(humanoid, MixamoSetup.EchoAnimator(), root.transform);
+                body.transform.localScale = new Vector3(0.8f, 1.2f, 0.8f);
+                foreach (SkinnedMeshRenderer smr in body.GetComponentsInChildren<SkinnedMeshRenderer>())
+                {
+                    var mats = new Material[smr.sharedMaterials.Length];
+                    for (int i = 0; i < mats.Length; i++) mats[i] = skin;
+                    smr.sharedMaterials = mats;
+                    smr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+                    smr.updateWhenOffscreen = false;
+                }
+                animator = body.GetComponent<Animator>();
+                Transform Bone(HumanBodyBones b) => MixamoSetup.Bone(body, b);
+                head = Bone(HumanBodyBones.Head) ?? body.transform;
+                spine = new[] { Bone(HumanBodyBones.Spine), Bone(HumanBodyBones.Chest), Bone(HumanBodyBones.Neck) };
+                upperArms = new[] { Bone(HumanBodyBones.LeftUpperArm), Bone(HumanBodyBones.RightUpperArm) };
+                lowerArms = new[] { Bone(HumanBodyBones.LeftLowerArm), Bone(HumanBodyBones.RightLowerArm) };
+                hands = new[] { Bone(HumanBodyBones.LeftHand), Bone(HumanBodyBones.RightHand) };
+                eyeRenderers = new Renderer[2];
+                for (int s = 0; s < 2; s++)
+                {
+                    GameObject e = Prim(root.transform, s == 0 ? "EyeL" : "EyeR", PrimitiveType.Sphere, Vector3.zero, Vector3.one * 0.032f, eyes, collider: false);
+                    e.transform.position = head.position + root.transform.up * 0.1f + root.transform.forward * 0.075f + root.transform.right * (s == 0 ? -0.032f : 0.032f);
+                    e.transform.SetParent(head, true);
+                    e.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    eyeRenderers[s] = e.GetComponent<Renderer>();
+                }
+            }
+            else if (model != null)
             {
                 // Quaternius mannequin (CC0), stretched into a tall, thin, wrong-looking figure.
                 var body = (GameObject)PrefabUtility.InstantiatePrefab(model);
@@ -421,7 +522,12 @@ namespace LastSignal.EditorTools
             var catchSequence = root.AddComponent<EchoCatchSequence>();
             Set(catchSequence, "head", head);
             Set(catchSequence, "voice", voice);
-            if (animator != null)
+            if (animator != null && animator.isHuman)
+            {
+                SetArray(catchSequence, "leftArm", new Object[] { animator.GetBoneTransform(HumanBodyBones.LeftUpperArm), animator.GetBoneTransform(HumanBodyBones.LeftLowerArm), animator.GetBoneTransform(HumanBodyBones.LeftHand) });
+                SetArray(catchSequence, "rightArm", new Object[] { animator.GetBoneTransform(HumanBodyBones.RightUpperArm), animator.GetBoneTransform(HumanBodyBones.RightLowerArm), animator.GetBoneTransform(HumanBodyBones.RightHand) });
+            }
+            else if (animator != null)
             {
                 Transform b = animator.transform;
                 SetArray(catchSequence, "leftArm", new Object[] { FindDeep(b, "DEF-upper_arm.L"), FindDeep(b, "DEF-forearm.L"), FindDeep(b, "DEF-hand.L") });
@@ -437,6 +543,25 @@ namespace LastSignal.EditorTools
             SetArray(presence, "spine", spine);
             SetArray(presence, "upperArms", upperArms);
             SetArray(presence, "lowerArms", lowerArms);
+            SetArray(presence, "hands", hands);
+
+            if (animator != null && animator.isHuman)
+            {
+                // Crawls on all fours, up the walls and across the ceiling (visual only; drops for a chase).
+                var crawler = root.AddComponent<EchoCrawler>();
+                Transform B(HumanBodyBones b) => animator.GetBoneTransform(b);
+                Set(crawler, "ai", ai);
+                Set(crawler, "animator", animator);
+                Set(crawler, "hips", B(HumanBodyBones.Hips));
+                Set(crawler, "head", head);
+                SetArray(crawler, "spine", new Object[] { B(HumanBodyBones.Spine), B(HumanBodyBones.Chest) });
+                SetArray(crawler, "leftArm", new Object[] { B(HumanBodyBones.LeftUpperArm), B(HumanBodyBones.LeftLowerArm), B(HumanBodyBones.LeftHand) });
+                SetArray(crawler, "rightArm", new Object[] { B(HumanBodyBones.RightUpperArm), B(HumanBodyBones.RightLowerArm), B(HumanBodyBones.RightHand) });
+                SetArray(crawler, "leftLeg", new Object[] { B(HumanBodyBones.LeftUpperLeg), B(HumanBodyBones.LeftLowerLeg), B(HumanBodyBones.LeftFoot) });
+                SetArray(crawler, "rightLeg", new Object[] { B(HumanBodyBones.RightUpperLeg), B(HumanBodyBones.RightLowerLeg), B(HumanBodyBones.RightFoot) });
+                Set(crawler, "carried", smoke.transform);
+                Set(crawler, "voice", voice);
+            }
 
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, EchoPath);
             Object.DestroyImmediate(root);
@@ -746,32 +871,109 @@ namespace LastSignal.EditorTools
                 TextAlignmentOptions.TopLeft, wrap: true);
             UIButton(invPanel, "CloseButton", "CLOSE", new Vector2(0.5f, 0f), new Vector2(0f, 90f), new Vector2(320f, 90f), 34, story.CloseInventory);
 
-            // Keypad (CodeLock): time keeps running while it is open.
+            // Keypad (CodeLock): an old mechanical door keypad. Time keeps running while it is open.
             var codeUi = root.AddComponent<CodePanelUI>();
-            RectTransform codePanel = UIPanel(root.transform, "CodePanel", new Color(0f, 0f, 0f, 0.55f));
-            RectTransform pad = UIRect(codePanel, "Pad");
-            Place(pad, new Vector2(0.5f, 0.5f), new Vector2(0f, 0f), new Vector2(620f, 900f));
-            UIImage(pad, square, new Color(0.06f, 0.065f, 0.06f, 0.96f), raycast: true);
-            TMP_Text codeTitle = UIText(pad, "Title", "KEYPAD", 30, new Vector2(0.5f, 1f), new Vector2(0f, -50f), new Vector2(580f, 60f));
-            RectTransform screen = UIRect(pad, "Screen");
-            Place(screen, new Vector2(0.5f, 1f), new Vector2(0f, -135f), new Vector2(520f, 100f));
-            UIImage(screen, square, new Color(0.05f, 0.16f, 0.07f, 1f), raycast: false);
-            TMP_Text codeDisplay = UIText(screen, "Digits", "_ _ _ _", 64, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(500f, 100f));
-            codeDisplay.color = new Color(0.55f, 1f, 0.6f);
+            RectTransform codePanel = UIPanel(root.transform, "CodePanel", new Color(0f, 0f, 0f, 0.6f));
+            Sprite disc = EnsureSprite("Circle", SpriteShape.Disc);
+            RectTransform frame = UIRect(codePanel, "Frame");
+            Place(frame, new Vector2(0.5f, 0.5f), new Vector2(0f, 30f), new Vector2(640f, 800f));
+            UIImage(frame, square, new Color(0.18f, 0.18f, 0.14f, 1f), raycast: true);
+            RectTransform pad = UIRect(frame, "Plate");
+            Stretch(pad, 12f);
+            UIImage(pad, square, new Color(0.4f, 0.41f, 0.31f, 1f), raycast: true);
+            foreach (Vector2 c in new[] { new Vector2(-1f, -1f), new Vector2(1f, -1f), new Vector2(-1f, 1f), new Vector2(1f, 1f) })
+            {
+                RectTransform screw = UIRect(pad, "Screw");
+                Place(screw, new Vector2(0.5f, 0.5f), new Vector2(c.x * 280f, c.y * 365f), new Vector2(34f, 34f));
+                UIImage(screw, disc, new Color(0.16f, 0.16f, 0.15f, 1f), raycast: false);
+                RectTransform slot = UIRect(screw, "Slot");
+                Place(slot, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(26f, 5f));
+                slot.localRotation = Quaternion.Euler(0f, 0f, 35f + c.x * 20f);
+                UIImage(slot, square, new Color(0.05f, 0.05f, 0.05f, 1f), raycast: false);
+            }
+            TMP_Text codeTitle = UIText(pad, "Title", "KEYPAD", 26, new Vector2(0.5f, 1f), new Vector2(0f, -48f), new Vector2(520f, 40f));
+            codeTitle.color = new Color(0.12f, 0.12f, 0.08f);
+            codeTitle.fontStyle = FontStyles.Bold;
+            // Indicator lamps and speaker grille on the left.
+            Image Lamp(string n, float y, Color c)
+            {
+                RectTransform bezel = UIRect(pad, n + "Bezel");
+                Place(bezel, new Vector2(0.5f, 0.5f), new Vector2(-195f, y), new Vector2(104f, 92f));
+                UIImage(bezel, square, new Color(0.12f, 0.12f, 0.1f, 1f), raycast: false);
+                RectTransform lamp = UIRect(bezel, n);
+                Stretch(lamp, 8f);
+                return UIImage(lamp, square, c, raycast: false);
+            }
+            Image green = Lamp("GreenLamp", 190f, new Color(0.12f, 0.3f, 0.14f, 1f));
+            Image red = Lamp("RedLamp", 70f, new Color(0.35f, 0.08f, 0.07f, 1f));
+            for (int gy = 0; gy < 4; gy++)
+                for (int gx = 0; gx < 3; gx++)
+                {
+                    RectTransform hole = UIRect(pad, "Grille");
+                    Place(hole, new Vector2(0.5f, 0.5f), new Vector2(-225f + gx * 30f, -140f - gy * 30f), new Vector2(18f, 18f));
+                    UIImage(hole, disc, new Color(0.1f, 0.1f, 0.09f, 1f), raycast: false);
+                }
+            // Counter window showing the digits.
+            RectTransform window = UIRect(pad, "Window");
+            Place(window, new Vector2(0.5f, 0.5f), new Vector2(85f, 255f), new Vector2(340f, 86f));
+            UIImage(window, square, new Color(0.03f, 0.03f, 0.03f, 1f), raycast: false);
+            TMP_Text codeDisplay = UIText(window, "Digits", "_ _ _ _", 56, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(320f, 80f));
+            codeDisplay.color = new Color(0.9f, 0.88f, 0.8f);
+            codeDisplay.fontStyle = FontStyles.Bold;
+            // Recessed key matrix.
+            RectTransform matrix = UIRect(pad, "Matrix");
+            Place(matrix, new Vector2(0.5f, 0.5f), new Vector2(85f, -55f), new Vector2(340f, 460f));
+            UIImage(matrix, square, new Color(0.07f, 0.07f, 0.065f, 1f), raycast: false);
             string[] keys = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "CLR", "0", "OK" };
             for (int k = 0; k < keys.Length; k++)
             {
                 int col = k % 3, row = k / 3;
-                Vector2 pos = new Vector2(-180f + col * 180f, -280f - row * 140f);
-                Button b = UIButton(pad, "Key_" + keys[k], keys[k], new Vector2(0.5f, 1f), pos, new Vector2(160f, 120f), 48, null);
-                if (keys[k] == "CLR") UnityEditor.Events.UnityEventTools.AddPersistentListener(b.onClick, codeUi.Clear);
-                else if (keys[k] == "OK") UnityEditor.Events.UnityEventTools.AddPersistentListener(b.onClick, codeUi.Submit);
-                else UnityEditor.Events.UnityEventTools.AddIntPersistentListener(b.onClick, codeUi.PressDigit, int.Parse(keys[k]));
+                Vector2 pos = new Vector2(-108f + col * 108f, 165f - row * 110f);
+                RectTransform bevel = UIRect(matrix, "Bevel_" + keys[k]);
+                Place(bevel, new Vector2(0.5f, 0.5f), pos + new Vector2(0f, 2f), new Vector2(98f, 100f));
+                UIImage(bevel, square, new Color(0.32f, 0.32f, 0.3f, 1f), raycast: false);
+                RectTransform key = UIRect(matrix, "Key_" + keys[k]);
+                Place(key, new Vector2(0.5f, 0.5f), pos - new Vector2(0f, 3f), new Vector2(94f, 94f));
+                Image face = UIImage(key, square, new Color(0.06f, 0.06f, 0.06f, 1f), raycast: true);
+                var b = key.gameObject.AddComponent<Button>();
+                b.targetGraphic = face;
+                ColorBlock cb = b.colors;
+                cb.normalColor = Color.white;
+                cb.highlightedColor = new Color(1.6f, 1.6f, 1.6f);
+                cb.pressedColor = new Color(3f, 3f, 3f);
+                cb.selectedColor = Color.white;
+                b.colors = cb;
+                if (keys[k] == "CLR" || keys[k] == "OK")
+                {
+                    // Draw the cross and the tick as white strokes (the font has no such glyphs).
+                    bool tick = keys[k] == "OK";
+                    (Vector2 at, Vector2 size, float rot)[] strokes = tick
+                        ? new[] { (new Vector2(-12f, -6f), new Vector2(30f, 9f), -45f), (new Vector2(9f, 4f), new Vector2(52f, 9f), 52f) }
+                        : new[] { (Vector2.zero, new Vector2(54f, 9f), 45f), (Vector2.zero, new Vector2(54f, 9f), -45f) };
+                    foreach (var st in strokes)
+                    {
+                        RectTransform line = UIRect(key, "Stroke");
+                        Place(line, new Vector2(0.5f, 0.5f), st.at, st.size);
+                        line.localRotation = Quaternion.Euler(0f, 0f, st.rot);
+                        UIImage(line, square, new Color(0.93f, 0.92f, 0.88f, 1f), raycast: false);
+                    }
+                    if (tick) UnityEditor.Events.UnityEventTools.AddPersistentListener(b.onClick, codeUi.Submit);
+                    else UnityEditor.Events.UnityEventTools.AddPersistentListener(b.onClick, codeUi.Clear);
+                }
+                else
+                {
+                    TMP_Text label = UIText(key, "Label", keys[k], 58, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(94f, 94f));
+                    label.color = new Color(0.95f, 0.94f, 0.9f);
+                    label.fontStyle = FontStyles.Bold;
+                    UnityEditor.Events.UnityEventTools.AddIntPersistentListener(b.onClick, codeUi.PressDigit, int.Parse(keys[k]));
+                }
             }
-            UIButton(codePanel, "CloseButton", "STEP AWAY", new Vector2(0.5f, 0f), new Vector2(0f, 70f), new Vector2(360f, 90f), 32, codeUi.Close);
+            UIButton(codePanel, "CloseButton", "STEP AWAY", new Vector2(0.5f, 0f), new Vector2(0f, 60f), new Vector2(360f, 80f), 30, codeUi.Close);
             Set(codeUi, "panel", codePanel.gameObject);
             Set(codeUi, "titleText", codeTitle);
             Set(codeUi, "displayText", codeDisplay);
+            Set(codeUi, "greenLamp", green);
+            Set(codeUi, "redLamp", red);
             codePanel.gameObject.SetActive(false);
 
             RectTransform pausePanel = UIPanel(root.transform, "PausePanel", new Color(0f, 0f, 0f, 0.82f));

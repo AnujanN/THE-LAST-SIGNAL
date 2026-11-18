@@ -31,6 +31,7 @@ namespace LastSignal.EditorTools
         [MenuItem("The Last Signal/Build/Build All Game Scenes", priority = 0)]
         public static void BuildAll()
         {
+            RenderingSetup.Apply();
             GamePrefabs.RebuildAll();
             BuildMainMenu();
             Level1Builder.Build();
@@ -49,7 +50,7 @@ namespace LastSignal.EditorTools
         [MenuItem("The Last Signal/Build/Main Menu")]
         public static void BuildMainMenu()
         {
-            var scene = NewScene();
+            var scene = NewScene("MainMenu");
             Atmosphere(new Color(0.05f, 0.05f, 0.06f), Color.black, 0f);
             var camGo = new GameObject("MenuCamera") { tag = "MainCamera" };
             var cam = camGo.AddComponent<Camera>();
@@ -103,7 +104,7 @@ namespace LastSignal.EditorTools
         [MenuItem("The Last Signal/Build/Ending")]
         public static void BuildEnding()
         {
-            var scene = NewScene();
+            var scene = NewScene("Ending");
             Material sky = AssetDatabase.LoadAssetAtPath<Material>(MaterialDir + "/SunriseSky.mat");
             if (sky == null)
             {

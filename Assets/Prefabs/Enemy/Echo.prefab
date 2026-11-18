@@ -675,6 +675,8 @@ MonoBehaviour:
   startActive: 1
   voice: {fileID: 4951725778424977903}
   warningDistance: 14
+  safeRestartDistance: 15
+  restartGraceSeconds: 4
 --- !u!1 &7646248800887401357
 GameObject:
   m_ObjectHideFlags: 0

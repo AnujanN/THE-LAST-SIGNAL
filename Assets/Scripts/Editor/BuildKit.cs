@@ -16,6 +16,7 @@ using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
@@ -63,8 +64,108 @@ namespace LastSignal.EditorTools
                 m.SetColor("_EmissionColor", color * 1.5f);
                 m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.BakedEmissive;
             }
+            ApplySurface(m, name);
             EditorUtility.SetDirty(m);
             return m;
+        }
+
+        // ================================================================== realistic surfaces
+
+        public const string TextureDir = "Assets/Art/Textures/PolyHaven";
+
+        /// <summary>Greybox material name -> photo-scanned Poly Haven texture (CC0), tint and smoothness.</summary>
+        private static readonly Dictionary<string, (string tex, Color tint, float smooth)> Surfaces =
+            new Dictionary<string, (string, Color, float)>
+            {
+                { "L1_Ground", ("asphalt_02", new Color(0.55f, 0.55f, 0.58f), 0.35f) },
+                { "L1_Floor", ("concrete_floor_worn_001", new Color(0.8f, 0.78f, 0.75f), 0.2f) },
+                { "L1_Wall", ("beige_wall_001", new Color(0.62f, 0.6f, 0.56f), 0.1f) },
+                { "L1_Facade", ("brick_wall_001", new Color(0.5f, 0.48f, 0.48f), 0.15f) },
+                { "L1_Wood", ("brown_planks_05", new Color(0.7f, 0.65f, 0.6f), 0.2f) },
+                { "L1_Door", ("brown_planks_05", new Color(0.55f, 0.48f, 0.42f), 0.25f) },
+                { "Fabric", ("dirty_carpet", new Color(0.55f, 0.45f, 0.48f), 0.05f) },
+                { "Metal", ("rusty_metal_02", new Color(0.75f, 0.75f, 0.78f), 0.35f) },
+                { "FusePanel", ("painted_metal_shutter", new Color(0.6f, 0.68f, 0.6f), 0.3f) },
+                { "Red", ("painted_metal_shutter", new Color(0.65f, 0.15f, 0.12f), 0.3f) },
+                { "L2_Concrete", ("damaged_concrete_floor_02", new Color(0.6f, 0.6f, 0.58f), 0.3f) },
+                { "L2_Wall", ("concrete_wall_004", new Color(0.55f, 0.57f, 0.55f), 0.15f) },
+                { "L2_Pipe", ("rusty_metal_02", new Color(0.7f, 0.6f, 0.55f), 0.4f) },
+                { "L2_Locker", ("painted_metal_shutter", new Color(0.45f, 0.55f, 0.58f), 0.35f) },
+                { "Generator", ("painted_metal_shutter", new Color(0.45f, 0.55f, 0.42f), 0.35f) },
+                { "L3_Floor", ("concrete_slab_wall", new Color(0.55f, 0.55f, 0.6f), 0.25f) },
+                { "L3_Wall", ("concrete_panels", new Color(0.55f, 0.56f, 0.62f), 0.15f) },
+                { "L3_Dark", ("rusty_metal_02", new Color(0.35f, 0.35f, 0.4f), 0.4f) },
+                { "L3_Door", ("painted_metal_shutter", new Color(0.45f, 0.48f, 0.55f), 0.35f) },
+                { "Quarters_Floor", ("dirty_carpet", new Color(0.6f, 0.52f, 0.5f), 0.05f) },
+                { "Quarters_Wall", ("plaster_grey_04", new Color(0.62f, 0.6f, 0.58f), 0.1f) },
+                { "Quarters_Tiles", ("dirty_tiles", new Color(0.75f, 0.75f, 0.72f), 0.45f) },
+                { "Burned_Floor", ("burned_ground_01", new Color(0.6f, 0.55f, 0.52f), 0.1f) },
+                { "Burned_Wall", ("black_painted_planks", new Color(0.4f, 0.37f, 0.35f), 0.1f) },
+                { "Ceiling", ("concrete_slab_wall", new Color(0.45f, 0.45f, 0.47f), 0.1f) },
+            };
+
+        private static void ApplySurface(Material m, string name)
+        {
+            if (!Surfaces.TryGetValue(name, out var s)) return;
+            var diff = AssetDatabase.LoadAssetAtPath<Texture2D>(TextureDir + "/" + s.tex + "_diff.jpg");
+            var nor = AssetDatabase.LoadAssetAtPath<Texture2D>(TextureDir + "/" + s.tex + "_nor.jpg");
+            if (diff == null) return;
+            m.SetTexture("_BaseMap", diff);
+            m.SetColor("_BaseColor", s.tint);
+            m.SetFloat("_Smoothness", s.smooth);
+            if (nor != null)
+            {
+                m.SetTexture("_BumpMap", nor);
+                m.SetFloat("_BumpScale", 1f);
+                m.EnableKeyword("_NORMALMAP");
+            }
+        }
+
+        public static bool IsTextured(Material m) => m != null && m.GetTexture("_BaseMap") != null;
+
+        private static readonly Dictionary<string, Mesh> cubeCache = new Dictionary<string, Mesh>();
+
+        /// <summary>
+        /// Cube mesh whose UVs are scaled to the box's real size (metres / tile), so textures keep their
+        /// real-world scale on every wall, floor and prop instead of stretching. Embedded in the scene.
+        /// </summary>
+        public static Mesh WorldCube(Vector3 size, float tileMetres = 2f)
+        {
+            string key = $"{size.x:F2}_{size.y:F2}_{size.z:F2}_{tileMetres:F1}";
+            if (cubeCache.TryGetValue(key, out Mesh cached) && cached != null) return cached;
+
+            var verts = new List<Vector3>();
+            var norms = new List<Vector3>();
+            var uvs = new List<Vector2>();
+            var tris = new List<int>();
+            void Face(Vector3 n, Vector3 u, Vector3 v, float su, float sv)
+            {
+                int i = verts.Count;
+                Vector3 c = n * 0.5f;
+                verts.Add(c - u * 0.5f - v * 0.5f); verts.Add(c + u * 0.5f - v * 0.5f);
+                verts.Add(c + u * 0.5f + v * 0.5f); verts.Add(c - u * 0.5f + v * 0.5f);
+                for (int k = 0; k < 4; k++) norms.Add(n);
+                uvs.Add(new Vector2(0f, 0f)); uvs.Add(new Vector2(su, 0f));
+                uvs.Add(new Vector2(su, sv)); uvs.Add(new Vector2(0f, sv));
+                tris.AddRange(new[] { i, i + 2, i + 1, i, i + 3, i + 2 });
+            }
+            float t = Mathf.Max(0.1f, tileMetres);
+            Face(Vector3.forward, Vector3.left, Vector3.up, size.x / t, size.y / t);
+            Face(Vector3.back, Vector3.right, Vector3.up, size.x / t, size.y / t);
+            Face(Vector3.right, Vector3.forward, Vector3.up, size.z / t, size.y / t);
+            Face(Vector3.left, Vector3.back, Vector3.up, size.z / t, size.y / t);
+            Face(Vector3.up, Vector3.right, Vector3.forward, size.x / t, size.z / t);
+            Face(Vector3.down, Vector3.right, Vector3.back, size.x / t, size.z / t);
+
+            var mesh = new Mesh { name = "WorldCube_" + key };
+            mesh.SetVertices(verts);
+            mesh.SetNormals(norms);
+            mesh.SetUVs(0, uvs);
+            mesh.SetTriangles(tris, 0);
+            mesh.RecalculateTangents();
+            mesh.RecalculateBounds();
+            cubeCache[key] = mesh;
+            return mesh;
         }
 
         public static Material UnlitMat(string name, Color color, bool transparent = false)
@@ -138,22 +239,58 @@ namespace LastSignal.EditorTools
 
         // ================================================================== scene
 
-        public static Scene NewScene()
+        private static string currentSceneName = "Scene";
+
+        public static Scene NewScene(string sceneName = "Scene")
         {
+            currentSceneName = sceneName;
+            cubeCache.Clear();
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             RenderSettings.skybox = null;
             RenderSettings.ambientMode = AmbientMode.Flat;
             return scene;
         }
 
-        public static void Atmosphere(Color ambient, Color fogColor, float fogDensity)
+        /// <summary>
+        /// Horror atmosphere: ambient light is cut hard (the flashlight must matter), fog thickened, and a
+        /// colour-grading volume (desaturated, tinted, high contrast, vignette) is added for the scene.
+        /// </summary>
+        public static void Atmosphere(Color ambient, Color fogColor, float fogDensity, float darkness = 0.3f)
         {
             RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = ambient;
+            RenderSettings.ambientLight = ambient * darkness;
             RenderSettings.fog = fogDensity > 0f;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogColor = fogColor;
-            RenderSettings.fogDensity = fogDensity;
+            RenderSettings.fogColor = fogColor * 0.6f;
+            RenderSettings.fogDensity = fogDensity * 1.6f;
+            Color grade = ambient.maxColorComponent > 0f ? ambient / ambient.maxColorComponent : Color.white;
+            PostFx(currentSceneName, Color.Lerp(Color.white, grade, 0.35f));
+        }
+
+        public static void PostFx(string sceneName, Color filter, float saturation = -35f, float contrast = 22f, float vignette = 0.42f)
+        {
+            EnsureFolder(GeneratedDir);
+            string name = string.IsNullOrEmpty(sceneName) ? "Scene" : sceneName;
+            string path = GeneratedDir + "/" + name + "_PostFX.asset";
+            if (AssetDatabase.LoadAssetAtPath<Object>(path) != null) AssetDatabase.DeleteAsset(path);
+            var profile = ScriptableObject.CreateInstance<VolumeProfile>();
+            var ca = profile.Add<ColorAdjustments>(true);
+            ca.postExposure.Override(-0.15f);
+            ca.contrast.Override(contrast);
+            ca.saturation.Override(saturation);
+            ca.colorFilter.Override(filter);
+            var vig = profile.Add<Vignette>(true);
+            vig.intensity.Override(vignette);
+            vig.smoothness.Override(0.5f);
+            vig.color.Override(Color.black);
+            AssetDatabase.CreateAsset(profile, path);
+            foreach (VolumeComponent c in profile.components) AssetDatabase.AddObjectToAsset(c, profile);
+            AssetDatabase.SaveAssets();
+            var go = new GameObject("PostFX");
+            var volume = go.AddComponent<Volume>();
+            volume.isGlobal = true;
+            volume.priority = 1f;
+            volume.sharedProfile = profile;
         }
 
         public static void SaveScene(Scene scene, string path)
@@ -207,6 +344,7 @@ namespace LastSignal.EditorTools
             go.transform.localPosition = center;
             go.transform.localScale = size;
             go.GetComponent<Renderer>().sharedMaterial = mat;
+            if (IsTextured(mat)) go.GetComponent<MeshFilter>().sharedMesh = WorldCube(size);
             if (!collider) Object.DestroyImmediate(go.GetComponent<Collider>());
             go.isStatic = isStatic;
             return go;
@@ -280,7 +418,9 @@ namespace LastSignal.EditorTools
             var l = go.AddComponent<Light>();
             l.type = LightType.Point;
             l.color = color;
-            l.intensity = intensity;
+            // Scenes now use dark, realistic albedo and physical falloff; scale the authored values so
+            // working lamps still read as lit rooms (the darkness comes from lamps being off or broken).
+            l.intensity = intensity * 4f;
             l.range = range;
             l.shadows = LightShadows.None;
             return l;
@@ -312,7 +452,7 @@ namespace LastSignal.EditorTools
             tmp.text = text;
             tmp.fontSize = fontSize;
             tmp.alignment = TextAlignmentOptions.Center;
-            tmp.color = color ?? new Color(0.9f, 0.88f, 0.8f);
+            tmp.color = color ?? new Color(0.34f, 0.33f, 0.3f); // unlit text: keep dim so it does not glow in the dark
             tmp.textWrappingMode = TextWrappingModes.Normal;
             ((RectTransform)go.transform).sizeDelta = area ?? new Vector2(2.4f, 0.8f);
             return tmp;

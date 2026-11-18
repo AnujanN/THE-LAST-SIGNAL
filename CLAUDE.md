@@ -3,12 +3,17 @@
 Read `The_Last_Signal_Game_Development_Brief.pdf` before making project changes. It is the primary source of truth for the story, three-level structure, gameplay, Android requirements, acceptance criteria and implementation order.
 
 ## Project goal
-Build an offline, single-player, 3D first-person psychological horror game in Unity, Android-first, with exactly three playable levels:
+Build an offline, single-player, 3D first-person psychological horror game in Unity, Android-first.
+
+**Level count changed by the project owner on 18 Nov 2026: five playable levels** (the brief's original
+"exactly three" is superseded; see `Docs/Upgrade_Plan.md`):
 1. The Abandoned Station (easy)
 2. The Underground Secrets (medium)
-3. The Last Transmission (hard)
+3. The Living Quarters (medium-hard, new)
+4. The Burned Wing (hard, new)
+5. The Last Transmission (hardest)
 
-The story follows Alex as he investigates his sister Maya's disappearance, encounters The Echo, discovers that Maya saved him during the station fire, broadcasts her final recording, and escapes. End with a sunrise epilogue, memorial scene, `THE END` and credits. Do not add a cliffhanger or additional playable level.
+The story follows Alex as he investigates his sister Maya's disappearance, encounters The Echo, discovers that Maya saved him during the station fire, broadcasts her final recording, and escapes. End with a sunrise epilogue, memorial scene, `THE END` and credits. Do not add a cliffhanger or any level beyond the five above.
 
 ## Core gameplay
 - First-person movement, camera look, sprint and crouch.

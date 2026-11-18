@@ -77,19 +77,24 @@ namespace LastSignal.EditorTools
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.01f, 0.01f, 0.015f);
             camGo.AddComponent<AudioListener>();
-            camGo.AddComponent<UniversalAdditionalCameraData>().renderPostProcessing = false;
+            camGo.AddComponent<UniversalAdditionalCameraData>().renderPostProcessing = true;
 
             var flashGo = new GameObject("Flashlight");
             flashGo.transform.SetParent(cameraRoot, false);
             flashGo.transform.localPosition = new Vector3(0.12f, -0.12f, 0.1f);
             var spot = flashGo.AddComponent<Light>();
             spot.type = LightType.Spot;
-            spot.range = 16f;
-            spot.spotAngle = 62f;
-            spot.innerSpotAngle = 28f;
-            spot.intensity = 3.2f;
-            spot.color = new Color(1f, 0.95f, 0.85f);
-            spot.shadows = LightShadows.None;
+            // Strong source with physical (inverse-square) falloff: a bright pool near the player, walls
+            // a few metres away clearly lit, the rest of the room stays black.
+            spot.range = 22f;
+            spot.spotAngle = 50f;
+            spot.innerSpotAngle = 18f;
+            spot.intensity = 30f;
+            spot.color = new Color(1f, 0.94f, 0.82f);
+            // Real-time shadows on both presets (owner's decision): objects cast moving shadows in the beam.
+            spot.shadows = LightShadows.Hard;
+            spot.shadowStrength = 0.9f;
+            spot.shadowNearPlane = 0.15f;
             spot.enabled = false;
             var click = flashGo.AddComponent<AudioSource>();
             click.playOnAwake = false;

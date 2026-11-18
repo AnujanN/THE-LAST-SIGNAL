@@ -24,7 +24,7 @@ namespace LastSignal.EditorTools
             GameObject playerPrefab = GamePrefabs.Player(rebuildPrefabs);
             GameObject hudPrefab = GamePrefabs.Hud(rebuildPrefabs);
 
-            var scene = NewScene();
+            var scene = NewScene("M1_Greybox");
             Atmosphere(new Color(0.07f, 0.07f, 0.08f), Color.black, 0f);
 
             Material floor = Mat("Greybox_Floor", new Color(0.32f, 0.32f, 0.34f));

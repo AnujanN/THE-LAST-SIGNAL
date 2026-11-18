@@ -26,7 +26,7 @@ namespace LastSignal.EditorTools
         {
             GameObject playerPrefab = GamePrefabs.Player();
             GameObject hudPrefab = GamePrefabs.Hud();
-            var scene = NewScene();
+            var scene = NewScene("Level01_Station");
             Atmosphere(new Color(0.035f, 0.04f, 0.055f), new Color(0.02f, 0.025f, 0.035f), 0.012f);
 
             Material ground = Mat("L1_Ground", new Color(0.12f, 0.13f, 0.12f));

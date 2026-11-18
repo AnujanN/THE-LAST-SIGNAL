@@ -1,0 +1,17 @@
+Poly Haven textures (CC0, polyhaven.com). Authors:
+concrete_floor_worn_001: Dimitrios Savva, Rico Cilliers
+damaged_concrete_floor_02: Rob Tuytel
+beige_wall_001: Dimitrios Savva, Rico Cilliers
+concrete_wall_004: Dario Barresi, Charlotte Baglioni
+concrete_panels: Amal Kumar
+brick_wall_001: Rob Tuytel, Dimitrios Savva
+asphalt_02: Rob Tuytel
+brown_planks_05: Rob Tuytel
+rusty_metal_02: Rob Tuytel
+painted_metal_shutter: Dario Barresi, Rico Cilliers, Charlotte Baglioni
+dirty_tiles: Matterfield, Jenelle van Heerden
+dirty_carpet: Rohit Seervi
+burned_ground_01: Rob Tuytel
+black_painted_planks: Dimitrios Savva
+concrete_slab_wall: Dimitrios Savva
+plaster_grey_04: Rob Tuytel

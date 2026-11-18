@@ -93,6 +93,27 @@ namespace LastSignal.Player
                 ChargeChanged?.Invoke(Charge01);
                 if (charge <= 0f) SetOn(false);
             }
+
+            if (IsOn && spotLight != null) spotLight.intensity = baseIntensity * Unsteadiness();
+        }
+
+        /// <summary>
+        /// 1 = steady. A dying battery (under 15%) stutters and dips; The Echo nearby makes the beam flicker
+        /// (driven by the same threat level as the heartbeat), so the light itself warns the player.
+        /// </summary>
+        private float Unsteadiness()
+        {
+            float k = 1f;
+            float t = Time.time;
+            if (drainEnabled && Charge01 < 0.15f)
+            {
+                float weak = 1f - Charge01 / 0.15f;
+                k *= Mathf.Lerp(1f, 0.55f, weak);
+                if (Mathf.PerlinNoise(t * 7f, 1.3f) < 0.25f * weak) k *= 0.15f;
+            }
+            float threat = Audio.AudioManager.Instance != null ? Audio.AudioManager.Instance.ThreatLevel : 0f;
+            if (threat > 0.35f && Mathf.PerlinNoise(t * 15f, 4.2f) < (threat - 0.35f) * 0.9f) k *= 0.1f;
+            return k;
         }
 
         public void Toggle() => SetOn(!IsOn);

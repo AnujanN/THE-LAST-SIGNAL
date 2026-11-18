@@ -27,7 +27,7 @@ namespace LastSignal.EditorTools
             GameObject playerPrefab = GamePrefabs.Player();
             GameObject hudPrefab = GamePrefabs.Hud();
             GameObject echoPrefab = GamePrefabs.Echo();
-            var scene = NewScene();
+            var scene = NewScene("Level03_Tower");
             Atmosphere(new Color(0.03f, 0.03f, 0.045f), new Color(0.015f, 0.01f, 0.02f), 0.025f);
 
             Material floor = Mat("L3_Floor", new Color(0.2f, 0.2f, 0.23f));

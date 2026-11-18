@@ -627,15 +627,16 @@ namespace LastSignal.EditorTools
         {
             RectTransform r = UIRect(parent, name);
             Place(r, anchor, pos, size);
-            Image img = UIImage(r, sprite ?? EnsureSprite("Square", SpriteShape.Square), new Color(1f, 1f, 1f, 0.16f), raycast: true);
+            Image img = UIImage(r, sprite ?? EnsureSprite("Square", SpriteShape.Square), new Color(0.07f, 0.07f, 0.08f, 0.88f), raycast: true);
             var b = r.gameObject.AddComponent<Button>();
             b.targetGraphic = img;
             ColorBlock cb = b.colors;
             cb.normalColor = Color.white;
-            cb.highlightedColor = new Color(1.6f, 1.5f, 1.2f);
-            cb.pressedColor = new Color(2.2f, 2f, 1.5f);
+            cb.highlightedColor = new Color(2.2f, 2.1f, 1.9f);
+            cb.pressedColor = new Color(4f, 3.5f, 2.6f);
+            cb.selectedColor = Color.white;
             cb.disabledColor = new Color(0.5f, 0.5f, 0.5f, 0.4f);
-            cb.colorMultiplier = 2f;
+            cb.colorMultiplier = 1f;
             b.colors = cb;
             UIText(r, "Label", label, fontSize, new Vector2(0.5f, 0.5f), Vector2.zero, size);
             if (onClick != null) UnityEventTools.AddPersistentListener(b.onClick, onClick);

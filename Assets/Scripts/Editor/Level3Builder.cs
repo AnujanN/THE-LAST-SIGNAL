@@ -39,6 +39,7 @@ namespace LastSignal.EditorTools
             Material paper = Mat("Paper", new Color(0.85f, 0.82f, 0.7f));
             Material partMat = Mat("Greybox_Accent", new Color(0.9f, 0.75f, 0.2f));
             Material black = Mat("Black", new Color(0.03f, 0.03f, 0.03f));
+            Material slotMat = Mat("SlotEmpty", new Color(0.45f, 0.3f, 0.08f));
             Material red = Mat("Red", new Color(0.6f, 0.08f, 0.06f));
             Material glow = Mat("TransmitterGlow", new Color(0.5f, 0.7f, 1f), emissive: true);
             Material doorMat = Mat("L3_Door", new Color(0.3f, 0.32f, 0.36f), smoothness: 0.5f);
@@ -153,26 +154,26 @@ namespace LastSignal.EditorTools
             staticSource.maxDistance = 14f;
             staticSource.playOnAwake = false;
             Set(freq, "staticSource", staticSource);
-            ItemSlot ampSlot = Slot(items, "Slot_RFAmp", new Vector3(-1.2f, 1f, 24.95f), "l3_slot_rf", "rf_amp", "RF amplifier", "amplifier bay", black, partMat, new Vector3(0.3f, 0.2f, 0.1f));
-            ItemSlot couplerSlot = Slot(items, "Slot_Coupler", new Vector3(0f, 1f, 24.95f), "l3_slot_coupler", "power_coupler", "Power coupler", "coupler socket", black, partMat, new Vector3(0.3f, 0.2f, 0.1f));
-            ItemSlot tunerSlot = Slot(items, "Slot_Tuner", new Vector3(1.2f, 1f, 24.95f), "l3_slot_tuner", "antenna_tuner", "Antenna tuner", "tuner bay", black, partMat, new Vector3(0.3f, 0.2f, 0.1f));
+            ItemSlot ampSlot = Slot(items, "Slot_RFAmp", new Vector3(-1.2f, 1f, 24.95f), "l3_slot_rf", "rf_amp", "RF amplifier", "amplifier bay", slotMat, partMat, new Vector3(0.3f, 0.2f, 0.1f));
+            ItemSlot couplerSlot = Slot(items, "Slot_Coupler", new Vector3(0f, 1f, 24.95f), "l3_slot_coupler", "power_coupler", "Power coupler", "coupler socket", slotMat, partMat, new Vector3(0.3f, 0.2f, 0.1f));
+            ItemSlot tunerSlot = Slot(items, "Slot_Tuner", new Vector3(1.2f, 1f, 24.95f), "l3_slot_tuner", "antenna_tuner", "Antenna tuner", "tuner bay", slotMat, partMat, new Vector3(0.3f, 0.2f, 0.1f));
             Sign(signs, "Label_RF", "RF AMP", new Vector3(-1.2f, 1.25f, 24.94f), 0f, 1.3f, null, new Vector2(0.7f, 0.2f));
             Sign(signs, "Label_Coupler", "COUPLER", new Vector3(0f, 1.25f, 24.94f), 0f, 1.3f, null, new Vector2(0.7f, 0.2f));
             Sign(signs, "Label_Tuner", "TUNER", new Vector3(1.2f, 1.25f, 24.94f), 0f, 1.3f, null, new Vector2(0.7f, 0.2f));
             SetArray(freq, "modules", new Object[] { ampSlot, couplerSlot, tunerSlot });
             TextMeshPro display = Sign(signs, "FrequencyDisplay", "", new Vector3(0f, 1.75f, 24.97f), 0f, 3.2f, new Color(0.55f, 1f, 0.6f), new Vector2(2.4f, 0.8f));
             Set(freq, "display", display);
-            (string label, float delta, float x)[] knobs = { ("-1.0", -1f, -1.05f), ("-0.1", -0.1f, -0.35f), ("+0.1", 0.1f, 0.35f), ("+1.0", 1f, 1.05f) };
+            (string label, float delta, float x)[] knobs = { ("-1.0", -1f, -1.25f), ("-0.1", -0.1f, -0.7f), ("+0.1", 0.1f, -0.15f), ("+1.0", 1f, 0.4f) };
             foreach (var k in knobs)
             {
                 ActionButton knob = Button3D(items, "Knob_" + k.label, new Vector3(k.x, 1.06f, 23.0f), 0f, "l3_knob_" + k.label,
                     "Tune " + k.label + " MHz", metal, new Vector3(0.2f, 0.12f, 0.2f));
                 On(knob, "onPressed", freq.Tune, k.delta);
-                Sign(signs, "KnobLabel_" + k.label, k.label, new Vector3(k.x, 1.3f, 23.25f), 0f, 1.4f, null, new Vector2(0.5f, 0.2f));
+                Sign(signs, "KnobLabel_" + k.label, k.label, new Vector3(k.x, 0.8f, 22.78f), 0f, 1.1f, null, new Vector2(0.5f, 0.2f));
             }
-            ActionButton transmit = Button3D(items, "TransmitLever", new Vector3(1.8f, 1.2f, 23.2f), 0f, "l3_transmit", "Transmit", red, new Vector3(0.12f, 0.4f, 0.12f));
+            ActionButton transmit = Button3D(items, "TransmitLever", new Vector3(1.15f, 1.2f, 23.1f), 0f, "l3_transmit", "Transmit", red, new Vector3(0.12f, 0.4f, 0.12f));
             On(transmit, "onPressed", freq.Transmit);
-            Sign(signs, "TransmitLabel", "TRANSMIT", new Vector3(1.8f, 1.55f, 23.25f), 0f, 1.4f, null, new Vector2(0.7f, 0.2f));
+            Sign(signs, "TransmitLabel", "TRANSMIT", new Vector3(1.15f, 0.8f, 22.78f), 0f, 1.1f, null, new Vector2(0.7f, 0.2f));
 
             On(freq, "onModulesReady", events.SetObjective, "l3_tune|Tune the transmitter to the emergency channel, then transmit");
             On(freq, "onSolved", events.SetObjective, "l3_recording|Play Maya's final recording on the desk");

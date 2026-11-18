@@ -190,7 +190,7 @@ namespace LastSignal.EditorTools
                 Sign(signs, "Label_" + labels[i], labels[i], new Vector3(-1.3f, 1.7f, zs[i]), -90f, 1.6f, null, new Vector2(0.3f, 0.15f));
             }
             ItemSlot fuseSlot = Slot(items, "FuseSocket", new Vector3(-1.3f, 0.95f, 9.6f), "l1_fuse_socket", "main_fuse", "Main fuse",
-                "main fuse socket", Mat("Black", new Color(0.03f, 0.03f, 0.03f)), Mat("Fuse", new Color(0.8f, 0.8f, 0.85f)), new Vector3(0.1f, 0.18f, 0.14f));
+                "main fuse socket", Mat("SlotEmpty", new Color(0.45f, 0.3f, 0.08f)), Mat("Fuse", new Color(0.8f, 0.8f, 0.85f)), new Vector3(0.1f, 0.18f, 0.14f));
             SetArray(puzzle, "switches", switches);
             SetBools(puzzle, "solution", new[] { true, false, true, false });
             Set(puzzle, "fuseSlot", fuseSlot);

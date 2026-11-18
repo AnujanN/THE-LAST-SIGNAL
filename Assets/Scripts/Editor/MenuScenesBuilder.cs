@@ -18,7 +18,7 @@ namespace LastSignal.EditorTools
 
         private const string CreditsText =
             "<size=150%>THE LAST SIGNAL</size>\n\nA university game project\n\n\n" +
-            "<b>Game design & development</b>\n(your name here)\n\n" +
+            "<b>Game design & development</b>\nAnujan N\n\n" +
             "<b>Characters</b>\nAlex\nMaya\nThe Echo\n\n" +
             "<b>Built with</b>\nUnity 6 - Universal Render Pipeline\nClaude Code + Unity MCP\n\n" +
             "<b>Audio</b>\nPlaceholder sounds generated in code\n\n" +
@@ -60,7 +60,7 @@ namespace LastSignal.EditorTools
             Sprite vignette = EnsureSprite("Vignette", SpriteShape.Vignette);
             RectTransform vig = UIRect(root.transform, "Vignette");
             Stretch(vig);
-            UIImage(vig, vignette, new Color(1f, 1f, 1f, 0.6f), raycast: false);
+            UIImage(vig, vignette, new Color(0f, 0f, 0f, 0.9f), raycast: false);
 
             var c = new Vector2(0.5f, 0.5f);
             RectTransform main = UIRect(root.transform, "MainPage");
@@ -114,16 +114,16 @@ namespace LastSignal.EditorTools
             sky.SetFloat("_Exposure", 1.1f);
             RenderSettings.skybox = sky;
             RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.42f, 0.36f, 0.33f);
+            RenderSettings.ambientLight = new Color(0.55f, 0.48f, 0.42f);
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogColor = new Color(0.85f, 0.6f, 0.45f);
             RenderSettings.fogDensity = 0.012f;
 
             Transform env = Group(null, "Environment");
-            Light sun = DirectionalLight(env, "Sunrise", new Vector3(8f, -35f, 0f), new Color(1f, 0.72f, 0.48f), 1.3f);
+            Light sun = DirectionalLight(env, "Sunrise", new Vector3(16f, -35f, 0f), new Color(1f, 0.75f, 0.52f), 1.6f);
             RenderSettings.sun = sun;
-            Box(env, "Hill", new Vector3(0f, -0.1f, 10f), new Vector3(80f, 0.2f, 80f), Mat("Grass", new Color(0.22f, 0.3f, 0.16f)));
+            Box(env, "Hill", new Vector3(0f, -0.1f, 40f), new Vector3(300f, 0.2f, 300f), Mat("Grass", new Color(0.3f, 0.42f, 0.2f)));
             Material stone = Mat("Stone", new Color(0.55f, 0.55f, 0.53f));
             Box(env, "MemorialStone", new Vector3(0f, 0.55f, 0f), new Vector3(0.9f, 1.1f, 0.25f), stone);
             Box(env, "MemorialBase", new Vector3(0f, 0.06f, 0.05f), new Vector3(1.3f, 0.12f, 0.6f), stone);
@@ -134,9 +134,9 @@ namespace LastSignal.EditorTools
             for (int i = 0; i < 6; i++)
                 Prim(env, "Flower", PrimitiveType.Sphere, new Vector3(-0.45f + i * 0.08f, 0.16f, -0.2f + (i % 2) * 0.05f), Vector3.one * 0.06f, flowerMats[i % 2], collider: false);
             // The radio station silhouette on the horizon, quiet at last.
-            Material silhouette = Mat("Silhouette", new Color(0.12f, 0.1f, 0.1f));
-            Box(env, "Station", new Vector3(-14f, 3f, 38f), new Vector3(12f, 6f, 8f), silhouette, collider: false);
-            Box(env, "Tower", new Vector3(-10f, 10f, 40f), new Vector3(1f, 20f, 1f), silhouette, collider: false);
+            Material silhouette = Mat("Silhouette", new Color(0.04f, 0.035f, 0.035f));
+            Box(env, "Station", new Vector3(-30f, 4f, 85f), new Vector3(16f, 8f, 10f), silhouette, collider: false);
+            Box(env, "Tower", new Vector3(-24f, 14f, 88f), new Vector3(1.2f, 28f, 1.2f), silhouette, collider: false);
 
             Transform rig = Group(null, "CameraRig", new Vector3(0f, 1.6f, -6f));
             var camGo = new GameObject("EndingCamera") { tag = "MainCamera" };

@@ -38,6 +38,7 @@ namespace LastSignal.EditorTools
             Material paper = Mat("Paper", new Color(0.85f, 0.82f, 0.7f));
             Material partMat = Mat("Greybox_Accent", new Color(0.9f, 0.75f, 0.2f));
             Material black = Mat("Black", new Color(0.03f, 0.03f, 0.03f));
+            Material slotMat = Mat("SlotEmpty", new Color(0.45f, 0.3f, 0.08f));
             Material red = Mat("Red", new Color(0.6f, 0.08f, 0.06f));
             Material yellow = Mat("Yellow", new Color(0.75f, 0.65f, 0.1f));
             Material green = Mat("Green", new Color(0.15f, 0.55f, 0.2f));
@@ -130,7 +131,7 @@ namespace LastSignal.EditorTools
             Sign(signs, "Sign_Storage2", "STORAGE B", new Vector3(1.38f, 2.5f, 12f), 90f);
             Sign(signs, "Sign_Pump", "PUMP ROOM", new Vector3(-1.38f, 2.5f, 20f), -90f);
             Sign(signs, "Sign_Lift", "ELEVATOR\nTO TRANSMISSION TOWER", new Vector3(7.88f, 2.6f, 29f), 90f, 2.2f);
-            Sign(signs, "Sign_Gen", "BACKUP GENERATOR", new Vector3(0f, 2.3f, 29.45f), 0f, 3f);
+            Sign(signs, "Sign_Gen", "BACKUP GENERATOR", new Vector3(0f, 2.3f, 29.45f), 0f, 2f, null, new Vector2(4f, 0.5f));
 
             // ------------------------------------------------------------------ story + interactables
             Transform story = Group(null, "Story");
@@ -162,9 +163,9 @@ namespace LastSignal.EditorTools
             genGo.transform.position = new Vector3(0f, 0.9f, 30.3f);
             var generator = genGo.AddComponent<GeneratorPuzzle>();
             SetValue(generator, "id", "l2_generator");
-            ItemSlot plugSlot = Slot(items, "Slot_SparkPlug", new Vector3(-1f, 1.1f, 29.45f), "l2_slot_plug", "spark_plug", "Spark plug", "spark plug socket", black, partMat, new Vector3(0.22f, 0.22f, 0.1f));
-            ItemSlot fuseSlot = Slot(items, "Slot_Fuse", new Vector3(0f, 1.1f, 29.45f), "l2_slot_fuse", "fuse_30a", "30A fuse", "fuse holder", black, partMat, new Vector3(0.22f, 0.22f, 0.1f));
-            ItemSlot beltSlot = Slot(items, "Slot_Belt", new Vector3(1f, 1.1f, 29.45f), "l2_slot_belt", "drive_belt", "Drive belt", "belt pulley", black, partMat, new Vector3(0.22f, 0.22f, 0.1f));
+            ItemSlot plugSlot = Slot(items, "Slot_SparkPlug", new Vector3(-1f, 1.1f, 29.45f), "l2_slot_plug", "spark_plug", "Spark plug", "spark plug socket", slotMat, partMat, new Vector3(0.22f, 0.22f, 0.1f));
+            ItemSlot fuseSlot = Slot(items, "Slot_Fuse", new Vector3(0f, 1.1f, 29.45f), "l2_slot_fuse", "fuse_30a", "30A fuse", "fuse holder", slotMat, partMat, new Vector3(0.22f, 0.22f, 0.1f));
+            ItemSlot beltSlot = Slot(items, "Slot_Belt", new Vector3(1f, 1.1f, 29.45f), "l2_slot_belt", "drive_belt", "Drive belt", "belt pulley", slotMat, partMat, new Vector3(0.22f, 0.22f, 0.1f));
             Sign(signs, "Label_Plug", "SPARK PLUG", new Vector3(-1f, 1.4f, 29.44f), 0f, 1.4f, null, new Vector2(0.8f, 0.2f));
             Sign(signs, "Label_Fuse", "30A FUSE", new Vector3(0f, 1.4f, 29.44f), 0f, 1.4f, null, new Vector2(0.8f, 0.2f));
             Sign(signs, "Label_Belt", "DRIVE BELT", new Vector3(1f, 1.4f, 29.44f), 0f, 1.4f, null, new Vector2(0.8f, 0.2f));

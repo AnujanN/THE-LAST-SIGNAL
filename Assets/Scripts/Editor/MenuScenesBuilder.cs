@@ -25,6 +25,8 @@ namespace LastSignal.EditorTools
             "OpenGameArt.org contributors - CC0\n\"Rain and Thunder Loop\" by DoKashiteru - CC BY 3.0\n" +
             "\"Heartbeat\" by HerbertBoland (Wikimedia Commons) - CC BY 3.0\n" +
             "CC BY 3.0: creativecommons.org/licenses/by/3.0\n\n" +
+            "<b>Art</b>\nTextures: Poly Haven (polyhaven.com) - CC0\n" +
+            "The Echo body and animations: Quaternius, Universal Animation Library - CC0\n\n" +
             "<b>Fonts</b>\nLiberation Sans (TextMeshPro)\n\n\n" +
             "For everyone who is still listening.\n\n\nThank you for playing.";
 

@@ -194,7 +194,7 @@ namespace LastSignal.EditorTools
             return m;
         }
 
-        public enum SpriteShape { Disc, Ring, Square, Vignette }
+        public enum SpriteShape { Disc, Ring, Square, Vignette, Soft }
 
         public static Sprite EnsureSprite(string name, SpriteShape shape)
         {
@@ -216,6 +216,7 @@ namespace LastSignal.EditorTools
                         case SpriteShape.Square: a = 1f; break;
                         case SpriteShape.Disc: a = Mathf.Clamp01(c - d); break;
                         case SpriteShape.Ring: a = Mathf.Clamp01(c - d) * Mathf.Clamp01(d - (c - 8f)); break;
+                        case SpriteShape.Soft: a = Mathf.Pow(Mathf.Clamp01(1f - d / c), 2f); break;
                         default:
                             a = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((d / c - 0.55f) / 0.45f));
                             col = new Color(0.35f, 0f, 0f);

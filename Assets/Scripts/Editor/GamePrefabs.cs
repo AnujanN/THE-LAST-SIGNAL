@@ -66,6 +66,12 @@ namespace LastSignal.EditorTools
             steps.spatialBlend = 0f;
             var noise = root.AddComponent<NoiseEmitter>();
             Set(noise, "stepSource", steps);
+            var breathSource = root.AddComponent<AudioSource>();
+            breathSource.playOnAwake = false;
+            breathSource.spatialBlend = 0f;
+            var breath = root.AddComponent<PlayerBreath>();
+            Set(breath, "input", router);
+            Set(breath, "source", breathSource);
 
             Transform cameraRoot = Group(root.transform, "CameraRoot", new Vector3(0f, 1.65f, 0f));
             var camGo = new GameObject("PlayerCamera") { tag = "MainCamera" };
@@ -121,19 +127,86 @@ namespace LastSignal.EditorTools
 
         // ================================================================== Echo
 
+        public const string EchoModelPath = "Assets/Art/Models/Echo/UAL_Standard.fbx";
+        public const string EchoAnimatorPath = "Assets/Art/Models/Echo/EchoAnimator.controller";
+
         public static GameObject BuildEcho()
         {
             EnsureFolder("Assets/Prefabs/Enemy");
             var root = new GameObject("Echo");
-            Material shadow = Mat("EchoShadow", new Color(0.015f, 0.015f, 0.02f), smoothness: 0f);
+            // Charred, slightly damp skin: almost black, a dull sheen in the flashlight beam.
+            Material skin = Mat("EchoSkin", new Color(0.03f, 0.028f, 0.03f), smoothness: 0.22f);
             Material eyes = Mat("EchoEyes", new Color(0.85f, 0.9f, 1f), emissive: true);
-            Prim(root.transform, "Body", PrimitiveType.Capsule, new Vector3(0f, 0.95f, 0f), new Vector3(0.6f, 0.95f, 0.5f), shadow, collider: false);
-            Prim(root.transform, "Head", PrimitiveType.Sphere, new Vector3(0f, 1.78f, 0.02f), new Vector3(0.42f, 0.48f, 0.42f), shadow, collider: false);
-            Prim(root.transform, "EyeL", PrimitiveType.Sphere, new Vector3(-0.09f, 1.82f, 0.19f), Vector3.one * 0.06f, eyes, collider: false);
-            Prim(root.transform, "EyeR", PrimitiveType.Sphere, new Vector3(0.09f, 1.82f, 0.19f), Vector3.one * 0.06f, eyes, collider: false);
-            Prim(root.transform, "ArmL", PrimitiveType.Capsule, new Vector3(-0.38f, 1.05f, 0.05f), new Vector3(0.12f, 0.6f, 0.12f), shadow, new Vector3(0f, 0f, 8f), collider: false);
-            Prim(root.transform, "ArmR", PrimitiveType.Capsule, new Vector3(0.38f, 1.05f, 0.05f), new Vector3(0.12f, 0.6f, 0.12f), shadow, new Vector3(0f, 0f, -8f), collider: false);
-            Transform eye = Group(root.transform, "Eye", new Vector3(0f, 1.75f, 0.15f));
+            Transform eye = Group(root.transform, "Eye", new Vector3(0f, 1.95f, 0.12f));
+
+            Transform head;
+            Transform[] spine = new Transform[0], upperArms = new Transform[0], lowerArms = new Transform[0];
+            Renderer[] eyeRenderers;
+            Animator animator = null;
+            GameObject model = EnsureEchoModel();
+            if (model != null)
+            {
+                // Quaternius mannequin (CC0), stretched into a tall, thin, wrong-looking figure.
+                var body = (GameObject)PrefabUtility.InstantiatePrefab(model);
+                PrefabUtility.UnpackPrefabInstance(body, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+                body.name = "Body";
+                body.transform.SetParent(root.transform, false);
+                body.transform.localRotation = Quaternion.Euler(0f, 180f, 0f); // model faces -Z
+                body.transform.localScale = new Vector3(0.82f, 1.17f, 0.82f);
+                foreach (SkinnedMeshRenderer smr in body.GetComponentsInChildren<SkinnedMeshRenderer>())
+                {
+                    var mats = new Material[smr.sharedMaterials.Length];
+                    for (int i = 0; i < mats.Length; i++) mats[i] = skin;
+                    smr.sharedMaterials = mats;
+                    smr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+                    smr.updateWhenOffscreen = false;
+                }
+                animator = body.GetComponent<Animator>();
+                if (animator == null) animator = body.AddComponent<Animator>();
+                animator.runtimeAnimatorController = EnsureEchoAnimator();
+                animator.applyRootMotion = false;
+                // EchoPresence bends bones after the animation every frame, so the pose must be rewritten every frame.
+                animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                head = FindDeep(body.transform, "DEF-head") ?? body.transform;
+                spine = new[] { FindDeep(body.transform, "DEF-spine.002"), FindDeep(body.transform, "DEF-spine.003"), FindDeep(body.transform, "DEF-neck") };
+                upperArms = new[] { FindDeep(body.transform, "DEF-upper_arm.L"), FindDeep(body.transform, "DEF-upper_arm.R") };
+                lowerArms = new[] { FindDeep(body.transform, "DEF-forearm.L"), FindDeep(body.transform, "DEF-forearm.R") };
+                // Eyes in the model's own space (face towards -Z), then attached to the head bone.
+                eyeRenderers = new Renderer[2];
+                for (int s = 0; s < 2; s++)
+                {
+                    Vector3 local = new Vector3(s == 0 ? -0.034f : 0.034f, 1.685f, -0.105f);
+                    GameObject e = Prim(root.transform, s == 0 ? "EyeL" : "EyeR", PrimitiveType.Sphere, Vector3.zero, Vector3.one * 0.03f, eyes, collider: false);
+                    e.transform.position = body.transform.TransformPoint(local);
+                    e.transform.SetParent(head, true);
+                    e.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    eyeRenderers[s] = e.GetComponent<Renderer>();
+                }
+            }
+            else
+            {
+                // Fallback if the model is missing: primitive silhouette.
+                Prim(root.transform, "Body", PrimitiveType.Capsule, new Vector3(0f, 0.95f, 0f), new Vector3(0.6f, 0.95f, 0.5f), skin, collider: false);
+                head = Prim(root.transform, "Head", PrimitiveType.Sphere, new Vector3(0f, 1.78f, 0.02f), new Vector3(0.42f, 0.48f, 0.42f), skin, collider: false).transform;
+                eyeRenderers = new Renderer[]
+                {
+                    Prim(root.transform, "EyeL", PrimitiveType.Sphere, new Vector3(-0.09f, 1.82f, 0.19f), Vector3.one * 0.06f, eyes, collider: false).GetComponent<Renderer>(),
+                    Prim(root.transform, "EyeR", PrimitiveType.Sphere, new Vector3(0.09f, 1.82f, 0.19f), Vector3.one * 0.06f, eyes, collider: false).GetComponent<Renderer>()
+                };
+            }
+
+            // Faint glow from the eyes onto nearby walls (no shadows).
+            var glowGo = new GameObject("EyeGlow");
+            glowGo.transform.SetParent(head, false);
+            glowGo.transform.position = root.transform.TransformPoint(new Vector3(0f, 1.95f, 0.25f));
+            var glow = glowGo.AddComponent<Light>();
+            glow.type = LightType.Point;
+            glow.range = 1.6f;
+            glow.intensity = 0.6f;
+            glow.color = new Color(0.75f, 0.8f, 0.9f);
+            glow.shadows = LightShadows.None;
+
+            ParticleSystem smoke = EchoSmoke(root.transform);
 
             var agent = root.AddComponent<NavMeshAgent>();
             agent.radius = 0.35f;
@@ -153,10 +226,155 @@ namespace LastSignal.EditorTools
             var ai = root.AddComponent<EchoAIController>();
             Set(ai, "eye", eye);
             Set(ai, "voice", voice);
+            if (animator != null) Set(ai, "animator", animator);
+
+            var presence = root.AddComponent<EchoPresence>();
+            Set(presence, "ai", ai);
+            Set(presence, "head", head);
+            SetArray(presence, "eyes", eyeRenderers);
+            Set(presence, "eyeGlow", glow);
+            Set(presence, "smoke", smoke);
+            SetArray(presence, "spine", spine);
+            SetArray(presence, "upperArms", upperArms);
+            SetArray(presence, "lowerArms", lowerArms);
 
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, EchoPath);
             Object.DestroyImmediate(root);
             return prefab;
+        }
+
+        private static ParticleSystem EchoSmoke(Transform parent)
+        {
+            var go = new GameObject("Smoke");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = new Vector3(0f, 1.1f, 0f);
+            var ps = go.AddComponent<ParticleSystem>();
+            var main = ps.main;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(1.4f, 2.4f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.05f, 0.25f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.35f, 0.8f);
+            main.startColor = new Color(0.02f, 0.02f, 0.025f, 0.55f);
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.maxParticles = 50;
+            main.gravityModifier = -0.03f;
+            var emission = ps.emission;
+            emission.rateOverTime = 9f;
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Box;
+            shape.scale = new Vector3(0.45f, 1.7f, 0.3f);
+            var size = ps.sizeOverLifetime;
+            size.enabled = true;
+            size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 0.6f, 1f, 1.6f));
+            var colour = ps.colorOverLifetime;
+            colour.enabled = true;
+            var g = new Gradient();
+            g.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.25f), new GradientAlphaKey(0f, 1f) });
+            colour.color = g;
+            var r = go.GetComponent<ParticleSystemRenderer>();
+            Material m = UnlitMat("EchoSmoke", Color.white, transparent: true);
+            Sprite soft = EnsureSprite("SoftDot", SpriteShape.Soft);
+            if (soft != null) m.SetTexture("_BaseMap", soft.texture);
+            r.sharedMaterial = m;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            r.receiveShadows = false;
+            return ps;
+        }
+
+        /// <summary>Imports the Echo model as a generic rig with looping clips (once).</summary>
+        private static GameObject EnsureEchoModel()
+        {
+            var importer = AssetImporter.GetAtPath(EchoModelPath) as ModelImporter;
+            if (importer == null) return null;
+            bool changed = false;
+            if (importer.animationType != ModelImporterAnimationType.Generic) { importer.animationType = ModelImporterAnimationType.Generic; changed = true; }
+            if (importer.avatarSetup != ModelImporterAvatarSetup.CreateFromThisModel) { importer.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel; changed = true; }
+            if (importer.materialImportMode != ModelImporterMaterialImportMode.None) { importer.materialImportMode = ModelImporterMaterialImportMode.None; changed = true; }
+            if (importer.clipAnimations == null || importer.clipAnimations.Length == 0)
+            {
+                ModelImporterClipAnimation[] clips = importer.defaultClipAnimations;
+                foreach (ModelImporterClipAnimation c in clips) c.loopTime = c.name.Contains("_Loop");
+                importer.clipAnimations = clips;
+                changed = true;
+            }
+            if (changed) importer.SaveAndReimport();
+            return AssetDatabase.LoadAssetAtPath<GameObject>(EchoModelPath);
+        }
+
+        private static AnimationClip EchoClip(string name)
+        {
+            foreach (Object o in AssetDatabase.LoadAllAssetsAtPath(EchoModelPath))
+                if (o is AnimationClip c && (c.name == "Rig|" + name || c.name == name)) return c;
+            Debug.LogWarning("[GamePrefabs] Echo clip not found: " + name);
+            return null;
+        }
+
+        /// <summary>
+        /// Speed blend (idle, stiff walk, lurching jog, sprint) plus three poses driven by the AI state:
+        /// crouched listening, pressing against a hiding place while inspecting it, and the lunge when it catches you.
+        /// </summary>
+        private static UnityEditor.Animations.AnimatorController EnsureEchoAnimator()
+        {
+            const string version = "echo-animator-v1";
+            var existing = AssetDatabase.LoadAssetAtPath<UnityEditor.Animations.AnimatorController>(EchoAnimatorPath);
+            if (existing != null && AssetImporter.GetAtPath(EchoAnimatorPath).userData == version) return existing;
+            if (existing != null) AssetDatabase.DeleteAsset(EchoAnimatorPath);
+            var ctrl = UnityEditor.Animations.AnimatorController.CreateAnimatorControllerAtPath(EchoAnimatorPath);
+            ctrl.AddParameter("Speed", AnimatorControllerParameterType.Float);
+            ctrl.AddParameter("State", AnimatorControllerParameterType.Int);
+            UnityEditor.Animations.AnimatorState move = ctrl.CreateBlendTreeInController("Move", out UnityEditor.Animations.BlendTree tree, 0);
+            tree.blendParameter = "Speed";
+            tree.useAutomaticThresholds = false;
+            tree.AddChild(EchoClip("Idle_Loop"), 0f);
+            tree.AddChild(EchoClip("Walk_Formal_Loop"), 1.1f);
+            tree.AddChild(EchoClip("Jog_Fwd_Loop"), 2.6f);
+            tree.AddChild(EchoClip("Sprint_Loop"), 3.9f);
+
+            UnityEditor.Animations.AnimatorStateMachine sm = ctrl.layers[0].stateMachine;
+            sm.defaultState = move;
+            AddStatePose(sm, move, "Listen", EchoClip("Crouch_Idle_Loop"), (int)EchoAIController.State.Listen, 0.35f);
+            AddStatePose(sm, move, "Inspect", EchoClip("Push_Loop"), (int)EchoAIController.State.Inspect, 0.3f);
+            AddStatePose(sm, move, "Caught", EchoClip("Punch_Cross"), (int)EchoAIController.State.Caught, 0.08f);
+            EditorUtility.SetDirty(ctrl);
+            AssetDatabase.SaveAssets();
+            AssetImporter.GetAtPath(EchoAnimatorPath).userData = version;
+            AssetDatabase.WriteImportSettingsIfDirty(EchoAnimatorPath);
+            return ctrl;
+        }
+
+        private static void AddStatePose(UnityEditor.Animations.AnimatorStateMachine sm, UnityEditor.Animations.AnimatorState move,
+            string name, AnimationClip clip, int stateValue, float blend)
+        {
+            UnityEditor.Animations.AnimatorState s = sm.AddState(name);
+            s.motion = clip;
+            UnityEditor.Animations.AnimatorStateTransition enter = sm.AddAnyStateTransition(s);
+            enter.AddCondition(UnityEditor.Animations.AnimatorConditionMode.Equals, stateValue, "State");
+            if (name == "Inspect") enter.AddCondition(UnityEditor.Animations.AnimatorConditionMode.Less, 0.3f, "Speed");
+            enter.duration = blend;
+            enter.canTransitionToSelf = false;
+            enter.hasExitTime = false;
+            UnityEditor.Animations.AnimatorStateTransition exit = s.AddTransition(move);
+            exit.AddCondition(UnityEditor.Animations.AnimatorConditionMode.NotEqual, stateValue, "State");
+            exit.duration = 0.3f;
+            exit.hasExitTime = false;
+            if (name == "Inspect")
+            {
+                UnityEditor.Animations.AnimatorStateTransition walkAway = s.AddTransition(move);
+                walkAway.AddCondition(UnityEditor.Animations.AnimatorConditionMode.Greater, 0.5f, "Speed");
+                walkAway.duration = 0.3f;
+                walkAway.hasExitTime = false;
+            }
+        }
+
+        private static Transform FindDeep(Transform t, string name)
+        {
+            if (t.name == name) return t;
+            foreach (Transform c in t)
+            {
+                Transform f = FindDeep(c, name);
+                if (f != null) return f;
+            }
+            return null;
         }
 
         // ================================================================== HUD
@@ -223,6 +441,9 @@ namespace LastSignal.EditorTools
             MobileButton light = TouchButton(controls, circle, "Flashlight", "LIGHT", MobileButton.Kind.Flashlight, corner, new Vector2(-170f, 390f), 120f, 26);
             MobileButton bag = TouchButton(controls, circle, "Inventory", "BAG", MobileButton.Kind.Inventory, top, new Vector2(-190f, -80f), 90f, 24);
             MobileButton pauseBtn = TouchButton(controls, circle, "Pause", "II", MobileButton.Kind.Pause, top, new Vector2(-80f, -80f), 90f, 32);
+            // Only shown while hidden (MobileInputUI); hold it while The Echo checks the hiding place.
+            MobileButton breathBtn = TouchButton(controls, circle, "HoldBreath", "HOLD\nBREATH", MobileButton.Kind.HoldBreath, corner, new Vector2(-620f, 210f), 165f, 26);
+            breathBtn.gameObject.SetActive(false);
 
             // ---------------- HUD elements
             RectTransform cross = UIRect(safe, "Crosshair");
@@ -255,8 +476,20 @@ namespace LastSignal.EditorTools
             objectiveGroup.alpha = 0.85f;
             objectiveGroup.blocksRaycasts = false;
 
-            TMP_Text hidden = UIText(safe, "HiddenLabel", "HIDDEN", 30, new Vector2(0.5f, 1f), new Vector2(0f, -170f), new Vector2(400f, 50f));
+            TMP_Text hidden = UIText(safe, "HiddenLabel", "HIDDEN\n<size=60%>If it comes close, hold your breath (Space / HOLD BREATH)</size>", 30,
+                new Vector2(0.5f, 1f), new Vector2(0f, -185f), new Vector2(900f, 90f));
             hidden.color = new Color(0.7f, 0.85f, 1f, 0.9f);
+
+            RectTransform breathMeter = UIRect(safe, "BreathMeter");
+            Place(breathMeter, new Vector2(0.5f, 1f), new Vector2(0f, -250f), new Vector2(320f, 16f));
+            UIImage(breathMeter, square, new Color(0f, 0f, 0f, 0.55f), raycast: false);
+            RectTransform breathFillRect = UIRect(breathMeter, "Fill");
+            Stretch(breathFillRect, 2f);
+            Image breathFill = UIImage(breathFillRect, square, new Color(0.75f, 0.9f, 1f, 0.9f), raycast: false);
+            breathFill.type = Image.Type.Filled;
+            breathFill.fillMethod = Image.FillMethod.Horizontal;
+            breathFill.fillOrigin = (int)Image.OriginHorizontal.Left;
+            breathMeter.gameObject.SetActive(false);
 
             RectTransform subtitlePanel = UIRect(safe, "Subtitles");
             Place(subtitlePanel, new Vector2(0.5f, 0f), new Vector2(0f, 170f), new Vector2(1000f, 130f));
@@ -314,7 +547,7 @@ namespace LastSignal.EditorTools
             Set(mobile, "controlsRoot", controls.gameObject);
             Set(mobile, "joystick", stick);
             Set(mobile, "lookArea", lookArea);
-            SetArray(mobile, "buttons", new Object[] { use, crouch, sprint, light, bag, pauseBtn });
+            SetArray(mobile, "buttons", new Object[] { use, crouch, sprint, light, bag, pauseBtn, breathBtn });
             Set(pause, "pausePanel", pausePanel.gameObject);
             Set(pause, "mainPage", mainPage.gameObject);
             Set(pause, "settingsPage", settingsPage.gameObject);
@@ -332,6 +565,8 @@ namespace LastSignal.EditorTools
             Set(story, "titleText", title);
             Set(story, "hiddenLabel", hidden.gameObject);
             Set(story, "threatVignette", vigImage);
+            Set(story, "breathRoot", breathMeter.gameObject);
+            Set(story, "breathFill", breathFill);
 
             notePanel.gameObject.SetActive(false);
             invPanel.gameObject.SetActive(false);

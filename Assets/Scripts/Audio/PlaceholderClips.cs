@@ -11,7 +11,7 @@ namespace LastSignal.Audio
     {
         private const int Rate = 22050;
         private static AudioClip rain, hum, drips, interference, dawn, drone, heartbeat;
-        private static AudioClip staticBurst, spark, thud, scream, footstep, splash, beep, buzz, doorCreak;
+        private static AudioClip staticBurst, spark, thud, scream, footstep, splash, beep, buzz, doorCreak, gasp;
 
         public static AudioClip Rain => Real("rain") ?? Get(ref rain, () => Make("Rain", 4f, RainSample));
         public static AudioClip Hum => Real("hum") ?? Get(ref hum, () => Make("Hum", 4f, HumSample));
@@ -38,6 +38,9 @@ namespace LastSignal.Audio
             return c != null ? c : null; // normalise Unity-null to C# null for "??"
         }
 
+        /// <summary>Sharp, panicked inhale (breath noise shaped by a quick swell).</summary>
+        public static AudioClip Gasp => Real("gasp") ?? Get(ref gasp, () => Make("Gasp", 0.9f, GaspSample));
+
         // Extra sounds that only exist as recordings (null when the file is missing).
         public static AudioClip Wind => Real("wind");
         public static AudioClip Generator => Real("generator");
@@ -61,7 +64,7 @@ namespace LastSignal.Audio
         private static void ResetStatics()
         {
             rain = hum = drips = interference = dawn = drone = heartbeat = null;
-            staticBurst = spark = thud = scream = footstep = splash = beep = buzz = doorCreak = null;
+            staticBurst = spark = thud = scream = footstep = splash = beep = buzz = doorCreak = gasp = null;
             lp1 = lp2 = 0f;
         }
 
@@ -92,6 +95,16 @@ namespace LastSignal.Audio
             lp2 += (Noise(n) - lp2) * 0.02f; // wind rumble
             float gust = 0.6f + 0.4f * Mathf.Sin(2f * Mathf.PI * 0.25f * t);
             return lp1 * 0.35f + lp2 * 1.2f * gust;
+        }
+
+        private static float GaspSample(float t, int n)
+        {
+            // Band-limited noise (two one-pole filters) under a fast attack / slower release envelope.
+            lp1 += (Noise(n) - lp1) * 0.45f;
+            lp2 += (lp1 - lp2) * 0.25f;
+            float breath = lp1 - lp2;
+            float env = t < 0.12f ? t / 0.12f : Mathf.Exp(-(t - 0.12f) * 4.5f);
+            return breath * env * 1.6f;
         }
 
         private static float HumSample(float t, int n)

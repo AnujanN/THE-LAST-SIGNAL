@@ -242,6 +242,9 @@ namespace LastSignal.EditorTools
             SetValue(echo, "settings.chaseSpeed", 3.2f);
             SetValue(echo, "settings.searchSeconds", 7f);
             SetValue(echo, "settings.loseSightSeconds", 2.5f);
+            SetValue(echo, "settings.inspectChance", 0.35f);
+            SetValue(echo, "settings.directorHintSeconds", 55f);
+            SetValue(echo, "settings.lureInterval", 75f);
             Set(sequence, "echo", echo);
 
             // ------------------------------------------------------------------ scripted beats + tutorial

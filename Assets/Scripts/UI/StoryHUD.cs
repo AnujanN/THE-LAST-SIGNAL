@@ -44,10 +44,14 @@ namespace LastSignal.UI
         [Header("Status")]
         [SerializeField] private GameObject hiddenLabel;
         [SerializeField] private Image threatVignette;
+        [Tooltip("Breath meter shown while hidden (hold Space / BREATH).")]
+        [SerializeField] private GameObject breathRoot;
+        [SerializeField] private Image breathFill;
 
         private PlayerInputRouter router;
         private InventoryManager inventory;
         private FlashlightController flashlight;
+        private PlayerBreath breath;
         private float objectiveFlash;
         private float titleTimer;
         private float gameOverDelay = -1f;
@@ -63,12 +67,14 @@ namespace LastSignal.UI
             {
                 inventory = router.GetComponent<InventoryManager>();
                 flashlight = router.GetComponentInChildren<FlashlightController>();
+                breath = router.GetComponent<PlayerBreath>();
             }
             SetActive(subtitlePanel, false);
             SetActive(notePanel, false);
             SetActive(inventoryPanel, false);
             SetActive(gameOverPanel, false);
             SetActive(hiddenLabel, false);
+            SetActive(breathRoot, false);
             if (titleGroup != null) titleGroup.alpha = 0f;
             if (threatVignette != null) threatVignette.color = new Color(1f, 1f, 1f, 0f);
         }
@@ -144,6 +150,13 @@ namespace LastSignal.UI
                 threatVignette.color = new Color(1f, 1f, 1f, t * 0.75f * pulse);
             }
 
+            if (breathRoot != null && breathRoot.activeSelf && breath != null && breathFill != null)
+            {
+                breathFill.fillAmount = breath.Breath01;
+                Color full = new Color(0.75f, 0.9f, 1f, 0.9f), empty = new Color(1f, 0.3f, 0.25f, 0.95f);
+                breathFill.color = Color.Lerp(empty, full, breath.Breath01);
+            }
+
             if (router == null) return;
             if (router.InventoryPressed)
             {
@@ -178,7 +191,11 @@ namespace LastSignal.UI
 
         private void OnCheckpoint(string id) => HudMessage.Show("Progress saved");
 
-        private void OnHidden(bool hidden) => SetActive(hiddenLabel, hidden);
+        private void OnHidden(bool hidden)
+        {
+            SetActive(hiddenLabel, hidden);
+            SetActive(breathRoot, hidden && breath != null);
+        }
 
         // ---------------------------------------------------------------- subtitles
 

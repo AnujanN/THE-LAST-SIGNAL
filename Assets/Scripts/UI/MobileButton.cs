@@ -11,7 +11,7 @@ namespace LastSignal.UI
     /// </summary>
     public class MobileButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
     {
-        public enum Kind { Interact, Crouch, Flashlight, Pause, SprintToggle, Inventory }
+        public enum Kind { Interact, Crouch, Flashlight, Pause, SprintToggle, Inventory, HoldBreath }
 
         [SerializeField] private Kind kind;
         [SerializeField] private Graphic background;
@@ -56,17 +56,20 @@ namespace LastSignal.UI
                 case Kind.Pause: Router.Press(PlayerAction.Pause); break;
                 case Kind.SprintToggle: Router.ToggleMobileSprint(); break;
                 case Kind.Inventory: Router.Press(PlayerAction.Inventory); break;
+                case Kind.HoldBreath: Router.SetHoldBreath(true); break;
             }
         }
 
         public void OnPointerUp(PointerEventData eventData)
         {
+            if (kind == Kind.HoldBreath && Router != null) Router.SetHoldBreath(false);
             pressed = false;
             Refresh();
         }
 
         private void OnDisable()
         {
+            if (kind == Kind.HoldBreath && Router != null) Router.SetHoldBreath(false);
             pressed = false;
             Refresh();
         }

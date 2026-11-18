@@ -203,6 +203,10 @@ namespace LastSignal.EditorTools
             SetValue(echo, "settings.searchSeconds", 9f);
             SetValue(echo, "settings.loseSightSeconds", 3f);
             SetValue(echo, "settings.waypointPause", 1f);
+            SetValue(echo, "settings.inspectChance", 0.7f);
+            SetValue(echo, "settings.inspectSeconds", 5f);
+            SetValue(echo, "settings.directorHintSeconds", 35f);
+            SetValue(echo, "settings.lureInterval", 45f);
             On(freq, "onSolved", echo.Vanish);
             On(freq, "onSolved", events.Say, "THE ECHO|STOP! You'll silence her! You'll silence ME!|3.5");
 

@@ -17,6 +17,10 @@ namespace LastSignal.Environment
         private float baseIntensity;
         private float timer;
         private bool flickering;
+        private float disturbed;
+
+        /// <summary>Something wrong is close by (The Echo): stutter hard for a while.</summary>
+        public void Disturb(float seconds) => disturbed = Mathf.Max(disturbed, seconds);
 
         private void Awake()
         {
@@ -27,6 +31,13 @@ namespace LastSignal.Environment
 
         private void Update()
         {
+            if (disturbed > 0f)
+            {
+                disturbed -= Time.deltaTime;
+                float n = Mathf.PerlinNoise(Time.time * 11f, 3.1f);
+                lightSource.intensity = baseIntensity * Mathf.Lerp(minFactor * 0.5f, 1f, n * n);
+                return;
+            }
             timer -= Time.deltaTime;
             if (timer <= 0f)
             {

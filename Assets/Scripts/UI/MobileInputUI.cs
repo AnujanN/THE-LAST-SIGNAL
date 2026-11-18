@@ -23,7 +23,7 @@ namespace LastSignal.UI
         [Tooltip("Show touch controls in the Editor (also shown automatically in the Device Simulator).")]
         [SerializeField] private bool showInEditor;
 
-        private MobileButton interactButton, sprintButton, flashlightButton;
+        private MobileButton interactButton, sprintButton, flashlightButton, breathButton;
 
         public bool ControlsVisible => controlsRoot != null && controlsRoot.activeSelf;
 
@@ -42,6 +42,7 @@ namespace LastSignal.UI
                 if (b.ButtonKind == MobileButton.Kind.Interact) interactButton = b;
                 else if (b.ButtonKind == MobileButton.Kind.SprintToggle) sprintButton = b;
                 else if (b.ButtonKind == MobileButton.Kind.Flashlight) flashlightButton = b;
+                else if (b.ButtonKind == MobileButton.Kind.HoldBreath) breathButton = b;
             }
 
             SetVisible(Application.isMobilePlatform || (Application.isEditor && showInEditor));
@@ -55,6 +56,9 @@ namespace LastSignal.UI
         private void Update()
         {
             if (!ControlsVisible || router == null) return;
+            // The BREATH button only exists while hiding.
+            bool hidden = Interaction.HidingSpot.PlayerHidden;
+            if (breathButton != null && breathButton.gameObject.activeSelf != hidden) breathButton.gameObject.SetActive(hidden);
             if (interactButton != null) interactButton.SetHighlighted(interactor != null && interactor.Current != null);
             if (sprintButton != null) sprintButton.SetHighlighted(router.MobileSprintToggled);
             if (flashlightButton != null && flashlight != null)

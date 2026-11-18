@@ -25,6 +25,9 @@ namespace LastSignal.Interaction
         public static event Action<bool> HiddenChanged;
 
         private string enterPrompt, exitPrompt;
+
+        /// <summary>Where The Echo stands to inspect this spot (in front of it).</summary>
+        public Vector3 InspectPosition => (exitPoint != null ? exitPoint : transform).position;
         private PlayerController hiddenPlayer;
 
         private void Awake()

@@ -76,7 +76,7 @@ namespace LastSignal.Tests
 
         private static T Get<T>(string name) where T : Component
         {
-            T found = Object.FindObjectsByType<T>(FindObjectsInactive.Include, FindObjectsSortMode.None).FirstOrDefault(c => c.name == name);
+            T found = Object.FindObjectsByType<T>(FindObjectsInactive.Include).FirstOrDefault(c => c.name == name);
             Assert.IsNotNull(found, typeof(T).Name + " '" + name + "' not found");
             return found;
         }
@@ -306,17 +306,12 @@ namespace LastSignal.Tests
             EchoAIController echo = Get<EchoAIController>("Echo");
             yield return WaitUntilTrue(() => echo.Started && !echo.InGracePeriod, 8f, "Echo start-up grace period over");
 
-            // Sight -> chase.
-            yield return WalkInto(new Vector3(3f, 0.05f, 5.5f));
-            echo.Activate();
-            echo.WarpTo(new Vector3(-5f, 0f, 5.5f));
-            echo.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
-            yield return WaitUntilTrue(() => echo.Current == EchoAIController.State.Chase, 3f, "chase after seeing the player");
+            // This test covers sight and search; hiding-spot inspection has its own tests.
+            echo.Settings.inspectChance = 0f;
+            HidingSpot locker = Get<HidingSpot>("Locker_A2");
+            yield return ChaseThenHide(echo, locker);
 
             // Hiding -> it cannot see the player and gives up to search; no catch.
-            HidingSpot locker = Get<HidingSpot>("Locker_A2");
-            locker.Enter(player);
-            Assert.IsTrue(HidingSpot.PlayerHidden);
             Assert.IsFalse(echo.CanSeePlayer(), "Hidden player must not be visible");
             yield return WaitUntilTrue(() => echo.Current == EchoAIController.State.Search, 6f, "search after losing the player");
             yield return new WaitForSeconds(2f);
@@ -344,6 +339,70 @@ namespace LastSignal.Tests
             yield return WaitForScene(GameFlowManager.Level2Scene);
             Assert.IsFalse(flow.IsGameOver);
             Assert.IsFalse(ModalStack.AnyOpen);
+        }
+
+        /// <summary>Level 2 corridor: The Echo sees the player and chases; the player hides in a locker.</summary>
+        private IEnumerator ChaseThenHide(EchoAIController echo, HidingSpot locker)
+        {
+            yield return WalkInto(new Vector3(3f, 0.05f, 5.5f));
+            echo.Activate();
+            echo.WarpTo(new Vector3(-5f, 0f, 5.5f));
+            echo.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
+            yield return WaitUntilTrue(() => echo.Current == EchoAIController.State.Chase, 3f, "chase after seeing the player");
+            locker.Enter(player);
+            Assert.IsTrue(HidingSpot.PlayerHidden);
+        }
+
+        private IEnumerator WaitForInspectionAtLocker(EchoAIController echo, HidingSpot locker)
+        {
+            yield return WaitUntilTrue(() => echo.Current == EchoAIController.State.Inspect, 8f, "The Echo decides to check the hiding spot");
+            yield return WaitUntilTrue(() => echo.IsInspectingPlayer
+                && Vector3.Distance(echo.transform.position, locker.InspectPosition) < 1.2f, 10f, "The Echo arrives at the locker");
+        }
+
+        [UnityTest, Timeout(90000)]
+        public IEnumerator Echo_InspectsHidingSpot_HoldingBreathKeepsPlayerSafe()
+        {
+            yield return StartLevel(GameFlowManager.Level2Scene);
+            EchoAIController echo = Get<EchoAIController>("Echo");
+            yield return WaitUntilTrue(() => echo.Started && !echo.InGracePeriod, 8f, "Echo start-up grace period over");
+            echo.Settings.inspectChance = 1f;
+            echo.Settings.inspectSeconds = 3f;
+            HidingSpot locker = Get<HidingSpot>("Locker_A2");
+            PlayerBreath breath = player.GetComponent<PlayerBreath>();
+            Assert.IsNotNull(breath, "Player prefab needs PlayerBreath");
+
+            yield return ChaseThenHide(echo, locker);
+            yield return WaitForInspectionAtLocker(echo, locker);
+            interactor.InputRouter.SetHoldBreath(true);
+            yield return null;
+            yield return null;
+            Assert.IsTrue(breath.Holding, "Holding the breath button while hidden holds the breath");
+
+            yield return WaitUntilTrue(() => echo.Current != EchoAIController.State.Inspect, 8f, "The Echo gives up the inspection");
+            interactor.InputRouter.SetHoldBreath(false);
+            Assert.IsFalse(flow.IsGameOver, "Holding breath must keep a hidden player safe");
+            Assert.IsTrue(HidingSpot.PlayerHidden);
+            Assert.Greater(breath.Breath01, 0f, "Breath should not have run out in a 3 s inspection");
+        }
+
+        [UnityTest, Timeout(90000)]
+        public IEnumerator Echo_InspectsHidingSpot_FindsBreathingPlayer()
+        {
+            yield return StartLevel(GameFlowManager.Level2Scene);
+            EchoAIController echo = Get<EchoAIController>("Echo");
+            yield return WaitUntilTrue(() => echo.Started && !echo.InGracePeriod, 8f, "Echo start-up grace period over");
+            echo.Settings.inspectChance = 1f;
+            echo.Settings.inspectSeconds = 3f;
+            HidingSpot locker = Get<HidingSpot>("Locker_A2");
+
+            yield return ChaseThenHide(echo, locker);
+            yield return WaitForInspectionAtLocker(echo, locker);
+            yield return WaitUntilTrue(() => flow.IsGameOver, 4f, "breathing player found in the locker");
+            Assert.IsFalse(HidingSpot.PlayerHidden, "The Echo pulls the player out of the hiding spot");
+            flow.RetryCheckpoint();
+            yield return WaitForScene(GameFlowManager.Level2Scene);
+            Assert.IsFalse(flow.IsGameOver);
         }
     }
 }

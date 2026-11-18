@@ -32,6 +32,7 @@ namespace LastSignal.Player
         private Vector2 mobileMove;
         private Vector2 pendingTouchLookPixels;
         private bool mobileSprintToggled;
+        private bool mobileHoldBreath;
         private bool mobileWasMoving;
         private bool pendingInteract, pendingCrouch, pendingFlashlight, pendingPause, pendingInventory;
 
@@ -48,6 +49,10 @@ namespace LastSignal.Player
         public bool PausePressed { get; private set; }
         /// <summary>Works while gameplay is blocked, so the same button can close the inventory.</summary>
         public bool InventoryPressed { get; private set; }
+        /// <summary>Held while the player holds their breath in a hiding spot (Space / BREATH button).</summary>
+        public bool HoldBreathHeld { get; private set; }
+
+        public void SetHoldBreath(bool held) => mobileHoldBreath = held;
 
         /// <summary>When true (e.g. paused), gameplay input reads as zero. Pause still works.</summary>
         public bool GameplayBlocked { get; set; }
@@ -101,6 +106,9 @@ namespace LastSignal.Player
 
             PausePressed = pause;
             InventoryPressed = inventory;
+            bool breath = mobileHoldBreath;
+            if (enableKeyboardMouse && Keyboard.current != null) breath |= Keyboard.current.spaceKey.isPressed;
+            HoldBreathHeld = breath;
             if (GameplayBlocked)
             {
                 Move = Vector2.zero;

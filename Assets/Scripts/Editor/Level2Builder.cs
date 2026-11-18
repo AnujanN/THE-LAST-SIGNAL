@@ -183,11 +183,40 @@ namespace LastSignal.EditorTools
                 On(b, "onPressed", generator.PressStep, c.step);
                 Sign(signs, "Label_" + c.label, c.label, new Vector3(c.x, 1.3f, 29.3f), 0f, 1.2f, null, new Vector2(0.6f, 0.2f));
             }
-            WallNote(items, "Note_Maintenance", new Vector3(-2.6f, 1.6f, 32.88f), 180f, "l2_maintenance", "Generator maintenance card",
-                "BACKUP GENERATOR - COLD START\n\nCheck all parts are fitted:\n  - spark plug   - 30A fuse   - drive belt\n\n" +
-                "Then, IN THIS ORDER:\n  1. FUEL VALVE   (red)\n  2. CHOKE        (yellow)\n  3. STARTER      (green)\n\n" +
-                "Wrong order floods the engine. If it stalls, start again from step 1.", paper, new Vector2(0.6f, 0.5f));
-            On(generator, "onPartsReady", events.SetObjective, "l2_start|Start the generator. Follow the maintenance card on the north wall.");
+            // Torn maintenance card: the first half is on the wall, the second half is in the pump room.
+            WallNote(items, "Note_Maintenance", new Vector3(-2.6f, 1.6f, 32.88f), 180f, "l2_maintenance", "Generator maintenance card (torn)",
+                "BACKUP GENERATOR - COLD START\n\nFit all parts first: spark plug, 30A fuse, drive belt.\n\n" +
+                "1. Open the FUEL VALVE (red).\n2. PRIME her until the pressure needle sits in the GREEN.\n" +
+                "    Not past it - she floods, and she stalls LOUD.\n3. ..........\n\n[The rest of the card has been torn away.]",
+                paper, new Vector2(0.6f, 0.5f));
+            Note(items, "Note_MaintenanceTorn", new Vector3(-4.6f, 1.21f, 19.7f), 30f, "l2_maintenance_b", "Torn piece of card (oil-stained)",
+                "...3. CHOKE (yellow) - only with the needle in the green, or she dies on you.\n" +
+                "4. STARTER (green). Never before the choke.\n\nIf she stalls, everything resets - begin again at 1.\n- D.", paper);
+
+            // Fuel pressure gauge above the part sockets, primer pump beside it.
+            Transform gauge = Group(items, "PressureGauge", new Vector3(0f, 1.63f, 29.47f));
+            Prim(gauge, "Dial", PrimitiveType.Cylinder, Vector3.zero, new Vector3(0.26f, 0.01f, 0.26f), Mat("GaugeFace", new Color(0.78f, 0.76f, 0.7f)),
+                new Vector3(90f, 0f, 0f), collider: false);
+            for (int z = 0; z < 3; z++)
+            {
+                // Zones around the dial: white (low), green (3-4 pumps), red (flood).
+                float a = z == 0 ? 45f : z == 1 ? -11f : -58f;
+                Color c = z == 0 ? new Color(0.9f, 0.9f, 0.88f) : z == 1 ? new Color(0.15f, 0.6f, 0.2f) : new Color(0.7f, 0.12f, 0.1f);
+                Transform arm = Group(gauge, "Zone" + z, new Vector3(0f, 0f, -0.012f));
+                arm.localRotation = Quaternion.Euler(0f, 0f, a);
+                Prim(arm, "Mark", PrimitiveType.Cube, new Vector3(0f, 0.1f, 0f), new Vector3(z == 1 ? 0.07f : 0.05f, 0.025f, 0.004f),
+                    Mat("GaugeZone" + z, c, emissive: z > 0), collider: false);
+            }
+            Transform needlePivot = Group(gauge, "NeedlePivot", new Vector3(0f, 0f, -0.018f));
+            Prim(needlePivot, "Needle", PrimitiveType.Cube, new Vector3(0f, 0.05f, 0f), new Vector3(0.008f, 0.1f, 0.004f),
+                Mat("GaugeNeedle", new Color(0.1f, 0.08f, 0.08f)), collider: false);
+            Sign(signs, "Label_Gauge", "FUEL PRESSURE", new Vector3(0f, 1.84f, 29.44f), 0f, 1.1f, null, new Vector2(0.8f, 0.15f));
+            Set(generator, "gaugeNeedle", needlePivot);
+            ActionButton primer = Button3D(items, "Control_PRIMER", new Vector3(1.35f, 0.75f, 29.45f), 0f, "l2_primer", "Pump the primer",
+                Mat("PrimerBulb", new Color(0.5f, 0.45f, 0.4f)), new Vector3(0.14f, 0.14f, 0.12f));
+            On(primer, "onPressed", generator.PumpPrimer);
+            Sign(signs, "Label_PRIMER", "PRIMER", new Vector3(1.35f, 0.95f, 29.44f), 0f, 1.1f, null, new Vector2(0.5f, 0.15f));
+            On(generator, "onPartsReady", events.SetObjective, "l2_start|Start the generator. The maintenance card on the north wall is torn - find the rest of it.");
             On(generator, "onSolved", power.PowerOn);
             On(generator, "onSolved", events.SetObjective, "l2_tape|Play the emergency recording on the generator room desk");
             On(generator, "onSolved", events.Checkpoint, "l2_generator");

@@ -708,6 +708,34 @@ namespace LastSignal.EditorTools
                 TextAlignmentOptions.TopLeft, wrap: true);
             UIButton(invPanel, "CloseButton", "CLOSE", new Vector2(0.5f, 0f), new Vector2(0f, 90f), new Vector2(320f, 90f), 34, story.CloseInventory);
 
+            // Keypad (CodeLock): time keeps running while it is open.
+            var codeUi = root.AddComponent<CodePanelUI>();
+            RectTransform codePanel = UIPanel(root.transform, "CodePanel", new Color(0f, 0f, 0f, 0.55f));
+            RectTransform pad = UIRect(codePanel, "Pad");
+            Place(pad, new Vector2(0.5f, 0.5f), new Vector2(0f, 0f), new Vector2(620f, 900f));
+            UIImage(pad, square, new Color(0.06f, 0.065f, 0.06f, 0.96f), raycast: true);
+            TMP_Text codeTitle = UIText(pad, "Title", "KEYPAD", 30, new Vector2(0.5f, 1f), new Vector2(0f, -50f), new Vector2(580f, 60f));
+            RectTransform screen = UIRect(pad, "Screen");
+            Place(screen, new Vector2(0.5f, 1f), new Vector2(0f, -135f), new Vector2(520f, 100f));
+            UIImage(screen, square, new Color(0.05f, 0.16f, 0.07f, 1f), raycast: false);
+            TMP_Text codeDisplay = UIText(screen, "Digits", "_ _ _ _", 64, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(500f, 100f));
+            codeDisplay.color = new Color(0.55f, 1f, 0.6f);
+            string[] keys = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "CLR", "0", "OK" };
+            for (int k = 0; k < keys.Length; k++)
+            {
+                int col = k % 3, row = k / 3;
+                Vector2 pos = new Vector2(-180f + col * 180f, -280f - row * 140f);
+                Button b = UIButton(pad, "Key_" + keys[k], keys[k], new Vector2(0.5f, 1f), pos, new Vector2(160f, 120f), 48, null);
+                if (keys[k] == "CLR") UnityEditor.Events.UnityEventTools.AddPersistentListener(b.onClick, codeUi.Clear);
+                else if (keys[k] == "OK") UnityEditor.Events.UnityEventTools.AddPersistentListener(b.onClick, codeUi.Submit);
+                else UnityEditor.Events.UnityEventTools.AddIntPersistentListener(b.onClick, codeUi.PressDigit, int.Parse(keys[k]));
+            }
+            UIButton(codePanel, "CloseButton", "STEP AWAY", new Vector2(0.5f, 0f), new Vector2(0f, 70f), new Vector2(360f, 90f), 32, codeUi.Close);
+            Set(codeUi, "panel", codePanel.gameObject);
+            Set(codeUi, "titleText", codeTitle);
+            Set(codeUi, "displayText", codeDisplay);
+            codePanel.gameObject.SetActive(false);
+
             RectTransform pausePanel = UIPanel(root.transform, "PausePanel", new Color(0f, 0f, 0f, 0.82f));
             RectTransform mainPage = UIRect(pausePanel, "MainPage");
             Stretch(mainPage);

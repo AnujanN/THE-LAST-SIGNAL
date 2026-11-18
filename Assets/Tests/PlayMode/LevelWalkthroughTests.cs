@@ -127,8 +127,11 @@ namespace LastSignal.Tests
             Assert.IsTrue(socket.IsInstalled);
             Assert.IsFalse(breaker.TryRestorePower(), "Lever must fail with the starting breaker pattern");
 
-            bool[] solution = { true, false, true, false };
-            for (int i = 0; i < 4; i++) Get<BreakerSwitch>("Breaker_B" + (i + 1)).Set(solution[i]);
+            // Storm rule (sticker) + circuit diagram (office): tower circuits B3, B5, B6 down, the rest up.
+            bool[] solution = { true, true, false, true, false, false };
+            for (int i = 0; i < solution.Length; i++) Get<BreakerSwitch>("Breaker_B" + (i + 1)).Set(!solution[i]);
+            Assert.IsFalse(breaker.TryRestorePower(), "Inverted pattern must trip");
+            for (int i = 0; i < solution.Length; i++) Get<BreakerSwitch>("Breaker_B" + (i + 1)).Set(solution[i]);
             Assert.IsTrue(breaker.TryRestorePower());
             Assert.IsTrue(WorldFlags.Has("power:station"));
             Assert.AreEqual("l1_tape", Objective);
@@ -136,7 +139,14 @@ namespace LastSignal.Tests
             Assert.IsTrue(SaveManager.HasSave, "Power checkpoint should save");
 
             control.Interact(interactor);
-            yield return WaitUntilTrue(() => control.IsOpen, 3f, "control door open");
+            yield return new WaitForSeconds(0.5f);
+            Assert.IsFalse(control.IsOpen, "Control room needs the keypad code, not just power");
+            // Keypad code = the time the last person signed out on the storm night (visitor log: 02:47).
+            CodeLock keypad = Get<CodeLock>("ControlKeypad");
+            Assert.IsFalse(keypad.TrySubmit("1234"), "Wrong code must be rejected");
+            Assert.IsTrue(keypad.TrySubmit("0247"));
+            Assert.IsTrue(WorldFlags.Has("code:l1_control"));
+            yield return WaitUntilTrue(() => control.IsOpen, 3f, "control door opens after the code");
 
             TapePlayer tape = Get<TapePlayer>("TapePlayer");
             Time.timeScale = 20f;
@@ -184,10 +194,22 @@ namespace LastSignal.Tests
 
             generator.PressStep(1);
             Assert.AreEqual(0, generator.Progress, "Wrong first step should reset");
+            generator.PumpPrimer();
+            Assert.AreEqual(0, generator.Pumps, "Priming does nothing with the fuel off");
+            generator.PressStep(0);
+            generator.PressStep(1);
+            Assert.AreEqual(0, generator.Progress, "Choke without fuel pressure stalls");
+            generator.PressStep(0);
+            for (int i = 0; i < 6; i++) generator.PumpPrimer();
+            Assert.AreEqual(0, generator.Progress, "Over-priming floods and resets");
             generator.PressStep(0);
             generator.PressStep(2);
             Assert.AreEqual(0, generator.Progress, "Out-of-order step should reset");
+
+            // Torn card (wall) + missing piece (pump room): fuel, prime into the green, choke, starter.
             generator.PressStep(0);
+            for (int i = 0; i < 3; i++) generator.PumpPrimer();
+            Assert.IsTrue(generator.PressureInGreen);
             generator.PressStep(1);
             generator.PressStep(2);
             Assert.IsTrue(generator.IsSolved);

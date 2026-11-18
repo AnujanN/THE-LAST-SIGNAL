@@ -126,8 +126,8 @@ namespace LastSignal.EditorTools
             MakeDoor(items, "FrontDoor", new Vector3(0f, 0f, -6f), 0f, "l1_front", "front door", doorMat);
             MakeDoor(items, "ReceptionDoor", new Vector3(-4f, 0f, -2f), 90f, "l1_reception", "door", doorMat);
             MakeDoor(items, "OfficeDoor", new Vector3(4f, 0f, -2f), -90f, "l1_office", "door", doorMat);
-            MakeDoor(items, "ControlDoor", new Vector3(0f, 0f, 14f), 0f, "l1_control", "control room door", metal,
-                requiredFlag: "power:station", flagMessage: "The electronic lock is dead. There's no power.");
+            Door controlDoor = MakeDoor(items, "ControlDoor", new Vector3(0f, 0f, 14f), 0f, "l1_control", "control room door", metal,
+                requiredFlag: "code:l1_control", flagMessage: "Locked. There's a keypad on the wall beside it.");
             Door basementDoor = MakeDoor(items, "BasementDoor", new Vector3(1.5f, 0f, 6f), -90f, "l1_basement", "basement door", red,
                 requiredItemId: "basement_key", requiredItemName: "Basement Key");
 
@@ -163,10 +163,14 @@ namespace LastSignal.EditorTools
                 "To all staff:\n\nThe experimental broadcast rig in the tower stays OFF during storms. " +
                 "Lightning took out the old mast last year and the rig nearly caught fire.\n\n" +
                 "And please stop letting the kids play with the transmitter.\n\n- R.", paper);
-            WallNote(items, "Note_WiringMemo", new Vector3(-1.37f, 1.55f, 8.25f), 90f, "l1_wiring", "Wiring memo (taped to the fuse box)",
-                "IF THE MAIN TRIPS AGAIN:\n\nB1  Lights ............. UP\nB2  Old transmitter ...... DOWN (never up in a storm!)\n" +
-                "B3  Heating ............ UP\nB4  Roof antenna ....... DOWN\n\nInsert the main fuse first, then pull the main lever.\n\n" +
-                "Maya - please don't touch B2 again.", paper, new Vector2(0.5f, 0.45f));
+            WallNote(items, "Note_WiringMemo", new Vector3(-1.37f, 1.55f, 8.25f), 90f, "l1_wiring", "Sticker on the fuse box",
+                "STORM RULE\n\nAnything that feeds the TOWER stays DOWN.\nEverything else UP.\n\n" +
+                "(The breaker labels burned off in the '09 fire. The circuit diagram is pinned up in the manager's office.)\n\n" +
+                "Insert the main fuse first, then pull the main lever.", paper, new Vector2(0.5f, 0.45f));
+            WallNote(items, "Note_CircuitDiagram", new Vector3(9.5f, 1.6f, 1.88f), 180f, "l1_circuits", "Circuit diagram (manager's office)",
+                "MAIN PANEL - SERVICE CORRIDOR\n\nB1  Corridor and room lights\nB2  Control room door lock\n" +
+                "B3  Roof antenna (tower mast)\nB4  Heating\nB5  Broadcast rig (tower)\nB6  Tower lift motor\n\n" +
+                "Maya - stop switching the rig back on. I mean it.\n- Dad", paper, new Vector2(0.6f, 0.5f));
             Note(items, "Note_Maya", new Vector3(2.6f, 1.01f, 20.8f), -8f, "l1_maya_note", "Note in Maya's handwriting",
                 "Alex,\n\nThe transmitter keeps talking back. It knows our names.\n\n" +
                 "I put the spare basement key in the control desk. If anything goes wrong tonight, " +
@@ -175,11 +179,12 @@ namespace LastSignal.EditorTools
             // Breaker puzzle.
             Transform breaker = Group(items, "BreakerPuzzle", new Vector3(-1.32f, 0f, 0f));
             var puzzle = breaker.gameObject.AddComponent<BreakerPuzzle>();
-            string[] labels = { "B1", "B2", "B3", "B4" };
-            float[] zs = { 9.15f, 9.5f, 9.85f, 10.2f };
-            bool[] startUp = { false, true, false, true };
-            var switches = new BreakerSwitch[4];
-            for (int i = 0; i < 4; i++)
+            // Labels are only numbers: the storm rule (sticker) + circuit diagram (office) give the answer.
+            string[] labels = { "B1", "B2", "B3", "B4", "B5", "B6" };
+            float[] zs = { 8.95f, 9.25f, 9.55f, 9.85f, 10.15f, 10.45f };
+            bool[] startUp = { false, true, true, false, true, false };
+            var switches = new BreakerSwitch[labels.Length];
+            for (int i = 0; i < labels.Length; i++)
             {
                 GameObject body = Box(items, "Breaker_" + labels[i], new Vector3(-1.3f, 1.45f, zs[i]), new Vector3(0.08f, 0.22f, 0.13f), metal, isStatic: false);
                 GameObject handleGo = Box(body.transform, "Handle", new Vector3(0.6f, 0f, 0f), new Vector3(0.9f, 0.5f, 0.35f), red, collider: false, isStatic: false);
@@ -192,7 +197,8 @@ namespace LastSignal.EditorTools
             ItemSlot fuseSlot = Slot(items, "FuseSocket", new Vector3(-1.3f, 0.95f, 9.6f), "l1_fuse_socket", "main_fuse", "Main fuse",
                 "main fuse socket", Mat("SlotEmpty", new Color(0.45f, 0.3f, 0.08f)), Mat("Fuse", new Color(0.8f, 0.8f, 0.85f)), new Vector3(0.1f, 0.18f, 0.14f));
             SetArray(puzzle, "switches", switches);
-            SetBools(puzzle, "solution", new[] { true, false, true, false });
+            SetBools(puzzle, "solution", new[] { true, true, false, true, false, false });
+            SetValue(puzzle, "wrongMessage", "The breaker trips. Something on the tower is still switched on.");
             Set(puzzle, "fuseSlot", fuseSlot);
             ActionButton lever = Button3D(items, "MainLever", new Vector3(-1.29f, 1.45f, 10.7f), 0f, "l1_main_lever", "Pull main lever", red, new Vector3(0.1f, 0.32f, 0.08f));
             On(lever, "onPressed", puzzle.PullMainLever);
@@ -201,6 +207,25 @@ namespace LastSignal.EditorTools
             On(puzzle, "onSolved", events.SetObjectiveIfNotFlag, "watch:l1_tapes|l1_search2|Power is back. Find the rest of the tape fragments.");
             On(puzzle, "onSolved", events.Checkpoint, "l1_power");
             On(puzzle, "onSolved", events.Say, "ALEX|Lights. Okay. Okay.|2.5");
+            On(puzzle, "onSolved", events.Say, "ALEX|The control room has a keypad. Dad always changed that code.|3.5");
+
+            // Control room keypad: the code is in the visitor log (time Alex signed out), per Dad's note.
+            GameObject keypadGo = Box(items, "ControlKeypad", new Vector3(1.0f, 1.3f, 13.86f), new Vector3(0.18f, 0.26f, 0.06f),
+                Mat("Keypad", new Color(0.1f, 0.11f, 0.1f), smoothness: 0.5f), isStatic: false);
+            Box(keypadGo.transform, "Screen", new Vector3(0f, 0.3f, -0.6f), new Vector3(0.7f, 0.2f, 0.2f),
+                Mat("KeypadScreen", new Color(0.15f, 0.35f, 0.18f), emissive: true), collider: false, isStatic: false);
+            var keypad = keypadGo.AddComponent<CodeLock>();
+            SetValue(keypad, "id", "l1_control");
+            SetValue(keypad, "code", "0247");
+            SetValue(keypad, "title", "CONTROL ROOM - ENTER CODE");
+            SetValue(keypad, "prompt", "Use keypad");
+            SetValue(keypad, "requiredFlag", "power:station");
+            SetValue(keypad, "missingFlagMessage", "The keypad is dark. No power.");
+            SetValue(keypad, "hint", "Dad's note says the code is a time from the storm night.");
+            On(keypad, "onUnlocked", controlDoor.Open);
+            WallNote(items, "Note_KeypadSticky", new Vector3(-1.0f, 1.4f, 13.88f), 0f, "l1_sticky", "Sticky note by the keypad",
+                "Changed the code again.\nSame rule as always: the time the last person signed OUT on the storm night.\n\n" +
+                "I never want to forget it.\n- Dad", paper, new Vector2(0.18f, 0.18f));
 
             // Control room: tape player and key.
             TapePlayer tape = Tape(items, "TapePlayer", new Vector3(-1.5f, 1.09f, 21f), 180f, "l1_tape", "tape player", tapeMat, new[]

@@ -46,6 +46,8 @@ namespace LastSignal.Audio
         public static AudioClip Generator => Real("generator");
         public static AudioClip LiftDoors => Real("lift");
         public static AudioClip EchoVoice => Real("echo_voice");
+        /// <summary>Switch / key click (falls back to the beep).</summary>
+        public static AudioClip Click => Real("click") ?? Beep;
 
         private delegate float Sampler(float t, int n);
 

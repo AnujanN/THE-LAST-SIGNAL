@@ -113,6 +113,9 @@ with a 4-second grace period.
 Player noise per step: sprint 10 m, walk 4 m, crouch 1.2 m (×2 in water). Puzzle mistakes (keypad buzz,
 generator stall, junction arc) and some scares also make noise.
 
+**Voice:** wordless whispers when it starts a chase or vanishes, and a strangled, choking gasp when it catches you
+(BigSoundBank). Sounds still ringing from a catch are cut off when you respawn.
+
 **Body:** a Mixamo character (`Echo.fbx`) stretched tall (×1.15 high, ×0.95 wide), all black, hunched, with long
 arms and long fingers, a cocked head, random head twitches, glowing eyes (red when hunting) and smoke; Mixamo zombie
 animations blend idle / walk / run by speed, with the zombie idle for listening, the attack for inspecting a hiding
@@ -160,12 +163,19 @@ place and the scream for the catch. (A wall-and-ceiling crawl was tried and remo
   sheet, broken orb with a hole, old slack web, tent web, small orb on guy lines), turned and sized at random;
   all in one atlas, so still one draw call per level.
 - Life in the building (`AmbientLife`): every 18–40 s, where Alex is looking and never during a chase, a mouse darts
-  across the floor squeaking, a rat gnaws inside the wall beside him, or a spider lowers itself on a thread in front
+  across the floor or along a table or desk top squeaking (a big rat, ~30 cm), a rat gnaws inside the wall beside him, or a spider lowers itself on a thread in front
   of his face and climbs back up. 8–10 spiders sit on the walls and ceilings of each level and scuttle now and then.
   None of it makes noise The Echo hears. (Birds were tried and removed at the owner's request.)
-- Bad wiring (`RoomLightFlicker`): every 12–28 s one of the hall or room lights near Alex stutters for a few seconds
-  (dips, brief blackouts, starter clicks), never one The Echo is already disturbing, and never the red emergency lamps.
-- Doors take 1.5 s to swing open and their creak is cut to the same 1.5 s.
+- Bad wiring (`RoomLightFlicker`): every hall and room light has its own random timer (every 14–40 s) and stutters for
+  a few seconds when its turn comes and Alex is within 22 m (dips, brief blackouts, starter clicks); at most two at
+  once, never one The Echo is already disturbing, never the red emergency lamps.
+- Doors take 1.5 s to swing open and their creak is cut to the same 1.5 s. Doors are used within 1.6 m; notes, items and
+  batteries within 1.4 m; machines, fuse boxes, switches and keypads keep the full 2.2 m.
+- Level 1 outside: an old street light (pole on a base, arm over the path, lamp head with a glowing bowl; the light
+  hangs under the bowl). Steady rain with distant thunder every 40–85 s (the old rain loop rumbled every few seconds).
+- Tapes: the PLAY key clunks down, the tape hisses and whirs under the voices, and the key pops up at the end.
+- Signs: board text keeps its line breaks and is shrunk until every line fits; the board is then sized to the text
+  (a test checks every board and tag in all five levels).
 - Water: the Level 2 flood and every puddle in every level are water zones; steps there splash (real wading
   recordings) and carry a little further.
 - Level 1 ends with a real flight of nine concrete steps (about 1.5 m) down into the dark behind the basement door,
@@ -197,7 +207,7 @@ place and the scream for the catch. (A wall-and-ceiling crawl was tried and remo
 
 ## 7. Testing
 
-### Automated (Unity Test Framework, Play Mode) — 24 tests, all passing
+### Automated (Unity Test Framework, Play Mode) — 25 tests, all passing
 
 | Test | What it proves |
 |---|---|
@@ -223,6 +233,7 @@ place and the scream for the catch. (A wall-and-ceiling crawl was tried and remo
 | Sounds_BigSoundBankRecordingsArePresent | Every recorded sound the game asks for exists (footsteps, door creaks, water, paper, mice, breathing, tubes, dawn) |
 | AmbientLife_MouseRatAndSpider_AppearAndLeave | Mouse, gnawing rat and dropping spider all start in a clear corridor and leave again; a tube goes dark when Alex is under it |
 | Note_PickedUpReadInHand_AndPutBack | A desk note lifts to the face with its words on it, the hand holds it while paused, and it goes back exactly where it was |
+| Signs_TextFitsOnEveryBoard | In all five levels, every hanging board and brass tag is big enough for all of its letters |
 | Water_PuddleMakesStepsSplash | Standing in a puddle switches steps to splashes and makes them carry further |
 
 The walkthrough tests call interactions directly; they prove logic and scene flow, not that every object is

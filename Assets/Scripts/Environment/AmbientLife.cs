@@ -46,13 +46,13 @@ namespace LastSignal.Environment
         /// <summary>Try the events in a random order until one fits where Alex is looking.</summary>
         public bool TriggerAny()
         {
-            int start = Random.Range(0, 4);
-            for (int i = 0; i < 4; i++)
-                if (Trigger((start + i) % 4)) return true;
+            int start = Random.Range(0, 5);
+            for (int i = 0; i < 5; i++)
+                if (Trigger((start + i) % 5)) return true;
             return false;
         }
 
-        /// <summary>0 mouse, 1 pigeon, 2 owl, 3 spider.</summary>
+        /// <summary>0 mouse, 1 pigeon, 2 owl, 3 spider, 4 rat gnawing inside a wall.</summary>
         public bool Trigger(int which)
         {
             Camera cam = Camera.main;
@@ -62,9 +62,10 @@ namespace LastSignal.Environment
                 0 => TryMouse(cam.transform),
                 1 => TryBird(pigeon, cam.transform, 0.25f),
                 2 => TryBird(owl, cam.transform, 1.4f),
-                _ => TrySpider(cam.transform),
+                3 => TrySpider(cam.transform),
+                _ => TryGnaw(cam.transform),
             };
-            if (ok) LastEvent = which switch { 0 => "Mouse", 1 => "Pigeon", 2 => "Owl", _ => "Spider" };
+            if (ok) LastEvent = which switch { 0 => "Mouse", 1 => "Pigeon", 2 => "Owl", 3 => "Spider", _ => "Gnaw" };
             return ok;
         }
 
@@ -123,6 +124,18 @@ namespace LastSignal.Environment
             }
             if (!Clear(perch, via) || !Clear(via, exit)) return false;
             bird.Launch(perch, via, exit, delay);
+            return true;
+        }
+
+        /// <summary>Something gnawing inside the nearest wall to one side.</summary>
+        private bool TryGnaw(Transform cam)
+        {
+            AudioClip gnaw = Audio.PlaceholderClips.Gnaw;
+            if (gnaw == null || Audio.AudioManager.Instance == null) return false;
+            Vector3 side = Vector3.Cross(Vector3.up, Flat(cam.forward)) * (Random.value < 0.5f ? -1f : 1f);
+            Vector3 low = cam.position - Vector3.up * 1.2f;
+            if (!Physics.Raycast(low, side, out RaycastHit wall, 3f, solid, QueryTriggerInteraction.Ignore) || Mathf.Abs(wall.normal.y) > 0.3f) return false;
+            Audio.AudioManager.Instance.PlayAt(gnaw, wall.point - wall.normal * 0.1f, 0.8f);
             return true;
         }
 

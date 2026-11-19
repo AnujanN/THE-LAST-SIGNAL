@@ -79,7 +79,7 @@ namespace LastSignal.Environment
             foreach (Transform step in footstepPath)
             {
                 if (step == null) continue;
-                AudioManager.Instance?.PlayAt(PlaceholderClips.Footstep, step.position, footstepVolume);
+                AudioManager.Instance?.PlayAt(PlaceholderClips.CreakStep, step.position, footstepVolume);
                 yield return new WaitForSeconds(footstepInterval * Random.Range(0.85f, 1.2f));
             }
         }

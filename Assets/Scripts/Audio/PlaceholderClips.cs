@@ -63,6 +63,18 @@ namespace LastSignal.Audio
         public static AudioClip Hoot => Real("owl") ?? Get(ref hoot, () => Make("Hoot", 1.2f, HootSample));
         /// <summary>A pigeon's throaty coo.</summary>
         public static AudioClip Coo => Real("pigeon") ?? Get(ref coo, () => Make("Coo", 1.1f, CooSample));
+        /// <summary>A rat gnawing inside a wall (recording only).</summary>
+        public static AudioClip Gnaw => Real("gnaw");
+        /// <summary>A fluorescent tube's starter clicking as it tries to light.</summary>
+        public static AudioClip TubeFlick => Real("tube") ?? Spark;
+        /// <summary>The hum of a lit fluorescent tube, loopable (recording only).</summary>
+        public static AudioClip NeonHum => Real("neon");
+        /// <summary>Joints cracking (The Echo crawling).</summary>
+        public static AudioClip BoneCrack => Real("bonecrack") ?? Thud;
+        /// <summary>Teeth grinding (The Echo watching from above; recording only).</summary>
+        public static AudioClip Gnash => Real("gnash");
+        /// <summary>A footstep on creaking boards (someone walking upstairs).</summary>
+        public static AudioClip CreakStep => Real("creakstep") ?? Footstep;
 
         private delegate float Sampler(float t, int n);
 

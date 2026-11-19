@@ -63,7 +63,7 @@ namespace LastSignal.Environment
                     {
                         lit = !lit;
                         toggleTimer = lit ? Random.Range(0.05f, 0.18f) : Random.Range(0.08f, 0.35f);
-                        if (lit && buzz != null) buzz.PlayOneShot(Audio.PlaceholderClips.Buzz, 0.5f);
+                        if (lit && buzz != null) buzz.PlayOneShot(Audio.PlaceholderClips.TubeFlick, 0.6f);
                     }
                     level = lit ? Random.Range(0.6f, 1f) : 0.05f;
                     break;
@@ -75,6 +75,24 @@ namespace LastSignal.Environment
                     break;
             }
             Show(level);
+            Hum(phase == Phase.On);
+        }
+
+        /// <summary>The tube hums while it is lit.</summary>
+        private void Hum(bool on)
+        {
+            if (buzz == null) return;
+            if (on && !buzz.isPlaying)
+            {
+                AudioClip hum = Audio.PlaceholderClips.NeonHum;
+                if (hum == null) return;
+                buzz.clip = hum;
+                buzz.loop = true;
+                buzz.volume = 0.5f;
+                buzz.time = Random.Range(0f, hum.length * 0.9f);
+                buzz.Play();
+            }
+            else if (!on && buzz.isPlaying && buzz.clip != null) buzz.Stop();
         }
 
         private void Show(float level)

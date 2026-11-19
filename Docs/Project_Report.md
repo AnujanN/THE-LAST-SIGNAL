@@ -146,14 +146,22 @@ a small camera shake.
 - Keypads look like old mechanical door keypads: olive steel plate with screws, a counter window, black keys with
   a cross (clear) and a tick (enter), and green/red indicator lamps (green holds a moment before it opens, red
   flashes on a wrong code).
-- Cobwebs stretched across the upper corners of almost every room (15–29 per level), double-sided and dusty, with
-  loose strands hanging beside them.
+- Cobwebs stretched across the upper corners of almost every room (15–29 per level), double-sided, with loose
+  strands hanging beside them. Each web takes its own pattern from 16 (classic orb, torn off-centre orb, tangle,
+  sheet, broken orb with a hole, old slack web, tent web, small orb on guy lines), turned and sized at random;
+  all in one atlas, so still one draw call per level.
 - Life in the building (`AmbientLife`): every 18–40 s, where Alex is looking and never during a chase, a mouse darts
   across the floor squeaking, a pigeon or an owl (which hoots first, eyes glinting) bursts from high in the dark
   over his shoulder, or a spider lowers itself on a thread in front of his face and climbs back up. 8–10 spiders
   sit on the walls and ceilings of each level and scuttle now and then. None of it makes noise The Echo hears.
 - Distant flickering lights: three dying fluorescent tubes per level, far down the longest corridors and rooms.
-  They sputter on with a buzz, hold a few seconds and die, and go dark when Alex comes within 5 m.
+  They sputter on with the click of a failing starter, hum while lit, die, and go dark when Alex comes within 5 m.
+- Real recorded sounds (BigSoundBank, CC0) for footsteps on concrete, creaking doors, lockers and wardrobes, creaking
+  boards for the "someone upstairs" scare, Alex's frightened breathing and gasp, owl, pigeon wings and coos, mice
+  squeaking, a rat gnawing inside a wall (a fifth wildlife event), fluorescent tube clicks and hum, The Echo's joints
+  cracking and teeth grinding while it crawls, and birds waking at sunrise in the ending. The editor tool
+  `SoundCuts` (menu *The Last Signal/Audio/Cut BigSoundBank Sounds*) cuts them from the original takes: single steps
+  and squeaks found at their peaks, the loudest stretch of long takes, seamless loops for breathing and the hum.
 - Being caught: no punch — The Echo is suddenly in your face, towering; your view is wrenched up to it, its long hands
   close around your head, it shrieks and the picture tears into static and goes black.
 - Scripted fear: footsteps on the floor above, falling objects, slamming doors, bursting lamps, whispers and radio
@@ -173,7 +181,7 @@ a small camera shake.
 
 ## 7. Testing
 
-### Automated (Unity Test Framework, Play Mode) — 21 tests, all passing
+### Automated (Unity Test Framework, Play Mode) — 22 tests, all passing
 
 | Test | What it proves |
 |---|---|
@@ -196,6 +204,7 @@ a small camera shake.
 | Echo_InspectsHidingSpot_HoldingBreathKeepsPlayerSafe | Inspection + holding breath = safe |
 | Echo_InspectsHidingSpot_FindsBreathingPlayer | Inspection without holding breath = found |
 | Echo_CrawlsOnCeiling_AndDropsToItsFeetToHunt | Upside down on the ceiling with hands and feet planted on it; a hunt drops it to its feet at once |
+| Sounds_BigSoundBankRecordingsArePresent | Every recorded sound the game asks for exists (six footsteps, five door creaks, birds, mice, breathing, tubes, Echo, dawn) |
 | AmbientLife_MouseBirdsAndSpider_AppearAndLeave | Mouse, pigeon, owl and dropping spider all start in a clear corridor, a bird passes close to Alex, all leave again; a tube goes dark when Alex is under it |
 
 The walkthrough tests call interactions directly; they prove logic and scene flow, not that every object is
@@ -221,14 +230,15 @@ easy to reach by walking and aiming. That needs a human play-through.
 | Pigeon, owl, spiders, flickering tube fittings, sign boards, keypad | Built in code from primitives (`Wildlife`, `BuildKit`, `GamePrefabs`) |
 | Handwriting font for notes: Caveat | Google Fonts, The Caveat Project Authors — **SIL Open Font License 1.1** (`Assets/Art/Fonts/Caveat/OFL.txt`) |
 | Aged paper, stains, drips, mould, cracks, cobwebs, soot, scratches, static | Generated in code by editor scripts (`PaperArt`, `Dressing`) |
-| Footsteps, doors, impacts, switches, latches, generator, elevator, glitches | Kenney (kenney.nl) — **CC0** |
+| Impacts, switches, latches, pickups, sparks, generator, elevator, glitches | Kenney (kenney.nl) — **CC0** |
+| Footsteps, creaking doors and boards, breathing, gasp, owl, pigeon, wings, mouse, rat, fluorescent tubes, bones cracking, teeth grinding, birds at dawn | Joseph Sardin, **BigSoundBank.com** — **CC0** (originals in `Assets/Audio/Source/BigSoundBank/`, by sound id; not in the build) |
 | Rain & thunder ambience | "Rain and Thunder Loop" by DoKashiteru, OpenGameArt.org — **CC BY 3.0** (credited in game) |
 | Basement ambience | "Loopable Dungeon Ambience", OpenGameArt.org — **CC0** |
 | The Echo snarls / attack | "Monster Snarls", OpenGameArt.org — **CC0** |
 | The Echo ghostly voice, wind | Joseph Sardin (BigSoundBank / LaSonotheque) via Wikimedia Commons — **CC0** |
 | Heartbeat | "Heartbeat.ogg" by HerbertBoland, Wikimedia Commons — **CC BY 3.0** (credited in game) |
 | Electrical hum | "MainsBrum50Hz.ogg", Wikimedia Commons — **Public domain** |
-| Breathing, gasp, mouse squeak, wing flutter, owl hoot, pigeon coo, skittering, fallback sounds | Generated in code (`PlaceholderClips`) |
+| Spider skittering, fallback sounds when a recording is missing | Generated in code (`PlaceholderClips`) |
 | Font: Liberation Sans SDF | TextMeshPro default font (SIL Open Font License) |
 | Unity 6.6, URP, Input System, uGUI/TextMeshPro, AI Navigation, Test Framework | Unity packages (Unity Companion License / Unity terms) |
 | Unity MCP for Unity (CoplayDev, v10.3.0) | Editor-only development tool (MIT) — not part of the game build |
@@ -237,7 +247,7 @@ easy to reach by walking and aiming. That needs a human play-through.
 ## 9. Known limitations
 
 - Maya's ghost still uses the stylised CC0 mannequin. The birds and spiders are simple shapes (fine in the dark and
-  in motion, but not detailed up close); the owl/pigeon/mouse sounds are synthesised.
+  in motion, but not detailed up close).
 - The Echo's crawl is procedural (IK on the zombie animation), not a hand-made crawl animation.
 - No voice acting; all story speech is subtitled. Breathing is a generated sound.
 - Not yet played end-to-end by a person after the five-level update; not tested on a physical Android device; FPS unmeasured.

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Linq;
+using LastSignal.Audio;
 using LastSignal.Enemy;
 using LastSignal.Environment;
 using LastSignal.GameFlow;
@@ -600,6 +601,16 @@ namespace LastSignal.Tests
             yield return WalkInto(tube.transform.position + Vector3.down * (tube.transform.position.y - 0.05f));
             yield return new WaitForSeconds(0.5f);
             Assert.IsFalse(tube.GetComponentInChildren<Light>().enabled, "A tube goes dead when Alex comes close");
+        }
+
+        [Test]
+        public void Sounds_BigSoundBankRecordingsArePresent()
+        {
+            string[] keys = { "footstep", "door", "owl", "flutter", "pigeon", "squeak", "gnaw", "breathing", "gasp",
+                              "creakstep", "tube", "neon", "bonecrack", "gnash", "dawn" };
+            foreach (string k in keys) Assert.IsTrue(SoundBank.Has(k), "Missing recorded sound: " + k);
+            Assert.IsTrue(SoundBank.Has("footstep_5"), "Six footstep variations");
+            Assert.IsTrue(SoundBank.Has("door_4"), "Five door creaks");
         }
 
         private static bool SpiderDropping => GameObject.Find("AmbientLife/DropSpider") != null;

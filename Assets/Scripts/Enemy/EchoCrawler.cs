@@ -75,7 +75,7 @@ namespace LastSignal.Enemy
         private float wallSide = 1f;
         private Vector3 planePoint, planeNormal = Vector3.up;
         private bool planeValid, limbsPlanted;
-        private float skitterTimer;
+        private float skitterTimer, crackTimer = 1f, gnashTimer = 5f;
 
         /// <summary>0 standing .. 1 fully crawling.</summary>
         public float Weight => weight;
@@ -192,17 +192,39 @@ namespace LastSignal.Enemy
             surface = target;
             weight = Mathf.MoveTowards(weight, 1f, dt * climbSpeed);
 
-            // Scratching and skittering while it moves on a wall or the ceiling.
-            if (surface != Surface.Floor && voice != null && agent != null && agent.velocity.sqrMagnitude > 0.2f)
+            if (voice == null) return;
+            bool moving = agent != null && agent.velocity.sqrMagnitude > 0.2f;
+            // Scratching while it moves on a wall or the ceiling.
+            if (surface != Surface.Floor && moving)
             {
                 skitterTimer -= dt;
                 if (skitterTimer <= 0f)
                 {
-                    skitterTimer = Random.Range(0.25f, 0.6f);
+                    skitterTimer = Random.Range(0.3f, 0.7f);
                     voice.pitch = Random.Range(1.3f, 1.8f);
-                    voice.PlayOneShot(Audio.PlaceholderClips.Skitter, 0.35f);
+                    voice.PlayOneShot(Audio.PlaceholderClips.Skitter, 0.25f);
                     voice.pitch = 1f;
                 }
+            }
+            // Joints cracking as it bends into the crawl and moves.
+            crackTimer -= dt * (moving ? 1f : 0.4f);
+            if (crackTimer <= 0f && weight > 0.5f)
+            {
+                crackTimer = Random.Range(1.4f, 3.2f);
+                voice.pitch = Random.Range(0.85f, 1.1f);
+                voice.PlayOneShot(Audio.PlaceholderClips.BoneCrack, 0.8f);
+                voice.pitch = 1f;
+            }
+            // Teeth grinding while it hangs above and watches.
+            gnashTimer -= dt;
+            if (gnashTimer <= 0f)
+            {
+                gnashTimer = Random.Range(5f, 10f);
+                Camera cam = Camera.main;
+                AudioClip gnash = Audio.PlaceholderClips.Gnash;
+                if (surface != Surface.Floor && gnash != null && cam != null
+                    && (cam.transform.position - transform.position).sqrMagnitude < watchDistance * watchDistance)
+                    voice.PlayOneShot(gnash, 0.7f);
             }
         }
 

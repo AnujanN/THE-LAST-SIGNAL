@@ -7,4 +7,4 @@ Added 18 Nov 2026 (furniture swap): WoodenTable_03, painted_wooden_table, sofa_0
 painted_wooden_bench, GothicBed_01, wooden_crate_02, modern_wooden_cabinet (same source, CC0).
 Added 18 Nov 2026 (machines and fittings): old_military_compressor, portable_generator, modular_industrial_pipes_01,
 propane_tank, worn_metal_rack, utility_box_01, utility_box_02, power_box_01, vintage_radio_transceiver, circuit_board,
-cassette_player, electric_stove, ornate_mirror_01, rubber_duck_toy, mounted_fluorescent_lights, WetFloorSign_01 (CC0).
+electric_stove, ornate_mirror_01, rubber_duck_toy, mounted_fluorescent_lights, WetFloorSign_01 (CC0).

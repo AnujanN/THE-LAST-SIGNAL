@@ -157,6 +157,7 @@ namespace LastSignal.GameFlow
 
         public void RetryCheckpoint()
         {
+            Audio.AudioManager.Instance?.ResetForRespawn();
             if (checkpointState == null) { Load(SceneManager.GetActiveScene().name); return; }
             Live = checkpointState.Clone();
             Load(Live.scene);

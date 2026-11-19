@@ -51,7 +51,7 @@ namespace LastSignal.EditorTools
             WallZ(env, "Fence_E", 12f, -18f, -6f, 2.5f, facade);
             WallX(env, "Fence_S", -18f, -12f, 12f, 2.5f, facade);
             Box(env, "Path", new Vector3(0f, 0.01f, -12f), new Vector3(2.2f, 0.02f, 12f), floor);
-            Box(env, "LampPost", new Vector3(2.2f, 1.75f, -10f), new Vector3(0.12f, 3.5f, 0.12f), metal);
+            StreetLamp(env, new Vector3(2.2f, 0f, -10f), metal);
             Box(env, "Car", new Vector3(-6f, 0.7f, -13f), new Vector3(1.9f, 1.4f, 4.2f), Mat("Car", new Color(0.18f, 0.2f, 0.24f)));
 
             // Interior shell.
@@ -95,7 +95,8 @@ namespace LastSignal.EditorTools
 
             // ------------------------------------------------------------------ lights
             Transform lights = Group(null, "Lighting");
-            PointLight(lights, "StreetLamp", new Vector3(1.6f, 3.4f, -10f), new Color(0.6f, 0.7f, 1f), 1.4f, 10f);
+            // The light hangs under the lamp head at the end of the arm (see StreetLamp).
+            PointLight(lights, "StreetLamp", new Vector3(2.2f - 1.0f, 3.95f, -10f), new Color(0.6f, 0.7f, 1f), 1.4f, 10f);
             PointLight(lights, "EmergencyLight", new Vector3(0f, 2.9f, -2f), new Color(1f, 0.15f, 0.1f), 0.7f, 7f);
             Light foyerLight = PointLight(lights, "Foyer", new Vector3(0f, 2.9f, -2f), new Color(1f, 0.9f, 0.75f), 1.5f, 9f);
             Light receptionLight = PointLight(lights, "Reception", new Vector3(-8f, 2.9f, -2f), new Color(1f, 0.9f, 0.75f), 1.3f, 9f);
@@ -341,7 +342,35 @@ namespace LastSignal.EditorTools
             SaveScene(scene, ScenePath);
             Debug.Log("[Level1Builder] Built " + ScenePath);
         }
-            // ------------------------------------------------------------------ stairs to the basement
+            // ------------------------------------------------------------------ street lamp
+
+        /// <summary>
+        /// An old street light: a tapered steel pole on a base, an arm reaching out over the path, and a lamp
+        /// head with a glowing glass bowl underneath (the light itself sits just below the bowl).
+        /// </summary>
+        private static void StreetLamp(Transform env, Vector3 foot, Material metal)
+        {
+            Transform lamp = Group(env, "StreetLamp", foot);
+            Material paint = Mat("LampPostPaint", new Color(0.12f, 0.14f, 0.13f), smoothness: 0.35f);
+            Material glass = Mat("StreetLampGlass", new Color(0.75f, 0.82f, 1f), emissive: true, smoothness: 0.8f);
+            Box(lamp, "Base", new Vector3(0f, 0.25f, 0f), new Vector3(0.32f, 0.5f, 0.32f), paint);
+            Prim(lamp, "Pole", PrimitiveType.Cylinder, new Vector3(0f, 2.2f, 0f), new Vector3(0.15f, 1.95f, 0.15f), paint);
+            Prim(lamp, "PoleTop", PrimitiveType.Cylinder, new Vector3(0f, 4.2f, 0f), new Vector3(0.11f, 0.08f, 0.11f), paint, collider: false);
+            // Arm out over the path (towards -X), rising slightly.
+            GameObject arm = Prim(lamp, "Arm", PrimitiveType.Cylinder, new Vector3(-0.5f, 4.15f, 0f), new Vector3(0.07f, 0.52f, 0.07f), paint,
+                new Vector3(0f, 0f, 84f), collider: false);
+            Box(lamp, "Brace", new Vector3(-0.22f, 3.95f, 0f), new Vector3(0.04f, 0.45f, 0.04f), paint, collider: false)
+                .transform.localRotation = Quaternion.Euler(0f, 0f, -45f);
+            // Lamp head: a dark hood with the glowing bowl under it.
+            Box(lamp, "Head", new Vector3(-1.0f, 4.12f, 0f), new Vector3(0.62f, 0.12f, 0.32f), paint, collider: false);
+            Box(lamp, "HeadRim", new Vector3(-1.0f, 4.05f, 0f), new Vector3(0.58f, 0.04f, 0.3f), metal, collider: false);
+            Prim(lamp, "Bowl", PrimitiveType.Sphere, new Vector3(-1.0f, 4.02f, 0f), new Vector3(0.48f, 0.11f, 0.24f), glass, collider: false);
+            foreach (Renderer r in lamp.GetComponentsInChildren<Renderer>())
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+            lamp.Find("Bowl").GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+
+        // ------------------------------------------------------------------ stairs to the basement
 
         private const float StairX0 = 2.6f, StairX1 = 5.9f, StairZ0 = 5.1f, StairZ1 = 6.9f;
         private const int StairSteps = 9;

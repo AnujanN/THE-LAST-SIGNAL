@@ -485,15 +485,13 @@ namespace LastSignal.EditorTools
             tmp.characterSpacing = 2f;
             if (!keepColour) tmp.color = new Color(0.09f, 0.055f, 0.03f);
             else tmp.color *= 0.75f;
-            // One line unless the text has its own line breaks: shrink the font to fit the width.
-            if (!tmp.text.Contains("\n"))
-            {
-                float wide = tmp.GetPreferredValues(tmp.text).x;
-                if (wide > area.x - 0.1f) tmp.fontSize *= (area.x - 0.1f) / wide;
-            }
-            Vector2 pref = tmp.GetPreferredValues(tmp.text, area.x, area.y);
-            float w = Mathf.Clamp(pref.x + 0.32f, 0.7f, area.x + 0.15f);
-            float h = Mathf.Clamp(pref.y + 0.16f, 0.24f, area.y + 0.1f);
+            // Lines exactly as written (no wrapping); shrink the font until every line fits the area, then size
+            // the board to the text, so no letter ever hangs off its edge.
+            tmp.textWrappingMode = TextWrappingModes.NoWrap;
+            Vector2 pref = FitText(tmp, area.x - 0.12f, area.y - 0.06f);
+            ((RectTransform)sign).sizeDelta = pref + new Vector2(0.04f, 0.04f);
+            float w = Mathf.Max(pref.x + 0.32f, 0.7f);
+            float h = Mathf.Max(pref.y + 0.16f, 0.24f);
 
             Material wood = Mat("SignWood", new Color(0.62f, 0.45f, 0.3f), smoothness: 0.25f);
             Texture2D planks = AssetDatabase.LoadAssetAtPath<Texture2D>(TextureDir + "/brown_planks_05_diff.jpg");
@@ -568,13 +566,29 @@ namespace LastSignal.EditorTools
             }
         }
 
+        /// <summary>Shrink the font until the unwrapped text fits maxW x maxH; returns the text's size.</summary>
+        private static Vector2 FitText(TextMeshPro tmp, float maxW, float maxH)
+        {
+            Vector2 pref = tmp.GetPreferredValues(tmp.text, Mathf.Infinity, Mathf.Infinity);
+            if (pref.x <= 0f || pref.y <= 0f) return pref;
+            float k = Mathf.Min(1f, Mathf.Max(0.1f, maxW) / pref.x, Mathf.Max(0.05f, maxH) / pref.y);
+            if (k < 1f)
+            {
+                tmp.fontSize *= k;
+                pref = tmp.GetPreferredValues(tmp.text, Mathf.Infinity, Mathf.Infinity);
+            }
+            return pref;
+        }
+
         /// <summary>A small worn brass tag behind a label (breakers, controls, sockets).</summary>
         private static void LabelTag(Transform sign, TextMeshPro tmp, Vector2 area)
         {
             tmp.color = new Color(0.07f, 0.06f, 0.05f);
             tmp.fontStyle = FontStyles.Bold;
-            Vector2 pref = tmp.GetPreferredValues(tmp.text, area.x, area.y);
-            float w = Mathf.Clamp(pref.x + 0.06f, 0.12f, area.x + 0.05f), h = Mathf.Clamp(pref.y + 0.03f, 0.06f, area.y + 0.04f);
+            tmp.textWrappingMode = TextWrappingModes.NoWrap;
+            Vector2 pref = FitText(tmp, area.x - 0.02f, area.y - 0.01f);
+            ((RectTransform)sign).sizeDelta = pref + new Vector2(0.01f, 0.01f);
+            float w = Mathf.Max(pref.x + 0.06f, 0.12f), h = Mathf.Max(pref.y + 0.03f, 0.06f);
             Material brass = Mat("TagBrass", new Color(0.52f, 0.43f, 0.24f), smoothness: 0.55f);
             Box(sign, "Tag", new Vector3(0f, 0f, 0.006f), new Vector3(w, h, 0.006f), brass, collider: false);
         }

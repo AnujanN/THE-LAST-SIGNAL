@@ -20,7 +20,25 @@ namespace LastSignal.EditorTools
         public static void CutAll()
         {
             // Sets these recordings replace completely (old Kenney / generated variations removed).
-            foreach (string key in new[] { "footstep", "door", "splash", "paper", "paperdown" }) RemoveSet(key);
+            foreach (string key in new[] { "footstep", "door", "splash", "paper", "paperdown", "rain", "thunder", "whisper", "choke",
+                                           "tapestart", "taperun", "tapestop" }) RemoveSet(key);
+
+            // Storm outside Level 1: steady rain with no thunder in it (the old loop rumbled every few seconds),
+            // and separate distant thunder that the AudioManager plays now and then.
+            Loudest("1289", "rain", 40f, rate: 24000, loop: true, level: 0.05f);
+            First("3115", "thunder", 14f);
+            First("3180", "thunder_1", 12f);
+
+            // Cassette deck: PLAY key down, the tape running under the voices (loop), the key popping up.
+            First("0565", "tapestart", 1f);
+            Segment("0565", "taperun", 3f, 5f, loop: true, rate: 24000, level: 0.05f);
+            LastPeak("0570", "tapestop", 0.8f);
+
+            // The Echo: wordless whispers instead of snarls, and a strangled gasp when it catches you.
+            Windows("3255", "whisper", 2, 3.5f, 0, level: 0.08f);
+            Windows("3256", "whisper", 2, 3.5f, 2, level: 0.08f);
+            Loudest("1639", "choke", 2.2f);
+            Loudest("1640", "choke_1", 2.2f);
 
             // Mice and rats.
             Onsets("0459", "squeak", 4, 0.6f, minGap: 0.5f);
@@ -104,6 +122,48 @@ namespace LastSignal.EditorTools
                 int len = Mathf.Min(d.Length - start, Mathf.RoundToInt(seconds * hz));
                 Write(made == 0 ? key : key + "_" + made, Slice(d, start, len, 0.003f, seconds * 0.35f, false, hz), hz, 0);
                 made++;
+            }
+        }
+
+        /// <summary>A fixed stretch of a take (seconds in, length).</summary>
+        private static void Segment(string id, string name, float start, float seconds, bool loop = false, int rate = 0, float level = 0f)
+        {
+            float[] d = Load(id, out int hz);
+            int s0 = Mathf.Clamp(Mathf.RoundToInt(start * hz), 0, d.Length - 1);
+            int len = Mathf.Min(d.Length - s0, Mathf.RoundToInt(seconds * hz));
+            Write(name, Slice(d, s0, len, loop ? 0f : 0.03f, loop ? 0f : 0.1f, loop, hz, level), hz, rate);
+        }
+
+        /// <summary>The last strong transient of a take (a key popping up at the end).</summary>
+        private static void LastPeak(string id, string name, float seconds)
+        {
+            float[] d = Load(id, out int hz);
+            List<int> peaks = PeakTimes(d, hz, 0.35f, 0.3f);
+            int start = Mathf.Max(0, peaks[peaks.Count - 1] - hz / 25);
+            Write(name, Slice(d, start, Mathf.Min(d.Length - start, Mathf.RoundToInt(seconds * hz)), 0.003f, 0.2f, false, hz), hz, 0);
+        }
+
+        /// <summary>The loudest non-overlapping stretches of a take, named key, key_1 ... from <paramref name="first"/>.</summary>
+        private static void Windows(string id, string key, int count, float seconds, int first, float level = 0f)
+        {
+            float[] d = Load(id, out int hz);
+            int len = Mathf.Min(d.Length, Mathf.RoundToInt(seconds * hz)), hop = hz / 10;
+            var windows = new List<(int start, double energy)>();
+            for (int st = 0; st + len <= d.Length; st += hop)
+            {
+                double e = 0;
+                for (int i = st; i < st + len; i += 4) e += d[i] * d[i];
+                windows.Add((st, e));
+            }
+            windows.Sort((a, b) => b.energy.CompareTo(a.energy));
+            var used = new List<int>();
+            foreach (var w in windows)
+            {
+                if (used.Count >= count) break;
+                if (used.Exists(u => Mathf.Abs(u - w.start) < len)) continue;
+                used.Add(w.start);
+                int n = first + used.Count - 1;
+                Write(n == 0 ? key : key + "_" + n, Slice(d, w.start, len, 0.15f, 0.4f, false, hz, level), hz, 0);
             }
         }
 

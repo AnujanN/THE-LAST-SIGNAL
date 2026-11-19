@@ -27,6 +27,7 @@ namespace LastSignal.Audio
         private Ambience currentAmbience = Ambience.None;
         private float ambienceTarget;
         private float threatLevel;
+        private float thunderTimer = 25f;
 
         /// <summary>0 = safe, 1 = The Echo is right here. Drives the threat loop and HUD vignette.</summary>
         public float ThreatLevel => threatLevel;
@@ -64,6 +65,29 @@ namespace LastSignal.Audio
             threat.pitch = 0.85f + threatLevel * 0.3f;
             // Decay so the threat fades if nothing reports it this frame.
             threatLevel = Mathf.MoveTowards(threatLevel, 0f, Time.deltaTime * 0.5f);
+
+            // Out in the storm: distant thunder now and then (the rain bed itself has none).
+            if (currentAmbience == Ambience.RainAndWind && Time.deltaTime > 0f)
+            {
+                thunderTimer -= Time.deltaTime;
+                if (thunderTimer <= 0f)
+                {
+                    thunderTimer = Random.Range(40f, 85f);
+                    AudioClip clip = PlaceholderClips.Thunder;
+                    if (clip != null) ui.PlayOneShot(clip, Random.Range(0.3f, 0.55f) * GameSettings.AmbienceVolume);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Respawning after a catch: cut off any sound still ringing from the catch (it played on this
+        /// persistent source) and drop the threat loop at once.
+        /// </summary>
+        public void ResetForRespawn()
+        {
+            ui.Stop();
+            threatLevel = 0f;
+            threat.volume = 0f;
         }
 
         public void SetAmbience(Ambience type, float volume = 0.6f)

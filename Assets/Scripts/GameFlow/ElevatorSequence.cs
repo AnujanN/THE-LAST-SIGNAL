@@ -57,7 +57,7 @@ namespace LastSignal.GameFlow
                 if (!screamed && k > 0.4f)
                 {
                     screamed = true;
-                    AudioManager.Instance?.PlayUI(PlaceholderClips.Scream, 0.9f);
+                    AudioManager.Instance?.PlayUI(PlaceholderClips.EchoWhisper, 1f);
                     SubtitleManager.Instance?.Say("THE ECHO", "Alex... stay with me...", 2.5f);
                 }
                 AudioManager.Instance?.ReportThreat(1f);

@@ -195,7 +195,7 @@ namespace LastSignal.Enemy
         public void Vanish()
         {
             Deactivate();
-            AudioManager.Instance?.PlayUI(PlaceholderClips.Scream, 0.7f);
+            AudioManager.Instance?.PlayUI(PlaceholderClips.EchoWhisper, 0.7f);
             gameObject.SetActive(false);
         }
 
@@ -556,7 +556,7 @@ namespace LastSignal.Enemy
             chaseTimer = 0f;
             lostSightTimer = 0f;
             SetState(State.Chase);
-            if (voice != null) voice.PlayOneShot(PlaceholderClips.Scream, 0.6f);
+            if (voice != null) voice.PlayOneShot(PlaceholderClips.EchoWhisper, 0.9f);
         }
 
         private void BeginSearch(Vector3 centre)
@@ -614,7 +614,7 @@ namespace LastSignal.Enemy
                 sequence.Play(() => GameFlowManager.Instance?.PlayerCaught());
                 return;
             }
-            AudioManager.Instance?.PlayUI(PlaceholderClips.Scream, 1f);
+            AudioManager.Instance?.PlayUI(PlaceholderClips.EchoChoke, 1f);
             GameFlowManager.Instance?.PlayerCaught();
         }
 

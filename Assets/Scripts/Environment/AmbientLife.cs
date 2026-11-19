@@ -76,6 +76,40 @@ namespace LastSignal.Environment
         private bool TryMouse(Transform cam)
         {
             if (mouse == null || mouse.Busy) return false;
+            // Half the time it scurries along a table or desk top in view, if there is one.
+            if (Random.value < 0.5f && TryTableRun(cam)) return true;
+            return TryFloorRun(cam);
+        }
+
+        /// <summary>Along the length of a table or desk top ahead (off one end and gone).</summary>
+        private bool TryTableRun(Transform cam)
+        {
+            Vector3 f = Flat(cam.forward);
+            for (int attempt = 0; attempt < 6; attempt++)
+            {
+                Vector3 dir = Quaternion.AngleAxis(Random.Range(-35f, 35f), Vector3.up) * f;
+                Vector3 c = cam.position + dir * Random.Range(1.5f, 4.5f);
+                if (!Clear(cam.position, c)) continue;
+                if (!Physics.Raycast(c, Vector3.down, out RaycastHit top, 1.6f, solid, QueryTriggerInteraction.Ignore) || top.normal.y < 0.9f) continue;
+                float height = top.point.y - (cam.position.y - 1.65f);
+                if (height < 0.55f || height > 1.25f) continue; // a table or desk, not the floor or a shelf
+                Bounds b = top.collider.bounds;
+                bool alongX = b.size.x >= b.size.z;
+                float length = alongX ? b.size.x : b.size.z;
+                if (length < 0.9f || length > 6f) continue;
+                Vector3 axis = alongX ? Vector3.right : Vector3.forward;
+                Vector3 mid = new Vector3(alongX ? b.center.x : top.point.x, top.point.y, alongX ? top.point.z : b.center.z);
+                Vector3 a = mid - axis * (length / 2f - 0.08f), e = mid + axis * (length / 2f - 0.08f);
+                if (!Clear(cam.position, a + Vector3.up * 0.1f) && !Clear(cam.position, e + Vector3.up * 0.1f)) continue;
+                if (Random.value < 0.5f) (a, e) = (e, a);
+                mouse.Run(a, e);
+                return true;
+            }
+            return false;
+        }
+
+        private bool TryFloorRun(Transform cam)
+        {
             Vector3 f = Flat(cam.forward), r = Vector3.Cross(Vector3.up, f);
             Vector3 c = cam.position + f * Random.Range(2.5f, 5f);
             if (!Clear(cam.position, c)) return false;

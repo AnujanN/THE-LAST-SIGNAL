@@ -634,11 +634,40 @@ namespace LastSignal.Tests
             yield return WaitForScene(GameFlowManager.Level2Scene);
         }
 
+        /// <summary>On every level, each hanging board / brass tag is big enough for all of its letters.</summary>
+        [UnityTest, Timeout(180000)]
+        public IEnumerator Signs_TextFitsOnEveryBoard()
+        {
+            string[] levels = { GameFlowManager.Level1Scene, GameFlowManager.Level2Scene, GameFlowManager.Level3Scene,
+                                GameFlowManager.Level4Scene, GameFlowManager.Level5Scene };
+            int checkedSigns = 0;
+            foreach (string level in levels)
+            {
+                yield return StartLevel(level);
+                foreach (Transform board in Object.FindObjectsByType<Transform>(FindObjectsInactive.Exclude))
+                {
+                    if (board.name != "Board" && board.name != "Tag") continue;
+                    Renderer text = board.parent != null ? board.parent.GetComponent<MeshRenderer>() : null;
+                    Renderer plate = board.GetComponent<Renderer>();
+                    if (text == null || plate == null) continue;
+                    // Compare in the sign's own frame (boards are slightly tilted).
+                    Transform sign = board.parent;
+                    Bounds t = text.localBounds;
+                    float halfW = board.localScale.x / 2f + 0.01f, halfH = board.localScale.y / 2f + 0.01f;
+                    Assert.LessOrEqual(Mathf.Max(Mathf.Abs(t.min.x), Mathf.Abs(t.max.x)), halfW, level + ": letters run off the side of '" + sign.name + "'");
+                    Assert.LessOrEqual(Mathf.Max(Mathf.Abs(t.min.y), Mathf.Abs(t.max.y)), halfH, level + ": letters run off the top/bottom of '" + sign.name + "'");
+                    checkedSigns++;
+                }
+            }
+            Assert.Greater(checkedSigns, 15, "Boards and tags should have been found");
+        }
+
         [Test]
         public void Sounds_BigSoundBankRecordingsArePresent()
         {
             string[] keys = { "footstep", "door", "squeak", "gnaw", "breathing", "gasp", "creakstep", "tube", "neon", "dawn",
-                              "splash", "paper", "paperdown" };
+                              "splash", "paper", "paperdown", "rain", "thunder", "whisper", "choke", "tapestart", "taperun", "tapestop" };
+            Assert.IsFalse(SoundBank.Has("scream"), "The old snarls are gone");
             foreach (string k in keys) Assert.IsTrue(SoundBank.Has(k), "Missing recorded sound: " + k);
             Assert.IsTrue(SoundBank.Has("footstep_5"), "Six footstep variations");
             Assert.IsTrue(SoundBank.Has("door_4"), "Five door creaks");

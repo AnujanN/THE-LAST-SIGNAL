@@ -63,7 +63,7 @@ namespace LastSignal.Enemy
             transform.rotation = Quaternion.LookRotation(-dir);
 
             Started?.Invoke(duration);
-            AudioManager.Instance?.PlayUI(PlaceholderClips.Scream, 1f);
+            AudioManager.Instance?.PlayUI(PlaceholderClips.EchoChoke, 1f);
             AudioManager.Instance?.PlayUI(PlaceholderClips.StaticBurst, 0.8f);
             if (voice != null && PlaceholderClips.EchoVoice != null)
             {

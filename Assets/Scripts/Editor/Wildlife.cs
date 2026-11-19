@@ -123,7 +123,7 @@ namespace LastSignal.EditorTools
             var root = new GameObject("Mouse");
             var model = new GameObject("Model").transform;
             model.SetParent(root.transform, false);
-            model.localScale = Vector3.one * 1.35f;
+            model.localScale = Vector3.one * 2.1f; // a big sewer rat, easy to spot
             GameObject rat = PropLibrary.Prefab("street_rat");
             if (rat != null)
             {

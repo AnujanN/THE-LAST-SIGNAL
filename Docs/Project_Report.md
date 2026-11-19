@@ -249,10 +249,8 @@ easy to reach by walking and aiming. That needs a human play-through.
 | Handwriting font for notes: Caveat | Google Fonts, The Caveat Project Authors — **SIL Open Font License 1.1** (`Assets/Art/Fonts/Caveat/OFL.txt`) |
 | Aged paper, stains, drips, mould, cracks, cobwebs, soot, scratches, static | Generated in code by editor scripts (`PaperArt`, `Dressing`) |
 | Impacts, switches, latches, pickups, sparks, generator, elevator, glitches | Kenney (kenney.nl) — **CC0** |
-| Footsteps (concrete and water), creaking doors and boards, breathing, gasp, paper, mouse, rat, fluorescent tubes, birds at dawn | Joseph Sardin, **BigSoundBank.com** — **CC0** (originals in `Assets/Audio/Source/BigSoundBank/`, by sound id; not in the build) |
-| Rain & thunder ambience | "Rain and Thunder Loop" by DoKashiteru, OpenGameArt.org — **CC BY 3.0** (credited in game) |
+| Footsteps (concrete and water), creaking doors and boards, breathing, gasp, paper, mouse, rat, fluorescent tubes, birds at dawn, rain, distant thunder, cassette deck, The Echo's whispers and choking gasp | Joseph Sardin, **BigSoundBank.com** — **CC0** (originals in `Assets/Audio/Source/BigSoundBank/`, by sound id; not in the build) |
 | Basement ambience | "Loopable Dungeon Ambience", OpenGameArt.org — **CC0** |
-| The Echo snarls / attack | "Monster Snarls", OpenGameArt.org — **CC0** |
 | The Echo ghostly voice, wind | Joseph Sardin (BigSoundBank / LaSonotheque) via Wikimedia Commons — **CC0** |
 | Heartbeat | "Heartbeat.ogg" by HerbertBoland, Wikimedia Commons — **CC BY 3.0** (credited in game) |
 | Electrical hum | "MainsBrum50Hz.ogg", Wikimedia Commons — **Public domain** |

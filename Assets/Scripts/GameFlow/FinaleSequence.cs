@@ -48,7 +48,7 @@ namespace LastSignal.GameFlow
 
             if (replay)
             {
-                AudioManager.Instance?.PlayUI(PlaceholderClips.Scream, 1f);
+                AudioManager.Instance?.PlayUI(PlaceholderClips.EchoChoke, 1f);
                 SubtitleManager.Instance?.Play(new[]
                 {
                     new SubtitleLine("THE ECHO", "NO! Alex, don't leave me here!", 2.5f),

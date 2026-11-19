@@ -58,17 +58,53 @@ namespace LastSignal.Interaction
             Play(interactor.GetComponent<PlayerController>());
         }
 
+        private AudioSource running;
+
+        private void StartRunning()
+        {
+            AudioClip loop = PlaceholderClips.TapeRun;
+            if (loop == null) return;
+            if (running == null)
+            {
+                running = gameObject.AddComponent<AudioSource>();
+                running.loop = true;
+                running.playOnAwake = false;
+                running.spatialBlend = 1f;
+                running.rolloffMode = AudioRolloffMode.Linear;
+                running.minDistance = 1f;
+                running.maxDistance = 9f;
+            }
+            running.clip = loop;
+            running.volume = 0.35f * Save.GameSettings.SfxVolume;
+            running.time = Random.Range(0f, loop.length * 0.5f);
+            running.PlayDelayed(0.35f);
+        }
+
+        private void StopRunning()
+        {
+            if (running != null && running.isPlaying) running.Stop();
+            AudioManager.Instance?.PlayAt(PlaceholderClips.TapeStop, transform.position, 0.7f);
+        }
+
+        private void OnDisable()
+        {
+            if (running != null) running.Stop();
+        }
+
         public void Play(PlayerController player = null)
         {
             if (playing) return;
             playing = true;
             if (lockPlayer && player != null) player.MovementLocked = true;
-            AudioManager.Instance?.PlayAt(PlaceholderClips.Beep, transform.position, 0.6f);
+            // The PLAY key goes down, then the tape hisses and the motor whirs under the voices.
+            AudioManager.Instance?.PlayAt(PlaceholderClips.TapeStart, transform.position, 0.8f);
+            StartRunning();
             if (!HasPlayed) onStarted.Invoke();
 
             void Done()
             {
                 playing = false;
+                StopRunning();
                 if (lockPlayer && player != null) player.MovementLocked = false;
                 bool first = !HasPlayed;
                 WorldFlags.Set("played:" + id);

@@ -57,6 +57,16 @@ namespace LastSignal.Audio
         public static AudioClip Skitter => Real("skitter") ?? Get(ref skitter, () => Make("Skitter", 0.32f, SkitterSample));
         /// <summary>A mouse's thin squeak.</summary>
         public static AudioClip Squeak => Real("squeak") ?? Get(ref squeak, () => Make("Squeak", 0.3f, SqueakSample));
+        /// <summary>The Echo close by or hunting: a breathy, wordless whisper (replaces the old snarls).</summary>
+        public static AudioClip EchoWhisper => Real("whisper") ?? EchoVoice ?? Scream;
+        /// <summary>The Echo's hands on you: a strangled, choking gasp.</summary>
+        public static AudioClip EchoChoke => Real("choke") ?? Scream;
+        /// <summary>Distant thunder (now and then, outside).</summary>
+        public static AudioClip Thunder => Real("thunder");
+        /// <summary>Cassette deck: the PLAY key going down / the tape running (loop) / the key popping up.</summary>
+        public static AudioClip TapeStart => Real("tapestart") ?? Click;
+        public static AudioClip TapeRun => Real("taperun");
+        public static AudioClip TapeStop => Real("tapestop") ?? Click;
         /// <summary>A sheet of paper picked up and unfolded.</summary>
         public static AudioClip PaperUp => Real("paper") ?? Real("paperdown");
         /// <summary>A sheet of paper put back down.</summary>

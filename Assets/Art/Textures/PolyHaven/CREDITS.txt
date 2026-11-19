@@ -15,3 +15,5 @@ burned_ground_01: Rob Tuytel
 black_painted_planks: Dimitrios Savva
 concrete_slab_wall: Dimitrios Savva
 plaster_grey_04: Rob Tuytel
+aerial_grass_rock: Rob Tuytel
+rock_boulder_dry: Dimitrios Savva, Rico Cilliers

@@ -2,7 +2,7 @@
 
 Offline, single-player, first-person psychological horror game for Android (Unity 6.6, URP).
 **Five playable levels** (the brief asked for three; the project owner changed this on 18 Nov 2026 —
-see `Docs/Upgrade_Plan.md`), followed by an ending and credits.
+see `Docs/Upgrade_Plan.md`), followed by an ending (credits are on the main menu).
 
 ---
 
@@ -38,7 +38,14 @@ Alex learns Maya saved him during the fire, broadcasts her final recording, shut
 | 4 – The Burned Wing (new) | Hard | Collapsed corridor → detour through the burned west office → Studio A (Maya's scorched tape) → junction room → tower stairs | **Junction J-4**: schematic (which feeds reach which lines) + fire marshal's report (what burned) → only **FEED B → LINE 3 → LIFT** works. Then The Echo hunts you to the stairs | Faster, more alert Echo; falling beam; heavy smoke |
 | 5 – The Last Transmission | Hardest | Tower corridor → equipment + antenna rooms → broadcast chamber → escape | **Frequency**: refit 3 modules, tune to Dad's channel: "one-oh-three point-" (Level 2 tape, rest lost in static) + "always ended on seven" (Maya's diary, Level 3) → **103.7**, transmit; final recording (Maya appears beside the transmitter); shutdown; escape chase | Most alert Echo; hunt after shutdown |
 
-Ending: sunrise epilogue at Maya's memorial — *"I heard you this time, Maya. Goodbye."* — then THE END and credits. No sequel hook.
+Ending: sunrise epilogue at Maya's memorial — *"I heard you this time, Maya. Goodbye."* — then THE END. No sequel hook.
+The ending (`EndingBuilder`, `EndingSequence`): dawn on a grassy hillside above the radio station, three months later.
+The sun rises behind the station's lattice mast (red beacon blinking) while low mist thins and dust glints in the light;
+the camera drifts in, slightly hand-held, to a weathered granite headstone with engraved letters, flowers in a jar and a
+candle flickering in a lantern; the cassette appears beside it (with a soft click) as Alex lays it down; the view lifts
+to the sunrise, THE END fades in and stays over the fade to black, then MAIN MENU. Long grass with wildflowers, a
+treeline of broadleaf trees and conifers, an old post-and-rail fence. Filmic grading (ACES, bloom, warm white balance,
+soft depth of field). Sound: dawn birdsong, wind in the grass and a quiet music bed. No credits (main menu → Credits).
 
 **Journal.** Key facts from notes and recordings are written to the journal (shown in the inventory), so
 clues found in earlier levels (the 02:47 sign-out, "one-oh-three", ".7") are never lost.
@@ -266,6 +273,8 @@ easy to reach by walking and aiming. That needs a human play-through.
 | Heartbeat | "Heartbeat.ogg" by HerbertBoland, Wikimedia Commons — **CC BY 3.0** (credited in game) |
 | Electrical hum | "MainsBrum50Hz.ogg", Wikimedia Commons — **Public domain** |
 | Spider skittering, fallback sounds when a recording is missing | Generated in code (`PlaceholderClips`) |
+| Ending ground and headstone: aerial_grass_rock, rock_boulder_dry | **Poly Haven** — **CC0** (`Assets/Art/Textures/PolyHaven/CREDITS.txt`) |
+| Ending music bed: Music_Ethereal | Unity "Get Started" template content (Unity Companion License), from `Assets/SourceFiles/SoundFX` |
 | Font: Liberation Sans SDF | TextMeshPro default font (SIL Open Font License) |
 | Unity 6.6, URP, Input System, uGUI/TextMeshPro, AI Navigation, Test Framework | Unity packages (Unity Companion License / Unity terms) |
 | Unity MCP for Unity (CoplayDev, v10.3.0) | Editor-only development tool (MIT) — not part of the game build |

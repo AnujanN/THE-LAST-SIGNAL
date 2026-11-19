@@ -81,13 +81,18 @@ A NavMesh agent with a state machine, a pacing "director" and an animated body.
 | Listen | Stands still, slowly turning, listening | Hears more → Investigate; timer → Search |
 | Chase | Follows the player at an erratic pace (surges and hesitations) | Loses sight, player hides, or time runs out → Search; reaches the player → caught |
 | Search | Wanders the area, re-checks remembered noises; may decide to inspect a nearby hiding spot | Timer → Return |
-| Inspect | Stands at the player's hiding spot. If the player is not holding their breath after a moment, or gasps when their breath runs out, it finds them | Inspection ends → Search |
+| Inspect | Stands at the player's hiding spot. If the player is not holding their breath after a moment, gasps when their breath runs out, or has the torch on (light through the gaps), it finds them | Inspection ends → Search (or back to Hunt) |
 | Return | Walks back to the nearest waypoint | Arrives → Patrol |
 | Hunt (scripted escapes) | Knows roughly where the player is; prowls instead of camping a hiding spot | Player reaches the exit |
 
 **Director:** if The Echo has been far from the player for a long time it gets a *vague* hint of their area
 (never the exact spot); after a long time close by without a chase it backs off to a distant waypoint, so
 tension rises and falls. **Lure:** every so often it calls out in Maya's voice from where it stands.
+
+**Torch light from a hiding place:** a torch left on inside a locker or wardrobe shines out of the front (a faint glow
+outside the vents; a hint appears on hiding). If The Echo is in front of it, facing it, within 8 m with a clear view, it
+comes straight over to inspect, from any state including a hunt, and finds the player if the torch is still on when it
+gets there, even if they hold their breath. Turning the torch off in time (and holding breath) keeps them safe.
 
 Fairness rules: sight needs a clear line and is reduced when crouching (longer with the flashlight on); walls
 muffle noise; it never sees a hidden player and never catches one except through an inspection the player
@@ -186,7 +191,7 @@ place and the scream for the catch. (A wall-and-ceiling crawl was tried and remo
 
 ## 7. Testing
 
-### Automated (Unity Test Framework, Play Mode) — 23 tests, all passing
+### Automated (Unity Test Framework, Play Mode) — 24 tests, all passing
 
 | Test | What it proves |
 |---|---|
@@ -208,6 +213,7 @@ place and the scream for the catch. (A wall-and-ceiling crawl was tried and remo
 | Echo_Chases_LosesHiddenPlayer_Investigates_AndCatches | Sight → chase; hiding → search; noise → investigate; catch → game over → retry |
 | Echo_InspectsHidingSpot_HoldingBreathKeepsPlayerSafe | Inspection + holding breath = safe |
 | Echo_InspectsHidingSpot_FindsBreathingPlayer | Inspection without holding breath = found |
+| Echo_SeesTorchLightFromLocker_AndFindsPlayerHoldingBreath | A lit torch in a locker is seen from in front; it inspects and finds the player despite the held breath |
 | Sounds_BigSoundBankRecordingsArePresent | Every recorded sound the game asks for exists (footsteps, door creaks, water, paper, mice, breathing, tubes, dawn) |
 | AmbientLife_MouseRatAndSpider_AppearAndLeave | Mouse, gnawing rat and dropping spider all start in a clear corridor and leave again; a tube goes dark when Alex is under it |
 | Note_PickedUpReadInHand_AndPutBack | A desk note lifts to the face with its words on it, the hand holds it while paused, and it goes back exactly where it was |

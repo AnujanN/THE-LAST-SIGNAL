@@ -41,6 +41,8 @@ namespace LastSignal.Enemy
         [Header("Intelligence")]
         [Tooltip("Chance (0-1) that a search near a hidden player turns into inspecting their hiding spot.")]
         [Range(0f, 1f)] public float inspectChance = 0.5f;
+        [Tooltip("How far it notices torch light leaking out of a hiding place (it must be in front of it and facing it).")]
+        public float leakSightRange = 8f;
         [Tooltip("Seconds it stands at a hiding spot; the player must hold their breath meanwhile.")]
         public float inspectSeconds = 4f;
         [Tooltip("Director: if it has been far from the player this long, it gets a vague hint of their area.")]
@@ -101,6 +103,8 @@ namespace LastSignal.Enemy
         private float surgeTimer;
         private float voiceTimer = 6f;
         private bool inspectedThisSearch;
+        private bool resumeHuntAfterInspect;
+        private float leakCheckTimer;
         private bool waiting;
         private Vector3 lastKnown;
         private Vector3 searchCentre;
@@ -222,6 +226,7 @@ namespace LastSignal.Enemy
             if (GameFlowManager.Instance != null && GameFlowManager.Instance.IsGameOver) return;
 
             CanSeePlayerNow = !InGracePeriod && CanSeePlayer();
+            CheckLightLeak(dt);
             if (CanSeePlayerNow)
             {
                 lastKnown = player.position;
@@ -324,11 +329,50 @@ namespace LastSignal.Enemy
 
         private void BeginInspect(HidingSpot spot)
         {
+            resumeHuntAfterInspect = Current == State.Hunt;
             inspecting = spot;
             stateTimer = settings.inspectSeconds;
             SetState(State.Inspect);
             Go(spot.InspectPosition);
-            HudMessage.Show("It's checking your hiding place. Hold your breath!");
+            HudMessage.Show(spot.LightLeaking
+                ? "It saw your light! Turn the torch off and hold your breath!"
+                : "It's checking your hiding place. Hold your breath!");
+        }
+
+        /// <summary>
+        /// A torch left on inside a hiding place shines out of its front. If The Echo is in front of it, facing
+        /// it, within range and with a clear view, it comes straight over to look (whatever its mood).
+        /// </summary>
+        private void CheckLightLeak(float dt)
+        {
+            if (!HidingSpot.PlayerHidden || InGracePeriod) return;
+            if (Current == State.Inspect || Current == State.Caught || Current == State.Inactive) return;
+            leakCheckTimer -= dt;
+            if (leakCheckTimer > 0f) return;
+            leakCheckTimer = 0.25f;
+            HidingSpot spot = HidingSpot.Current;
+            if (spot != null && spot.LightLeaking && SeesLightLeak(spot)) BeginInspect(spot);
+        }
+
+        /// <summary>Can it see the light leaking from this spot right now?</summary>
+        public bool SeesLightLeak(HidingSpot spot)
+        {
+            if (spot == null || !spot.LightLeaking) return false;
+            Vector3 p = spot.LeakPoint;
+            Vector3 to = p - eye.position;
+            float dist = to.magnitude;
+            if (dist > settings.leakSightRange || dist < 1e-3f) return false;
+            // The light comes out of the front only.
+            if (Vector3.Dot(spot.Front, -to) <= 0f) return false;
+            if (Vector3.Angle(eye.forward, to) > settings.sightAngle * 0.5f && dist > 2f) return false;
+            RaycastHit[] hits = Physics.RaycastAll(eye.position, to / dist, dist, sightMask, QueryTriggerInteraction.Ignore);
+            foreach (RaycastHit h in hits)
+            {
+                Transform t = h.collider.transform;
+                if (t.IsChildOf(transform) || t.IsChildOf(spot.transform) || (player != null && t.IsChildOf(player))) continue;
+                return false;
+            }
+            return true;
         }
 
         /// <summary>
@@ -351,7 +395,10 @@ namespace LastSignal.Enemy
 
                 bool playerInside = inspecting == HidingSpot.Current;
                 bool breathing = breath == null || !breath.Holding;
-                if (playerInside && (breathing && stateTimer < settings.inspectSeconds - 1f || breath != null && breath.RecentlyGasped))
+                // Right outside the door, light through the gaps gives the player away even if they hold their breath.
+                bool lit = playerInside && inspecting.LightLeaking;
+                if (playerInside && (breathing && stateTimer < settings.inspectSeconds - 1f || breath != null && breath.RecentlyGasped
+                                     || lit && stateTimer < settings.inspectSeconds - 0.6f))
                 {
                     Discover();
                     return;
@@ -360,6 +407,7 @@ namespace LastSignal.Enemy
             if (stateTimer <= 0f)
             {
                 inspecting = null;
+                if (resumeHuntAfterInspect) { resumeHuntAfterInspect = false; SetState(State.Hunt); return; }
                 BeginSearch(transform.position);
                 stateTimer = settings.searchSeconds * 0.5f;
                 inspectedThisSearch = true;

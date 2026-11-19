@@ -600,6 +600,40 @@ namespace LastSignal.Tests
             Assert.Greater(steps.SurfaceMultiplier, 1f, "Splashing carries further");
         }
 
+        [UnityTest, Timeout(90000)]
+        public IEnumerator Echo_SeesTorchLightFromLocker_AndFindsPlayerHoldingBreath()
+        {
+            yield return StartLevel(GameFlowManager.Level2Scene);
+            EchoAIController echo = Get<EchoAIController>("Echo");
+            yield return WaitUntilTrue(() => echo.Started && !echo.InGracePeriod, 8f, "Echo start-up grace period over");
+            echo.Settings.inspectChance = 0f; // only the light may give the player away
+            echo.Settings.inspectSeconds = 3f;
+            HidingSpot locker = Get<HidingSpot>("Locker_A2");
+            FlashlightController torch = player.GetComponentInChildren<FlashlightController>();
+            inventory.Add("flashlight", "Flashlight");
+            torch.SetOn(true, playSound: false);
+            Assert.IsTrue(torch.IsOn);
+
+            locker.Enter(player);
+            interactor.InputRouter.SetHoldBreath(true);
+            yield return null;
+            Assert.IsTrue(player.GetComponent<PlayerBreath>().Holding, "Holding breath");
+            Assert.IsTrue(locker.LightLeaking, "A lit torch inside leaks light");
+
+            // The Echo comes round in front of the locker, a few metres off, facing it.
+            echo.Deactivate();
+            bool inspected = false;
+            echo.StateChanged += s => { if (s == EchoAIController.State.Inspect) inspected = true; };
+            echo.WarpTo(locker.InspectPosition + locker.Front * 0.5f);
+            echo.transform.rotation = Quaternion.LookRotation(-locker.Front);
+            echo.Activate();
+            yield return WaitUntilTrue(() => inspected, 3f, "it notices the light and comes to look");
+            yield return WaitUntilTrue(() => flow.IsGameOver, 10f, "found because of the light, despite holding breath");
+            interactor.InputRouter.SetHoldBreath(false);
+            flow.RetryCheckpoint();
+            yield return WaitForScene(GameFlowManager.Level2Scene);
+        }
+
         [Test]
         public void Sounds_BigSoundBankRecordingsArePresent()
         {

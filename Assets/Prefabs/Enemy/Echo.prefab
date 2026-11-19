@@ -4479,7 +4479,8 @@ MonoBehaviour:
     catchDistance: 1.2
     listenSeconds: 2.5
     inspectChance: 0.5
-    inspectSeconds: 4
+    leakSightRange: 8
+    inspectSeconds: 3
     directorHintSeconds: 45
     directorHintRadius: 7
     directorBackoffSeconds: 30

@@ -348,7 +348,7 @@ namespace LastSignal.EditorTools
 
             // The torch hangs in front of the view (where the left hand holds it); the hand is pulled to it by IK.
             Transform cameraRoot = root.transform.Find("CameraRoot");
-            Transform grip = Group(cameraRoot != null ? cameraRoot : root.transform, "TorchGrip", new Vector3(-0.17f, -0.26f, 0.4f));
+            Transform grip = Group(cameraRoot != null ? cameraRoot : root.transform, "TorchGrip", new Vector3(-0.2f, -0.19f, 0.42f));
             Material torchMat = Mat("TorchBody", new Color(0.16f, 0.16f, 0.17f), smoothness: 0.65f);
             GameObject torch = Prim(grip, "Torch", PrimitiveType.Cylinder, new Vector3(0f, 0f, 0.05f), new Vector3(0.045f, 0.11f, 0.045f), torchMat,
                 new Vector3(90f, 0f, 0f), collider: false);

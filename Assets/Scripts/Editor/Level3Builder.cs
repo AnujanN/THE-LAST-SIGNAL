@@ -221,7 +221,7 @@ namespace LastSignal.EditorTools
             SetValue(echo, "settings.searchSeconds", 8f);
             SetValue(echo, "settings.loseSightSeconds", 2.8f);
             SetValue(echo, "settings.inspectChance", 0.5f);
-            SetValue(echo, "settings.inspectSeconds", 4.5f);
+            SetValue(echo, "settings.inspectSeconds", 3f);
             SetValue(echo, "settings.directorHintSeconds", 45f);
             SetValue(echo, "settings.lureInterval", 55f);
 

@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-5963209809244386223
+--- !u!114 &-2792018197493859758
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_CorrespondingSourceObject: {fileID: 0}
@@ -41,9 +41,9 @@ MonoBehaviour:
   m_Name: Level04_BurnedWing_PostFX
   m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.VolumeProfile
   components:
-  - {fileID: 936984493627034234}
-  - {fileID: -5963209809244386223}
---- !u!114 &936984493627034234
+  - {fileID: 8707898839100866884}
+  - {fileID: -2792018197493859758}
+--- !u!114 &8707898839100866884
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_CorrespondingSourceObject: {fileID: 0}

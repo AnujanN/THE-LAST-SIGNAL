@@ -96,7 +96,8 @@ gets there, even if they hold their breath. Turning the torch off in time (and h
 
 Fairness rules: sight needs a clear line and is reduced when crouching (longer with the flashlight on); walls
 muffle noise; it never sees a hidden player and never catches one except through an inspection the player
-was warned about ("It's checking your hiding place. Hold your breath!"); heartbeat, breathing, red screen-edge
+was warned about ("Something is coming to check your hiding place...", then "It's right outside. Hold your breath!"
+when it arrives, so a held breath lasts the inspection); heartbeat, breathing, red screen-edge
 pulse and stuttering lamps warn before it arrives; after a checkpoint reload it restarts at least 15 m away
 with a 4-second grace period.
 
@@ -104,6 +105,7 @@ with a 4-second grace period.
 |---|---|---|---|---|
 | Sight range / angle | 10 m / 100° | 12 m / 110° | 13 m / 120° | 13 m / 120° |
 | Hearing multiplier | 1.0 | 1.15 | 1.35 | 1.3 |
+| Inspection at a hiding spot (breath lasts 10 s) | 3 s | 3 s | 3.5 s | 3.5 s |
 | Patrol / chase speed (player walks 2.2, sprints 4.0) | 1.2 / 3.2 | 1.35 / 3.35 | 1.45 / 3.5 | 1.5 / 3.5 m/s |
 | Chance to inspect a nearby hiding spot | 35 % | 50 % | 65 % | 70 % |
 | Director hint after / lure every | 55 s / 75 s | 45 s / 55 s | 30 s / 40 s | 35 s / 45 s |
@@ -139,9 +141,13 @@ place and the scream for the catch. (A wall-and-ceiling crawl was tried and remo
 - Notes are handwritten (Caveat font) on six kinds of paper, picked per note: aged page, lined notebook page with
   punched holes (blue biro), graph paper (pencil), office memo with a printed header (typed), crumpled brown scrap
   with a torn edge (red-brown ink), water-damaged page with a burnt corner.
-- A note lying on a desk or the floor is picked up: the sheet lifts off the table to in front of Alex's face, his right
-  hand holding its corner, the words written on the sheet, lit by a dim reading light (the game is paused; the hand
-  IK runs on unscaled time). "PUT BACK" returns it exactly where it was. Paper rustles when picked up and put down.
+- A note lying on a desk or the floor is picked up (only within arm's reach, 1.4 m, like every hand-held pickup):
+  Alex's right hand reaches the sheet where it lies, then brings it up in front of his face, holding its lower edge
+  from behind so the writing stays clear, lit by a dim reading light (the game is paused; the hand IK runs on
+  unscaled time). "PUT BACK" carries it back exactly where it was. Paper rustles when picked up and put down.
+- Hands really hold things: each finger joint's bend axis is measured from the rig, so the left hand closes into a
+  fist round the torch handle (knuckles along it) and the right hand grips a sheet; the hand is turned and placed
+  so the fist or fingers sit on the object, not beside it.
   Notes pinned to walls open the full-screen reader on the matching paper.
 - Room and area names hang on burnt-edged wooden boards on wires (a little crooked; slid down clear of pipes and
   wired to the real ceiling after the level is built); small labels on fuse boxes, controls and machines sit on

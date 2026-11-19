@@ -44,7 +44,7 @@ namespace LastSignal.Enemy
         [Tooltip("How far it notices torch light leaking out of a hiding place (it must be in front of it and facing it).")]
         public float leakSightRange = 8f;
         [Tooltip("Seconds it stands at a hiding spot; the player must hold their breath meanwhile.")]
-        public float inspectSeconds = 4f;
+        public float inspectSeconds = 3f;
         [Tooltip("Director: if it has been far from the player this long, it gets a vague hint of their area.")]
         public float directorHintSeconds = 45f;
         [Tooltip("Director: radius of that vague hint (never the exact position).")]
@@ -104,6 +104,7 @@ namespace LastSignal.Enemy
         private float voiceTimer = 6f;
         private bool inspectedThisSearch;
         private bool resumeHuntAfterInspect;
+        private bool warnedAtSpot;
         private float leakCheckTimer;
         private bool waiting;
         private Vector3 lastKnown;
@@ -334,9 +335,11 @@ namespace LastSignal.Enemy
             stateTimer = settings.inspectSeconds;
             SetState(State.Inspect);
             Go(spot.InspectPosition);
+            // The breath warning comes when it is right outside (see UpdateInspect), so a held breath lasts.
             HudMessage.Show(spot.LightLeaking
-                ? "It saw your light! Turn the torch off and hold your breath!"
-                : "It's checking your hiding place. Hold your breath!");
+                ? "It saw your light! Turn the torch off!"
+                : "Something is coming to check your hiding place...");
+            warnedAtSpot = false;
         }
 
         /// <summary>
@@ -386,6 +389,7 @@ namespace LastSignal.Enemy
             bool atSpot = Vector3.Distance(transform.position, inspecting.InspectPosition) < 1.2f;
             if (atSpot)
             {
+                if (!warnedAtSpot) { warnedAtSpot = true; HudMessage.Show("It's right outside. Hold your breath!"); }
                 if (agent.isOnNavMesh) agent.ResetPath();
                 Vector3 look = inspecting.transform.position - transform.position;
                 look.y = 0f;

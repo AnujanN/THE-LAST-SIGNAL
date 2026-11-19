@@ -7,10 +7,10 @@ using UnityEngine;
 namespace LastSignal.Player
 {
     /// <summary>
-    /// Loose notes are picked up and read in the hand: the sheet lifts off the table up in front of Alex's
-    /// face, his right hand holding its corner, with the words written on it in the torch light. Closing
-    /// the reader puts it back exactly where it was. The game is paused while reading, so everything here
-    /// runs on unscaled time.
+    /// Loose notes are picked up and read in the hand: Alex's right hand reaches the sheet on the table, picks
+    /// it up and brings it up in front of his face, holding its lower edge from behind so the writing stays
+    /// clear. Closing the reader puts it back exactly where it was. The game is paused while reading, so
+    /// everything here runs on unscaled time.
     /// </summary>
     public class NoteHolder : MonoBehaviour
     {
@@ -18,8 +18,9 @@ namespace LastSignal.Player
         [SerializeField] private PlayerBody body;
         [Tooltip("Dim warm light so the sheet can be read even with the torch off.")]
         [SerializeField] private Light readingLight;
-        [SerializeField] private float liftSeconds = 0.45f;
-        [SerializeField] private float returnSeconds = 0.4f;
+        [SerializeField] private float reachSeconds = 0.35f;
+        [SerializeField] private float liftSeconds = 0.55f;
+        [SerializeField] private float returnSeconds = 0.5f;
         [Tooltip("The sheet is shown this much larger while held (easier to read on a phone).")]
         [SerializeField] private float heldScale = 1.3f;
 
@@ -31,6 +32,7 @@ namespace LastSignal.Player
         private Renderer sheetRenderer;
         private Collider[] colliders = new Collider[0];
         private Coroutine motion;
+        private bool onTable;
 
         public bool Holding => note != null;
         public NoteInteractable Current => note;
@@ -69,11 +71,11 @@ namespace LastSignal.Player
             foreach (Collider c in colliders) c.enabled = false;
             if (n.Writing != null) n.Writing.gameObject.SetActive(true);
 
-            // The hand holds the lower right corner.
+            // The hand first goes to the sheet where it lies, then holds its lower edge (see LateUpdate).
             if (grip == null) grip = new GameObject("NoteGrip").transform;
-            grip.SetParent(sheet, false);
-            grip.localPosition = new Vector3(0.42f, 0f, -0.36f);
-            if (body != null) body.HoldWith(grip);
+            onTable = true;
+            PlaceGrip();
+            if (body != null) { body.HoldOrient = 0f; body.HoldWith(grip); }
             if (readingLight != null) readingLight.enabled = true;
 
             AudioClip up = PlaceholderClips.PaperUp;
@@ -83,13 +85,39 @@ namespace LastSignal.Player
             return true;
         }
 
+        /// <summary>
+        /// On the table: just above the sheet's lower right corner. In the hand: behind its lower edge, right of
+        /// centre, a few centimetres up the back of the page (where the middle finger rests).
+        /// </summary>
+        private void PlaceGrip()
+        {
+            if (grip == null || sheet == null) return;
+            Vector3 s = sheet.lossyScale;
+            Vector3 right = sheet.right, up = sheet.forward, face = sheet.up;
+            float halfW = Mathf.Abs(s.x) * 0.5f, halfH = Mathf.Abs(s.z) * 0.5f;
+            grip.rotation = sheet.rotation;
+            grip.position = onTable
+                ? sheet.position + right * (halfW * 0.6f) - up * (halfH * 0.7f) + Vector3.up * 0.03f
+                : sheet.position + right * (halfW * 0.35f) - up * (halfH - 0.045f) - face * 0.025f;
+        }
+
+        private void LateUpdate()
+        {
+            // Before PlayerBody (execution order 50) solves the arm for this frame.
+            if (note != null) PlaceGrip();
+        }
+
         private IEnumerator Lift()
         {
+            // The hand reaches the sheet where it lies.
+            for (float t = 0f; t < reachSeconds && (body == null || body.HoldWeight < 0.95f); t += Time.unscaledDeltaTime)
+                yield return null;
+            onTable = false;
             sheet.SetParent(holdPoint, true);
             Vector3 fromPos = sheet.localPosition, fromScale = sheet.localScale;
             Quaternion fromRot = sheet.localRotation;
             // Paper face (+Y) towards the eyes, top of the page (+Z) up; tilted back a little and slightly turned.
-            Quaternion toRot = Quaternion.Euler(-12f, 0f, 4f) * Quaternion.LookRotation(Vector3.up, Vector3.back);
+            Quaternion toRot = Quaternion.Euler(-14f, 0f, 3f) * Quaternion.LookRotation(Vector3.up, Vector3.back);
             Vector3 toScale = oldScale * heldScale;
             for (float t = 0f; t < liftSeconds; t += Time.unscaledDeltaTime)
             {
@@ -99,8 +127,10 @@ namespace LastSignal.Player
                 sheet.localPosition = p;
                 sheet.localRotation = Quaternion.Slerp(fromRot, toRot, k);
                 sheet.localScale = Vector3.Lerp(fromScale, toScale, k);
+                if (body != null) body.HoldOrient = k;
                 yield return null;
             }
+            if (body != null) body.HoldOrient = 1f;
             sheet.localPosition = Vector3.zero;
             sheet.localRotation = toRot;
             sheet.localScale = toScale;
@@ -126,6 +156,8 @@ namespace LastSignal.Player
                 sheet.position = Vector3.Lerp(fromPos, oldPos, k) + Vector3.up * (Mathf.Sin(k * Mathf.PI) * 0.05f);
                 sheet.rotation = Quaternion.Slerp(fromRot, oldRot, k);
                 sheet.localScale = Vector3.Lerp(fromScale, toScale, k);
+                if (body != null) body.HoldOrient = 1f - k;
+                if (k > 0.7f) onTable = true;
                 yield return null;
             }
             AudioClip down = PlaceholderClips.PaperDown;

@@ -67,6 +67,24 @@ namespace LastSignal.Player
         private float torchWeight;
         private Transform holdGrip;
         private float holdWeight;
+
+        // Fingers (humanoid): index, middle, ring, little proximal + intermediate, per hand.
+        private Transform[] leftFingers = new Transform[0], rightFingers = new Transform[0];
+        // Every finger joint (index, middle, ring, little x 3, then thumb x 3) and the axis, in its parent's space,
+        // that curls it towards the palm (measured from the rig's own muscles).
+        private Transform[] leftJoints = new Transform[0], rightJoints = new Transform[0];
+        private Vector3[] leftAxes = new Vector3[0], rightAxes = new Vector3[0];
+        // Degrees of curl per joint level (proximal, intermediate, distal) for a fist and for holding a sheet.
+        private static readonly float[] FistCurl = { 70f, 95f, 60f };
+        private static readonly float[] ThumbFist = { 20f, 35f, 30f };
+        private static readonly float[] SheetCurl = { 18f, 22f, 12f };
+        private const int Index1 = 0, Middle1 = 1, Ring1 = 2, Little1 = 3, Index2 = 4, Middle2 = 5, Ring2 = 6, Little2 = 7;
+
+        /// <summary>
+        /// 0 = the right hand just reaches for the grip point (picking a sheet up off a table),
+        /// 1 = it holds the sheet properly from behind, fingers up the back, writing left clear.
+        /// </summary>
+        public float HoldOrient { get; set; }
         private float reachTimer;
         private Vector3 reachTarget;
         private bool twoHanded;
@@ -96,6 +114,69 @@ namespace LastSignal.Player
             if (look == null) look = GetComponent<PlayerLook>();
             if (interactor == null) interactor = GetComponent<PlayerInteractor>();
             if (flashlight == null) flashlight = GetComponentInChildren<FlashlightController>();
+            SetUpHands();
+        }
+
+
+        private void SetUpHands()
+        {
+            if (animator == null || !animator.isHuman || animator.avatar == null) return;
+            Transform B(HumanBodyBones b) => animator.GetBoneTransform(b);
+            leftFingers = new[]
+            {
+                B(HumanBodyBones.LeftIndexProximal), B(HumanBodyBones.LeftMiddleProximal), B(HumanBodyBones.LeftRingProximal), B(HumanBodyBones.LeftLittleProximal),
+                B(HumanBodyBones.LeftIndexIntermediate), B(HumanBodyBones.LeftMiddleIntermediate), B(HumanBodyBones.LeftRingIntermediate), B(HumanBodyBones.LeftLittleIntermediate),
+            };
+            rightFingers = new[]
+            {
+                B(HumanBodyBones.RightIndexProximal), B(HumanBodyBones.RightMiddleProximal), B(HumanBodyBones.RightRingProximal), B(HumanBodyBones.RightLittleProximal),
+                B(HumanBodyBones.RightIndexIntermediate), B(HumanBodyBones.RightMiddleIntermediate), B(HumanBodyBones.RightRingIntermediate), B(HumanBodyBones.RightLittleIntermediate),
+            };
+            foreach (Transform t in leftFingers) if (t == null) { leftFingers = new Transform[0]; break; }
+            foreach (Transform t in rightFingers) if (t == null) { rightFingers = new Transform[0]; break; }
+
+            MeasureCurlAxes("Left", out leftJoints, out leftAxes);
+            MeasureCurlAxes("Right", out rightJoints, out rightAxes);
+        }
+
+        /// <summary>
+        /// Which way each finger joint bends towards the palm, measured once by moving the rig's own finger
+        /// muscles between open and closed (works on any humanoid rig, whatever its bone axes).
+        /// </summary>
+        private void MeasureCurlAxes(string side, out Transform[] joints, out Vector3[] axes)
+        {
+            string[] names = { "Index", "Middle", "Ring", "Little", "Thumb" };
+            string[] boneSuffix = { "Proximal", "Intermediate", "Distal" };
+            var j = new System.Collections.Generic.List<Transform>();
+            var ax = new System.Collections.Generic.List<Vector3>();
+            using (var handler = new HumanPoseHandler(animator.avatar, animator.transform))
+            {
+                var pose = new HumanPose();
+                handler.GetHumanPose(ref pose);
+                float[] original = (float[])pose.muscles.Clone();
+                foreach (string f in names)
+                    for (int level = 0; level < 3; level++)
+                    {
+                        var bone = (HumanBodyBones)System.Enum.Parse(typeof(HumanBodyBones), side + f + boneSuffix[level]);
+                        Transform t = animator.GetBoneTransform(bone);
+                        int m = System.Array.IndexOf(HumanTrait.MuscleName, side + " " + f + " " + (level + 1) + " Stretched");
+                        if (t == null || m < 0) { joints = new Transform[0]; axes = new Vector3[0]; return; }
+                        pose.muscles[m] = 1f;
+                        handler.SetHumanPose(ref pose);
+                        Quaternion open = t.localRotation;
+                        pose.muscles[m] = -1f;
+                        handler.SetHumanPose(ref pose);
+                        Quaternion closed = t.localRotation;
+                        pose.muscles[m] = original[m];
+                        (closed * Quaternion.Inverse(open)).ToAngleAxis(out float angle, out Vector3 axis);
+                        if (angle > 180f) { angle = 360f - angle; axis = -axis; }
+                        j.Add(t);
+                        ax.Add(angle > 0.5f ? axis.normalized : Vector3.zero);
+                    }
+                handler.SetHumanPose(ref pose);
+            }
+            joints = j.ToArray();
+            axes = ax.ToArray();
         }
 
         private void OnEnable()
@@ -151,6 +232,10 @@ namespace LastSignal.Player
             float dt = paused ? Time.unscaledDeltaTime : Time.deltaTime;
             holdWeight = Mathf.MoveTowards(holdWeight, holdGrip != null ? 1f : 0f, dt * 3f);
 
+            // Fingers first (this rewrites the pose from muscles): a fist round the torch, a light grip on a sheet.
+            bool torchHeld = torchGrip != null && torchWeight > 0f && !(twoHanded && ReachWeight > 0f);
+            CurlFingers(torchHeld ? torchWeight : 0f, holdGrip != null ? holdWeight * HoldOrient : 0f);
+
             // The camera is the eyes: never render our own head from the inside.
             if (head != null) head.localScale = Vector3.zero;
             Transform bodyRoot = animator != null ? animator.transform : null;
@@ -174,9 +259,8 @@ namespace LastSignal.Player
                 bodyRoot.position += delta;
             }
 
-            // Torch up in the left hand (unless both hands are pushing a door).
-            if (torchGrip != null && torchWeight > 0f && !(twoHanded && ReachWeight > 0f))
-                Reach(leftArm, torchGrip.position, -transform.right, torchWeight);
+            // Torch up in the left hand (unless both hands are pushing a door): the fist closes round its handle.
+            if (torchHeld) GripTorch(torchWeight);
 
             if (ReachWeight > 0f)
             {
@@ -185,9 +269,84 @@ namespace LastSignal.Player
                 if (twoHanded) Reach(leftArm, reachTarget - side, -transform.right, ReachWeight);
             }
 
-            // Holding a note up to read: the right hand grips its corner.
-            if (holdGrip != null && holdWeight > 0f)
-                Reach(rightArm, holdGrip.position, transform.right, holdWeight);
+            // Holding a note up to read: the right hand holds its lower edge from behind.
+            if (holdGrip != null && holdWeight > 0f) GripSheet(holdWeight);
+        }
+
+        private void CurlFingers(float leftFist, float rightGrip)
+        {
+            if (leftFist > 0f) Curl(leftJoints, leftAxes, FistCurl, ThumbFist, leftFist);
+            if (rightGrip > 0f) Curl(rightJoints, rightAxes, SheetCurl, null, rightGrip);
+        }
+
+        /// <summary>Bend each joint towards the palm on top of the animated pose (fingers 0-11, thumb 12-14).</summary>
+        private static void Curl(Transform[] joints, Vector3[] axes, float[] fingers, float[] thumb, float weight)
+        {
+            for (int i = 0; i < joints.Length; i++)
+            {
+                bool isThumb = i >= 12;
+                if (isThumb && thumb == null) continue;
+                float deg = (isThumb ? thumb[i - 12] : fingers[i % 3]) * weight;
+                if (axes[i] != Vector3.zero) joints[i].localRotation = Quaternion.AngleAxis(deg, axes[i]) * joints[i].localRotation;
+            }
+        }
+
+        /// <summary>The torch handle runs through the fist: knuckles along it, index finger towards the lens.</summary>
+        private void GripTorch(float weight)
+        {
+            Vector3 axis = torchGrip.forward;
+            Vector3 handle = torchGrip.position + axis * 0.02f;
+            GripAt(leftArm, leftFingers, -transform.right, handle, axis, null, FistCentre, weight);
+        }
+
+        /// <summary>
+        /// A sheet held at its lower edge from behind: fingers up the back of the page, palm towards the eyes,
+        /// so the writing stays clear. While HoldOrient is 0 the hand only reaches for the grip point.
+        /// </summary>
+        private void GripSheet(float weight)
+        {
+            Vector3 sheetUp = holdGrip.forward, sheetRight = holdGrip.right;
+            if (HoldOrient <= 0.01f || rightFingers.Length == 0)
+            {
+                Reach(rightArm, holdGrip.position, transform.right, weight);
+                return;
+            }
+            // Fingers point up the page, leaning in a little; knuckle line (little -> index) to Alex's right.
+            Vector3 fingers = (sheetUp * 0.95f - sheetRight * 0.3f).normalized;
+            GripAt(rightArm, rightFingers, transform.right, holdGrip.position, sheetRight, fingers, MiddleFinger, weight, HoldOrient);
+        }
+
+        private Vector3 FistCentre(Transform[] f) => (f[Index2].position + f[Middle2].position + f[Ring2].position + f[Little2].position) * 0.25f;
+        private Vector3 MiddleFinger(Transform[] f) => f[Middle2].position;
+
+        /// <summary>
+        /// Puts a hand round something: reach for it, turn the hand so its knuckle line runs along
+        /// <paramref name="knuckles"/> (and the fingers along <paramref name="fingersDir"/> if given, otherwise straight on
+        /// from the forearm), then correct the reach so the grasp point lands exactly on <paramref name="target"/>.
+        /// </summary>
+        private void GripAt(Transform[] arm, Transform[] fingers, Vector3 outward, Vector3 target, Vector3 knuckles,
+            Vector3? fingersDir, System.Func<Transform[], Vector3> grasp, float weight, float orient = 1f)
+        {
+            if (arm == null || arm.Length < 3 || arm[0] == null || arm[1] == null || arm[2] == null) return;
+            Reach(arm, target, outward, weight);
+            if (fingers.Length < 8) return;
+            Transform hand = arm[2];
+            Vector3 f = fingers[Middle1].position - hand.position;
+            Vector3 k = fingers[Index1].position - fingers[Little1].position;
+            if (f.sqrMagnitude < 1e-8f || k.sqrMagnitude < 1e-8f) return;
+            Vector3 fd = fingersDir ?? Vector3.ProjectOnPlane(hand.position - arm[1].position, knuckles);
+            if (fd.sqrMagnitude < 1e-6f) fd = Vector3.ProjectOnPlane(-transform.up, knuckles);
+            // Rotation taking the hand's current (fingers, knuckles) frame onto the wanted one.
+            Quaternion now = Quaternion.LookRotation(f, k);
+            Quaternion want = Quaternion.LookRotation(fd, knuckles);
+            Quaternion turn = Quaternion.Slerp(Quaternion.identity, want * Quaternion.Inverse(now), weight * orient);
+            Quaternion handRot = turn * hand.rotation;
+            hand.rotation = handRot;
+            // Second pass: move the wrist so the grasp point (fist centre, finger) sits on the target.
+            Vector3 error = (target - grasp(fingers)) * weight;
+            Vector3 hint = arm[1].position + outward * 0.3f - transform.up * 0.3f;
+            SolveTwoBone(arm[0], arm[1], arm[2], hand.position + error, hint, 1f);
+            hand.rotation = handRot;
         }
 
         private void Reach(Transform[] arm, Vector3 target, Vector3 outward, float weight)
@@ -219,6 +378,9 @@ namespace LastSignal.Player
         {
             // Inside a hiding place there is nothing to reach for (entering/leaving is instant).
             if (target is HidingSpot) { LastAction = "Push"; return; }
+
+            // A sheet to read: the note holder drives the hand (reach, pick up, hold).
+            if (target is NoteInteractable n && n.CanHold) { LastAction = "Grab"; return; }
 
             Vector3 point = interactor != null ? interactor.TargetPoint : transform.position + transform.forward;
             if (eyes != null) point -= (point - eyes.position).normalized * touchOffset;

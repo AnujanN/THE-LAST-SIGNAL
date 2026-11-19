@@ -18,6 +18,8 @@ namespace LastSignal.Interaction
 
         [Header("Detection")]
         [SerializeField, Range(0.5f, 5f)] private float range = 2.2f;
+        [Tooltip("Things picked up by hand (notes, items, batteries) must be within arm's reach.")]
+        [SerializeField, Range(0.5f, 3f)] private float grabRange = 1.4f;
         [Tooltip("A small sphere instead of a thin ray makes targeting easier on touch screens.")]
         [SerializeField, Range(0f, 0.3f)] private float castRadius = 0.12f;
         [SerializeField] private LayerMask interactMask = ~0;
@@ -116,6 +118,9 @@ namespace LastSignal.Interaction
 
             IInteractable candidate = lastHitInteractable;
             if (candidate == null || !IsAlive(candidate) || !candidate.CanInteract(this)) return null;
+            // Picking something up means reaching it: step closer first.
+            bool handHeld = candidate is PickupItem || candidate is BatteryPickup || candidate is NoteInteractable n && n.CanHold;
+            if (handHeld && info.distance > grabRange) return null;
             return candidate;
         }
 

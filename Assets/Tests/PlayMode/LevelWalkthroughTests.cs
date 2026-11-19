@@ -573,7 +573,7 @@ namespace LastSignal.Tests
             memo.Interact(interactor);
             Assert.IsTrue(holder.Holding, "Held in Alex's hand");
             Assert.IsTrue(ModalStack.AnyOpen, "Reading pauses the game");
-            yield return new WaitForSecondsRealtime(0.8f);
+            yield return new WaitForSecondsRealtime(1.3f);
             Assert.IsTrue(memo.WritingShown, "The words are written on the sheet");
             Assert.Less(Vector3.Distance(memo.transform.position, Camera.main.transform.position), 0.6f, "Held up in front of the eyes");
             Assert.Greater(player.GetComponent<PlayerBody>().HoldWeight, 0.9f, "The right hand holds it (while paused)");

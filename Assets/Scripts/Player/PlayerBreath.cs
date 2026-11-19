@@ -14,9 +14,9 @@ namespace LastSignal.Player
     {
         [SerializeField] private PlayerInputRouter input;
         [Tooltip("Seconds the player can hold their breath from full.")]
-        [SerializeField, Min(1f)] private float maxHoldSeconds = 7f;
+        [SerializeField, Min(1f)] private float maxHoldSeconds = 10f;
         [Tooltip("Seconds to recover from empty to full.")]
-        [SerializeField, Min(1f)] private float recoverSeconds = 5f;
+        [SerializeField, Min(1f)] private float recoverSeconds = 4f;
         [SerializeField] private AudioSource source;
 
         private float gaspTimer;

@@ -44,10 +44,10 @@ namespace LastSignal.EditorTools
             var batches = new Dictionary<Kind, List<CombineInstance>>();
             Mesh quad = QuadMesh();
 
-            void Add(Kind k, Vector3 pos, Quaternion rot, Vector2 size)
+            void Add(Kind k, Vector3 pos, Quaternion rot, Vector2 size, Mesh mesh = null)
             {
                 if (!batches.TryGetValue(k, out var list)) batches[k] = list = new List<CombineInstance>();
-                list.Add(new CombineInstance { mesh = quad, transform = Matrix4x4.TRS(pos, rot, new Vector3(size.x, size.y, 1f)) });
+                list.Add(new CombineInstance { mesh = mesh ?? quad, transform = Matrix4x4.TRS(pos, rot, new Vector3(size.x, size.y, 1f)) });
             }
 
             float R() => (float)rng.NextDouble();
@@ -109,6 +109,18 @@ namespace LastSignal.EditorTools
             // Cobwebs: a web stretched across the upper corners of (nearly) every room, its plane cutting
             // both walls and the ceiling, with loose strands hanging beside it.
             float webChance = Mathf.Clamp01(0.55f + t.cobwebs * 0.025f);
+            var patterns = new List<int>();
+            int NextPattern()
+            {
+                if (patterns.Count == 0)
+                {
+                    for (int i = 0; i < WebPatterns; i++) patterns.Add(i);
+                    for (int i = patterns.Count - 1; i > 0; i--) { int j = rng.Next(i + 1); (patterns[i], patterns[j]) = (patterns[j], patterns[i]); }
+                }
+                int v = patterns[patterns.Count - 1];
+                patterns.RemoveAt(patterns.Count - 1);
+                return v;
+            }
             foreach (Rect room in rooms)
                 for (int cx = 0; cx < 2; cx++)
                 for (int cz = 0; cz < 2; cz++)
@@ -126,7 +138,7 @@ namespace LastSignal.EditorTools
                     Vector3 n = (inward + Vector3.down).normalized;
                     // Centre of the triangle the web plane cuts from the corner; the quad's overhang hides in the walls.
                     Vector3 centre = corner + n * (size / 2.83f);
-                    Add(Kind.Cobweb, centre, Quaternion.LookRotation(-n) * Quaternion.Euler(0f, 0f, R() * 360f), Vector2.one * size);
+                    Add(Kind.Cobweb, centre, Quaternion.LookRotation(-n) * Quaternion.Euler(0f, 0f, R() * 360f), Vector2.one * size, WebQuad(NextPattern()));
                     for (int k = 0; k < 2; k++)
                     {
                         float len = 0.35f + R() * 0.6f;
@@ -286,17 +298,17 @@ namespace LastSignal.EditorTools
         {
             EnsureFolder(Dir);
             bool web = kind == Kind.Cobweb || kind == Kind.Strands;
-            string path = Dir + "/" + kind + (web ? "_v2" : Ver) + ".png";
+            string path = Dir + "/" + kind + (kind == Kind.Cobweb ? "_v4" : web ? "_v2" : Ver) + ".png";
             if (!File.Exists(path))
             {
-                Texture2D tex = Generate(kind, web ? 512 : 256);
+                Texture2D tex = kind == Kind.Cobweb ? WebAtlas() : Generate(kind, web ? 512 : 256);
                 File.WriteAllBytes(path, tex.EncodeToPNG());
                 Object.DestroyImmediate(tex);
                 AssetDatabase.ImportAsset(path);
                 var ti = (TextureImporter)AssetImporter.GetAtPath(path);
                 ti.alphaIsTransparency = true;
                 ti.wrapMode = TextureWrapMode.Clamp;
-                ti.maxTextureSize = web ? 512 : 256;
+                ti.maxTextureSize = kind == Kind.Cobweb ? WebCell * WebColumns : web ? 512 : 256;
                 ti.SaveAndReimport();
             }
             return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
@@ -355,7 +367,6 @@ namespace LastSignal.EditorTools
             }
 
             if (kind == Kind.Cracks) DrawCracks(px, n, rng);
-            if (kind == Kind.Cobweb) DrawCobweb(px, n, rng);
             if (kind == Kind.Strands) DrawStrands(px, n, rng);
             if (kind == Kind.Scratches) DrawScratches(px, n, rng);
 
@@ -405,44 +416,216 @@ namespace LastSignal.EditorTools
             for (int i = 0; i < 3; i++) Branch(new Vector2(0.5f, 0.5f), (float)rng.NextDouble() * Mathf.PI * 2f, 0.5f, 0);
         }
 
-        private static void DrawCobweb(Color[] px, int n, System.Random rng)
+        // ------------------------------------------------------------------ cobweb patterns
+
+        private const int WebColumns = 4, WebRows = 4, WebPatterns = WebColumns * WebRows, WebCell = 512;
+        private static readonly Mesh[] webQuads = new Mesh[WebPatterns];
+
+        /// <summary>The shared quad with its UVs on one cell of the web atlas.</summary>
+        private static Mesh WebQuad(int v)
+        {
+            if (webQuads[v] != null) return webQuads[v];
+            float inset = 2f / (WebCell * WebColumns);
+            float u0 = (v % WebColumns) / (float)WebColumns + inset, u1 = (v % WebColumns + 1) / (float)WebColumns - inset;
+            float v0 = (v / WebColumns) / (float)WebRows + inset, v1 = (v / WebColumns + 1) / (float)WebRows - inset;
+            Mesh m = Object.Instantiate(QuadMesh());
+            m.name = "WebQuad" + v;
+            m.uv = new[] { new Vector2(u0, v0), new Vector2(u1, v0), new Vector2(u0, v1), new Vector2(u1, v1) };
+            webQuads[v] = m;
+            return m;
+        }
+
+        /// <summary>16 different webs (8 styles, two variations each) in one texture: one draw call per level.</summary>
+        private static Texture2D WebAtlas()
+        {
+            int n = WebCell, w = n * WebColumns, h = n * WebRows;
+            var atlas = new Texture2D(w, h, TextureFormat.RGBA32, true);
+            var clear = new Color[w * h];
+            for (int i = 0; i < clear.Length; i++) clear[i] = new Color(1f, 1f, 1f, 0f);
+            atlas.SetPixels(clear);
+            for (int v = 0; v < WebPatterns; v++)
+            {
+                var px = new Color[n * n];
+                for (int i = 0; i < px.Length; i++) px[i] = new Color(1f, 1f, 1f, 0f);
+                DrawWeb(px, n, v % 8, new System.Random(4099 + v * 131));
+                atlas.SetPixels((v % WebColumns) * n, (v / WebColumns) * n, n, n, px);
+            }
+            atlas.Apply();
+            return atlas;
+        }
+
+        private static void DrawWeb(Color[] px, int n, int style, System.Random rng)
         {
             float R() => (float)rng.NextDouble();
-            float w = n / 256f; // line widths scale with the texture size
-            Vector2 c = new Vector2(0.5f, 0.5f) + new Vector2(R() - 0.5f, R() - 0.5f) * 0.06f;
-            // Dusty haze thickest near the hub.
-            for (int y = 0; y < n; y++)
-            for (int x = 0; x < n; x++)
+            float w = n / 256f;                 // line widths scale with the cell size
+            float spoke = 0.75f * w, cross = 0.5f * w, loose = 0.45f * w;
+
+            void Haze(Vector2 c, float radius, float strength)
             {
-                float d = Vector2.Distance(new Vector2(x / (float)n, y / (float)n), c);
-                float haze = Mathf.Clamp01(0.45f - d) * 0.35f * Mathf.PerlinNoise(x * 0.05f, y * 0.05f);
-                Color p = px[y * n + x];
-                p.a = Mathf.Max(p.a, haze);
-                px[y * n + x] = p;
-            }
-            int spokes = 18;
-            var dirs = new Vector2[spokes];
-            for (int i = 0; i < spokes; i++)
-            {
-                float a = i / (float)spokes * Mathf.PI * 2f + (R() - 0.5f) * 0.25f;
-                dirs[i] = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
-                Line(px, n, c, c + dirs[i] * 0.75f, 0.9f * w, 0.95f);
-            }
-            // Spiral of sagging cross threads, some missing (broken web).
-            for (float rr = 0.04f; rr < 0.62f; rr += 0.028f + R() * 0.02f)
-                for (int i = 0; i < spokes; i++)
+                for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
                 {
-                    if (R() < 0.12f) continue;
-                    Vector2 a = c + dirs[i] * rr, b = c + dirs[(i + 1) % spokes] * (rr + 0.006f);
-                    Vector2 mid = (a + b) / 2f - ((a + b) / 2f - c).normalized * 0.012f;
-                    Line(px, n, a, mid, 0.6f * w, 0.85f);
-                    Line(px, n, mid, b, 0.6f * w, 0.85f);
+                    float d = Vector2.Distance(new Vector2(x / (float)n, y / (float)n), c);
+                    float a = Mathf.Clamp01(1f - d / radius) * strength * Mathf.PerlinNoise(x * 0.04f + style * 7f, y * 0.04f);
+                    Color p = px[y * n + x];
+                    p.a = Mathf.Max(p.a, a);
+                    px[y * n + x] = p;
                 }
-            // Loose torn threads drifting off.
-            for (int i = 0; i < 7; i++)
+            }
+
+            // A thread that sags towards "down" (the web's lower side) in the middle.
+            void Sag(Vector2 a, Vector2 b, float sag, float width, float alpha)
             {
-                Vector2 a = c + new Vector2(R() - 0.5f, R() - 0.5f) * 0.6f;
-                Line(px, n, a, a + new Vector2(R() - 0.5f, R() - 0.8f) * 0.4f, 0.5f * w, 0.7f);
+                Vector2 prev = a;
+                for (int k = 1; k <= 6; k++)
+                {
+                    float t = k / 6f;
+                    Vector2 q = Vector2.Lerp(a, b, t) + Vector2.down * (sag * 4f * t * (1f - t));
+                    Line(px, n, prev, q, width, alpha);
+                    prev = q;
+                }
+            }
+
+            Vector2[] Spokes(Vector2 c, int count, float jitter)
+            {
+                var d = new Vector2[count];
+                float start = R() * Mathf.PI * 2f;
+                for (int i = 0; i < count; i++)
+                {
+                    float a = start + i / (float)count * Mathf.PI * 2f + (R() - 0.5f) * jitter;
+                    d[i] = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+                }
+                return d;
+            }
+
+            // Orb: spokes from a hub and a spiral of cross threads; holes = chance a segment is missing.
+            void Orb(Vector2 c, int count, float reach, float spacing, float holes, float sag, float skipFrom = -1f, float skipTo = -1f)
+            {
+                Vector2[] d = Spokes(c, count, 0.35f);
+                float[] len = new float[count];
+                for (int i = 0; i < count; i++)
+                {
+                    len[i] = reach * (0.75f + R() * 0.35f);
+                    Line(px, n, c, c + d[i] * len[i], spoke, 0.9f);
+                }
+                for (float r = spacing * 1.2f; r < reach * 0.85f; r += spacing * (0.8f + R() * 0.5f))
+                    for (int i = 0; i < count; i++)
+                    {
+                        int j = (i + 1) % count;
+                        if (R() < holes || r > len[i] || r > len[j]) continue;
+                        float ang = Mathf.Atan2(d[i].y, d[i].x);
+                        if (skipFrom >= 0f && ang > skipFrom && ang < skipTo) continue;
+                        Sag(c + d[i] * r, c + d[j] * (r + spacing * 0.15f), sag * r, cross, 0.8f);
+                    }
+            }
+
+            void LooseThreads(int count, Vector2 around, float spread)
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    Vector2 a = around + new Vector2(R() - 0.5f, R() - 0.5f) * spread;
+                    Sag(a, a + new Vector2(R() - 0.5f, -0.1f - R() * 0.3f) * 0.6f, 0.02f, loose, 0.65f);
+                }
+            }
+
+            Vector2 centre = new Vector2(0.5f, 0.5f) + new Vector2(R() - 0.5f, R() - 0.5f) * 0.08f;
+            switch (style)
+            {
+                case 0: // classic orb, evenly spaced
+                    Haze(centre, 0.25f, 0.08f);
+                    Orb(centre, 11 + rng.Next(4), 0.5f, 0.065f, 0.06f, 0.08f);
+                    break;
+                case 1: // orb with the hub pushed to one side and a torn sector
+                {
+                    Vector2 c = new Vector2(0.35f + R() * 0.1f, 0.58f + R() * 0.1f);
+                    float from = R() * 6f - 3f;
+                    Orb(c, 9 + rng.Next(3), 0.55f, 0.06f, 0.1f, 0.12f, from, from + 1.4f);
+                    LooseThreads(3, c, 0.5f);
+                    break;
+                }
+                case 2: // tangle web: random threads between a few anchor clusters, dust caught in it
+                {
+                    Haze(centre, 0.35f, 0.06f);
+                    // Anchors spread all round, threads criss-crossing between them and to a few knots inside.
+                    var anchors = new Vector2[7 + rng.Next(3)];
+                    float start = R() * Mathf.PI * 2f;
+                    for (int i = 0; i < anchors.Length; i++)
+                    {
+                        float a = start + (i + (R() - 0.5f) * 0.6f) / anchors.Length * Mathf.PI * 2f, r = 0.32f + R() * 0.14f;
+                        anchors[i] = centre + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * r;
+                    }
+                    var knots = new Vector2[4];
+                    for (int i = 0; i < knots.Length; i++) knots[i] = centre + new Vector2(R() - 0.5f, R() - 0.5f) * 0.35f;
+                    for (int i = 0; i < 18; i++)
+                    {
+                        int a = rng.Next(anchors.Length), b = (a + 2 + rng.Next(anchors.Length - 3)) % anchors.Length;
+                        Sag(anchors[a], anchors[b], 0.015f, cross, 0.75f);
+                    }
+                    for (int i = 0; i < 12; i++)
+                        Sag(anchors[rng.Next(anchors.Length)], knots[rng.Next(knots.Length)], 0.01f, cross, 0.7f);
+                    foreach (Vector2 k in knots) Line(px, n, k, k + new Vector2(0.003f, 0f), 1.6f * w, 0.55f); // caught dust
+                    break;
+                }
+                case 3: // sheet web: irregular rings with few radials over a thin dusty film
+                {
+                    Haze(centre, 0.42f, 0.14f);
+                    Vector2[] d = Spokes(centre, 7, 0.6f);
+                    foreach (Vector2 dir in d) Line(px, n, centre, centre + dir * 0.48f, cross, 0.8f);
+                    for (float r = 0.08f; r < 0.45f; r += 0.07f + R() * 0.04f)
+                        for (int i = 0; i < d.Length; i++)
+                            Line(px, n, centre + d[i] * (r * (0.8f + R() * 0.4f)), centre + d[(i + 1) % d.Length] * (r * (0.8f + R() * 0.4f)), loose, 0.7f);
+                    break;
+                }
+                case 4: // broken orb: many missing segments, a ragged hole, torn ends hanging
+                {
+                    Vector2 hole = centre + new Vector2(R() - 0.5f, R() - 0.5f) * 0.3f;
+                    Orb(centre, 13 + rng.Next(3), 0.5f, 0.05f, 0.3f, 0.1f);
+                    for (int y = 0; y < n; y++)
+                    for (int x = 0; x < n; x++)
+                        if (Vector2.Distance(new Vector2(x / (float)n, y / (float)n), hole) < 0.09f + 0.03f * Mathf.PerlinNoise(x * 0.05f, y * 0.05f))
+                            px[y * n + x].a = 0f;
+                    LooseThreads(5, hole, 0.2f);
+                    break;
+                }
+                case 5: // old, slack web: few spokes, deep sag, dusty
+                    Haze(centre, 0.3f, 0.1f);
+                    Orb(centre, 6 + rng.Next(2), 0.5f, 0.08f, 0.15f, 0.35f);
+                    LooseThreads(6, centre, 0.7f);
+                    break;
+                case 6: // tent web strung between three anchors, criss-crossed
+                {
+                    var t = new Vector2[3];
+                    for (int i = 0; i < 3; i++)
+                    {
+                        float a = R() * 0.6f + i * Mathf.PI * 2f / 3f;
+                        t[i] = new Vector2(0.5f, 0.5f) + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * (0.38f + R() * 0.08f);
+                    }
+                    // Frame threads stretch with a little slack; the anchors carry short tie-off threads.
+                    for (int i = 0; i < 3; i++)
+                    {
+                        Sag(t[i], t[(i + 1) % 3], 0.02f + R() * 0.03f, spoke, 0.85f);
+                        Vector2 out1 = (t[i] - new Vector2(0.5f, 0.5f)).normalized;
+                        Line(px, n, t[i], t[i] + out1 * (0.05f + R() * 0.06f), loose, 0.7f);
+                    }
+                    for (int k = 0; k < 18; k++)
+                    {
+                        int e1 = rng.Next(3), e2 = (e1 + 1 + rng.Next(2)) % 3;
+                        Vector2 a = Vector2.Lerp(t[e1], t[(e1 + 1) % 3], R()), b = Vector2.Lerp(t[e2], t[(e2 + 1) % 3], R());
+                        Sag(a, b, 0.02f, cross, 0.75f);
+                    }
+                    break;
+                }
+                default: // small tight orb held out on long guy lines
+                {
+                    Vector2 c = centre + new Vector2(R() - 0.5f, R() - 0.5f) * 0.1f;
+                    Orb(c, 14 + rng.Next(4), 0.26f, 0.035f, 0.05f, 0.05f);
+                    for (int i = 0; i < 4; i++)
+                    {
+                        float a = i * Mathf.PI / 2f + R() * 0.8f;
+                        Line(px, n, c + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 0.2f, c + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 0.6f, spoke, 0.8f);
+                    }
+                    break;
+                }
             }
         }
 

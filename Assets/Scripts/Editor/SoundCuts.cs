@@ -20,16 +20,7 @@ namespace LastSignal.EditorTools
         public static void CutAll()
         {
             // Sets these recordings replace completely (old Kenney / generated variations removed).
-            foreach (string key in new[] { "footstep", "door" }) RemoveSet(key);
-
-            // Birds.
-            Loudest("1763", "owl", 4f);
-            Loudest("1764", "owl_1", 4f);
-            Loudest("0840", "flutter", 2f, level: 0.12f);
-            Loudest("0476", "flutter_1", 2.2f, level: 0.12f);
-            Loudest("2891", "flutter_2", 2f, level: 0.12f);
-            Loudest("2892", "flutter_3", 2f, level: 0.12f);
-            Coos("0841", "pigeon", 2, 2.2f);
+            foreach (string key in new[] { "footstep", "door", "splash", "paper", "paperdown" }) RemoveSet(key);
 
             // Mice and rats.
             Onsets("0459", "squeak", 4, 0.6f, minGap: 0.5f);
@@ -45,11 +36,23 @@ namespace LastSignal.EditorTools
             Onsets("3440", "creakstep", 5, 0.7f, minGap: 0.4f);
 
             // Creaking doors (also lockers and wardrobes).
-            First("0302", "door", 2.5f);
-            First("3205", "door_1", 2.5f);
-            First("3206", "door_2", 2.5f);
-            First("3207", "door_3", 2.5f);
-            First("0306", "door_4", 3f);
+            // Cut to 1.5 s: the time a door takes to swing open (Door.openSeconds).
+            First("0302", "door", 1.5f);
+            First("3205", "door_1", 1.5f);
+            First("3206", "door_2", 1.5f);
+            First("3207", "door_3", 1.5f);
+            First("0306", "door_4", 1.5f);
+
+            // Wading through water and wet muck (flooded rooms and puddles).
+            Onsets("0690", "splash", 6, 0.55f, minGap: 0.45f);
+            Onsets("0495", "splash", 2, 0.55f, minGap: 0.45f, first: 6);
+
+            // Paper: picked up and unfolded, then put back down.
+            Onsets("0785", "paper", 3, 0.8f, minGap: 1f);
+            First("1225", "paper_3", 1f);
+            First("0164", "paperdown", 0.8f);
+            First("2212", "paperdown_1", 0.9f);
+            First("0362", "paperdown_2", 0.9f);
 
             // Dying fluorescent tubes: flicks while sputtering, hum while lit.
             First("2143", "tube", 1.2f);
@@ -57,11 +60,6 @@ namespace LastSignal.EditorTools
             First("2145", "tube_2", 1.2f);
             First("2146", "tube_3", 1.5f);
             Loudest("2118", "neon", 5f, rate: 24000, loop: true);
-
-            // The Echo crawling: joints cracking, teeth grinding.
-            First("1408", "bonecrack", 1.2f);
-            First("1409", "bonecrack_1", 1.2f);
-            Onsets("0605", "gnash", 2, 1.4f, minGap: 1.5f);
 
             // Ending: birds waking at sunrise (40 s, faded in and out).
             Loudest("0222", "dawn", 40f, rate: 24000, fade: 2.5f);
@@ -94,45 +92,18 @@ namespace LastSignal.EditorTools
             Write(name, Slice(d, start, Mathf.Min(d.Length - start, Mathf.RoundToInt(maxSeconds * hz)), 0.005f, 0.25f, false, hz), hz, 0);
         }
 
-        private static void Onsets(string id, string key, int count, float seconds, float minGap)
+        private static void Onsets(string id, string key, int count, float seconds, float minGap, int first = 0)
         {
             float[] d = Load(id, out int hz);
             List<int> on = PeakTimes(d, hz, 0.3f, minGap);
             // Spread the picks across the take rather than the first few.
-            int made = 0;
+            int made = first;
             for (int k = 0; k < count && on.Count > 0; k++)
             {
                 int start = Mathf.Max(0, on[Mathf.Min(on.Count - 1, k * on.Count / count)] - hz / 25);
                 int len = Mathf.Min(d.Length - start, Mathf.RoundToInt(seconds * hz));
                 Write(made == 0 ? key : key + "_" + made, Slice(d, start, len, 0.003f, seconds * 0.35f, false, hz), hz, 0);
                 made++;
-            }
-        }
-
-        /// <summary>Pigeon coos: loud but tonal stretches (low zero-crossing rate), not wing flaps.</summary>
-        private static void Coos(string id, string key, int count, float seconds)
-        {
-            float[] d = Load(id, out int hz);
-            int len = Mathf.RoundToInt(seconds * hz), hop = hz / 10;
-            var windows = new List<(int start, float rms, float zcr)>();
-            float peakRms = 0f;
-            for (int s = 0; s + len < d.Length; s += hop)
-            {
-                double e = 0; int z = 0;
-                for (int i = s; i < s + len; i++) { e += d[i] * d[i]; if (i > s && (d[i] >= 0f) != (d[i - 1] >= 0f)) z++; }
-                float rms = Mathf.Sqrt((float)(e / len));
-                peakRms = Mathf.Max(peakRms, rms);
-                windows.Add((s, rms, z / (float)len));
-            }
-            windows.RemoveAll(w => w.rms < peakRms * 0.6f);
-            windows.Sort((a, b) => a.zcr.CompareTo(b.zcr));
-            var used = new List<int>();
-            foreach (var w in windows)
-            {
-                if (used.Count >= count) break;
-                if (used.Exists(u => Mathf.Abs(u - w.start) < len)) continue;
-                used.Add(w.start);
-                Write(used.Count == 1 ? key : key + "_" + (used.Count - 1), Slice(d, w.start, len, 0.05f, 0.3f, false, hz, 0.12f), hz, 0);
             }
         }
 

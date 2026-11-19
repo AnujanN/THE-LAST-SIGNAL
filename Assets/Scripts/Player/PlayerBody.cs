@@ -53,7 +53,7 @@ namespace LastSignal.Player
         [SerializeField] private Transform torchGrip;
         [Tooltip("Dim light that only affects the body's rendering layer (the torch beam does not light the body).")]
         [SerializeField] private Light bodyFill;
-        [SerializeField] private float fillWhenTorchOff = 0.12f;
+        [SerializeField] private float fillWhenTorchOff = 0.25f;
         [SerializeField] private float fillWhenTorchOn = 0.7f;
 
         [Header("Animator layers")]
@@ -65,6 +65,8 @@ namespace LastSignal.Player
         private bool hasTorchParam;
 
         private float torchWeight;
+        private Transform holdGrip;
+        private float holdWeight;
         private float reachTimer;
         private Vector3 reachTarget;
         private bool twoHanded;
@@ -75,6 +77,18 @@ namespace LastSignal.Player
         public float ReachWeight { get; private set; }
         public Vector3 ReachTarget => reachTarget;
         public Transform RightHand => rightArm.Length > 2 ? rightArm[2] : null;
+        /// <summary>0..1 how firmly the right hand is holding something up (a note).</summary>
+        public float HoldWeight => holdWeight;
+
+        /// <summary>
+        /// Hold something up in the right hand (a note being read), or let go (null). Reading pauses the game,
+        /// so while holding, the animator runs on unscaled time and the IK keeps working.
+        /// </summary>
+        public void HoldWith(Transform grip)
+        {
+            holdGrip = grip;
+            if (animator != null) animator.updateMode = grip != null ? AnimatorUpdateMode.UnscaledTime : AnimatorUpdateMode.Normal;
+        }
 
         private void Awake()
         {
@@ -132,7 +146,10 @@ namespace LastSignal.Player
         {
             // Paused (no game time): the animator does not rewrite the pose, so the bones still hold last
             // frame's adjusted pose. Adjusting again would pile the bends up; keep the pose as it is.
-            if (Time.deltaTime <= 0f || animator == null || !animator.isActiveAndEnabled) return;
+            bool paused = Time.deltaTime <= 0f;
+            if ((paused && holdGrip == null && holdWeight <= 0f) || animator == null || !animator.isActiveAndEnabled) return;
+            float dt = paused ? Time.unscaledDeltaTime : Time.deltaTime;
+            holdWeight = Mathf.MoveTowards(holdWeight, holdGrip != null ? 1f : 0f, dt * 3f);
 
             // The camera is the eyes: never render our own head from the inside.
             if (head != null) head.localScale = Vector3.zero;
@@ -167,6 +184,10 @@ namespace LastSignal.Player
                 Reach(rightArm, twoHanded ? reachTarget + side : reachTarget, transform.right, ReachWeight);
                 if (twoHanded) Reach(leftArm, reachTarget - side, -transform.right, ReachWeight);
             }
+
+            // Holding a note up to read: the right hand grips its corner.
+            if (holdGrip != null && holdWeight > 0f)
+                Reach(rightArm, holdGrip.position, transform.right, holdWeight);
         }
 
         private void Reach(Transform[] arm, Vector3 target, Vector3 outward, float weight)

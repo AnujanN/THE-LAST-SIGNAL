@@ -17,7 +17,8 @@ namespace LastSignal.Interaction
         [SerializeField] private string id = "door";
         [SerializeField] private Transform hinge;
         [SerializeField] private float openAngle = 100f;
-        [SerializeField] private float openSeconds = 0.8f;
+        [Tooltip("How long the door takes to swing open; the creak is cut to the same length.")]
+        [SerializeField] private float openSeconds = 1.5f;
 
         [Header("Lock")]
         [SerializeField] private string requiredItemId;
@@ -109,7 +110,6 @@ namespace LastSignal.Interaction
             moving = false;
             if (obstacle != null) obstacle.enabled = true;
             AudioManager.Instance?.PlayAt(PlaceholderClips.Thud, transform.position, 1f);
-            AudioManager.Instance?.PlayAt(PlaceholderClips.DoorCreak, transform.position, 0.5f);
             Enemy.NoiseSystem.Emit(transform.position, 9f);
         }
 

@@ -55,7 +55,11 @@ namespace LastSignal.EditorTools
             Box(env, "Car", new Vector3(-6f, 0.7f, -13f), new Vector3(1.9f, 1.4f, 4.2f), Mat("Car", new Color(0.18f, 0.2f, 0.24f)));
 
             // Interior shell.
-            Slab(env, "Floor", -12f, -6f, 12f, 24f, 0f, floor);
+            // Floor with the stairwell opening (x 2.6..5.9, z 5.1..6.9) cut out.
+            Slab(env, "Floor", -12f, -6f, StairX0, 24f, 0f, floor);
+            Slab(env, "Floor", StairX0, -6f, StairX1, StairZ0, 0f, floor);
+            Slab(env, "Floor", StairX0, StairZ1, StairX1, 24f, 0f, floor);
+            Slab(env, "Floor", StairX1, -6f, 12f, 24f, 0f, floor);
             Slab(env, "Ceiling", -12f, -6f, 12f, 24f, H, wall, ceiling: true);
             WallX(env, "Facade", -6f, -12f, 12f, 6f, facade, 0f);
             WallZ(env, "Reception_W", -12f, -6f, 2f, H, wall);
@@ -85,9 +89,7 @@ namespace LastSignal.EditorTools
             Box(env, "ControlDesk", new Vector3(0f, 0.5f, 21f), new Vector3(6f, 1f, 1.2f), metal);
             Box(env, "RadioRack_L", new Vector3(-5f, 1.2f, 23.6f), new Vector3(2.5f, 2.4f, 0.6f), metal);
             Box(env, "RadioRack_R", new Vector3(5f, 1.2f, 23.6f), new Vector3(2.5f, 2.4f, 0.6f), metal);
-            // Stairs down (visual) in the stairwell.
-            for (int i = 0; i < 4; i++)
-                Box(env, "StairStep", new Vector3(4.2f + i * 0.35f, 0.02f - i * 0.001f, 6f), new Vector3(0.35f, 0.04f, 2.6f), Mat("Black", new Color(0.03f, 0.03f, 0.03f)));
+            BasementStairs(env, floor, wall, metal);
 
             LevelDressing.Level1(env);
 
@@ -305,7 +307,8 @@ namespace LastSignal.EditorTools
             On(basementRadio, "onEnter", events.Say, "RADIO|Alex... don't go downstairs.|3.5");
 
             On(basementDoor, "onOpened", events.SetObjective, "l1_down|Go down to the basement");
-            LevelExit exit = Trigger<LevelExit>(story, "Exit_Basement", new Vector3(4.6f, 1f, 6f), new Vector3(1.8f, 2f, 3f));
+            // At the foot of the stairs, where they disappear into the dark under the building.
+            LevelExit exit = Trigger<LevelExit>(story, "Exit_Basement", new Vector3(5.7f, StairBottom + 0.8f, 6f), new Vector3(0.9f, 1.6f, 1.8f));
             SetValue(exit, "nextScene", GameFlowManager.Level2Scene);
 
             // ------------------------------------------------------------------ checkpoints + level
@@ -337,6 +340,64 @@ namespace LastSignal.EditorTools
             EventSystemObject();
             SaveScene(scene, ScenePath);
             Debug.Log("[Level1Builder] Built " + ScenePath);
+        }
+            // ------------------------------------------------------------------ stairs to the basement
+
+        private const float StairX0 = 2.6f, StairX1 = 5.9f, StairZ0 = 5.1f, StairZ1 = 6.9f;
+        private const int StairSteps = 9;
+        private const float StairRise = 0.17f, StairRun = 0.3f;
+        public const float StairBottom = -StairSteps * StairRise;
+
+        /// <summary>
+        /// A real flight of concrete steps down from the stairwell: nine 17 cm steps (about 1.5 m) into the
+        /// dark under the building, with pipe handrails round the opening. Level 2 starts at the bottom.
+        /// </summary>
+        private static void BasementStairs(Transform env, Material floor, Material wall, Material metal)
+        {
+            Transform stairs = Group(env, "BasementStairs");
+            float depth = -StairBottom + 0.2f, under = StairBottom - 0.2f;
+            for (int i = 0; i < StairSteps; i++)
+            {
+                float top = -StairRise * (i + 1);
+                float x0 = StairX0 + StairRun * i;
+                Box(stairs, "Step", new Vector3(x0 + StairRun / 2f, (top + under) / 2f, (StairZ0 + StairZ1) / 2f),
+                    new Vector3(StairRun, top - under, StairZ1 - StairZ0), floor);
+                // Worn dark nosing on each step edge.
+                Box(stairs, "Nosing", new Vector3(x0 + 0.02f, top + 0.004f, (StairZ0 + StairZ1) / 2f),
+                    new Vector3(0.04f, 0.01f, StairZ1 - StairZ0), Mat("Black", new Color(0.03f, 0.03f, 0.03f)), collider: false);
+            }
+            // The landing at the bottom runs on under the floor into darkness.
+            float landX0 = StairX0 + StairRun * StairSteps, endX = 7.6f;
+            Box(stairs, "Landing", new Vector3((landX0 + endX) / 2f, StairBottom - 0.1f, (StairZ0 + StairZ1) / 2f),
+                new Vector3(endX - landX0, 0.2f, StairZ1 - StairZ0), floor);
+            // Shaft walls down the sides and the end (blackened where the light never reaches).
+            Material black = UnlitMat("Void", new Color(0.004f, 0.004f, 0.006f));
+            float wallY = (StairBottom + 0f) / 2f - 0.1f, wallH = depth;
+            Box(stairs, "ShaftWall_S", new Vector3((StairX0 + endX) / 2f, wallY, StairZ0 - 0.1f), new Vector3(endX - StairX0, wallH, 0.2f), wall);
+            Box(stairs, "ShaftWall_N", new Vector3((StairX0 + endX) / 2f, wallY, StairZ1 + 0.1f), new Vector3(endX - StairX0, wallH, 0.2f), wall);
+            Box(stairs, "ShaftWall_W", new Vector3(StairX0 - 0.1f, wallY, (StairZ0 + StairZ1) / 2f), new Vector3(0.2f, wallH, StairZ1 - StairZ0), wall);
+            Box(stairs, "ShaftEnd", new Vector3(endX + 0.1f, wallY, (StairZ0 + StairZ1) / 2f), new Vector3(0.2f, wallH, StairZ1 - StairZ0 + 0.4f), black);
+            // Low ceiling over the part that runs under the floor.
+            Box(stairs, "ShaftCeiling", new Vector3((StairX1 + endX) / 2f, -0.25f, (StairZ0 + StairZ1) / 2f),
+                new Vector3(endX - StairX1, 0.1f, StairZ1 - StairZ0), black, collider: false);
+
+            // Pipe handrails round the opening (open on the west side, where the steps start).
+            Transform rails = Group(stairs, "Handrails");
+            void Rail(Vector3 a, Vector3 b)
+            {
+                Vector3 mid = (a + b) / 2f, d = b - a;
+                GameObject bar = Box(rails, "Rail", mid + Vector3.up * 0.95f, new Vector3(Mathf.Abs(d.x) + 0.05f, 0.05f, Mathf.Abs(d.z) + 0.05f), metal, collider: false);
+                bar.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                int posts = Mathf.Max(2, Mathf.CeilToInt(d.magnitude / 1.1f) + 1);
+                for (int k = 0; k < posts; k++)
+                    Box(rails, "Post", Vector3.Lerp(a, b, k / (float)(posts - 1)) + Vector3.up * 0.475f, new Vector3(0.045f, 0.95f, 0.045f), metal, collider: false);
+                // Invisible barrier so nobody steps over the edge.
+                GameObject block = Box(rails, "RailBlocker", mid + Vector3.up * 0.6f, new Vector3(Mathf.Abs(d.x) + 0.06f, 1.2f, Mathf.Abs(d.z) + 0.06f), metal);
+                block.GetComponent<Renderer>().enabled = false;
+            }
+            Rail(new Vector3(StairX0 + 0.3f, 0f, StairZ0 - 0.03f), new Vector3(StairX1 + 0.03f, 0f, StairZ0 - 0.03f));
+            Rail(new Vector3(StairX0 + 0.3f, 0f, StairZ1 + 0.03f), new Vector3(StairX1 + 0.03f, 0f, StairZ1 + 0.03f));
+            Rail(new Vector3(StairX1 + 0.03f, 0f, StairZ0 - 0.03f), new Vector3(StairX1 + 0.03f, 0f, StairZ1 + 0.03f));
         }
     }
 }

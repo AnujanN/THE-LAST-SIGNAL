@@ -26,6 +26,9 @@ namespace LastSignal.EditorTools
             Fixtures.CeilingFittings(GameObject.Find("Lighting")?.transform);
             Wildlife.Apply(level, Dressing.LastRooms, Dressing.LastSeed);
             BuildKit.SettleBoards();
+            GameObject lighting = GameObject.Find("Lighting");
+            if (lighting != null && lighting.GetComponent<LastSignal.Environment.RoomLightFlicker>() == null)
+                lighting.AddComponent<LastSignal.Environment.RoomLightFlicker>();
             Transform props = GameObject.Find("Environment/Props")?.transform ?? items;
             switch (level)
             {

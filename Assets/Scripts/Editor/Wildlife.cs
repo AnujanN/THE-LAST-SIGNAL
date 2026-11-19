@@ -7,8 +7,8 @@ using static LastSignal.EditorTools.BuildKit;
 namespace LastSignal.EditorTools
 {
     /// <summary>
-    /// Life in the dead building: a mouse that darts across the floor, a pigeon and an owl that burst
-    /// from the dark, spiders on the walls and one that drops on its thread, and dying fluorescent tubes
+    /// Life in the dead building: a mouse that darts across the floor, a rat in the walls, spiders on the
+    /// walls and one that drops on its thread, and dying fluorescent tubes
     /// flickering far down the corridors. Creatures are built from simple shapes (the mouse is the
     /// Poly Haven rat when it is present) so they cost almost nothing on the phone.
     /// </summary>
@@ -28,13 +28,9 @@ namespace LastSignal.EditorTools
             var life = root.AddComponent<AmbientLife>();
 
             Critter mouse = Instance<Critter>(MousePrefab(), root.transform);
-            Bird pigeon = Instance<Bird>(BirdPrefab(Bird.Kind.Pigeon), root.transform);
-            Bird owl = Instance<Bird>(BirdPrefab(Bird.Kind.Owl), root.transform);
             Spider dropper = Instance<Spider>(SpiderPrefab(true), root.transform);
-            foreach (Component c in new Component[] { mouse, pigeon, owl, dropper }) c.gameObject.SetActive(false);
+            foreach (Component c in new Component[] { mouse, dropper }) c.gameObject.SetActive(false);
             Set(life, "mouse", mouse);
-            Set(life, "pigeon", pigeon);
-            Set(life, "owl", owl);
             Set(life, "dropSpider", dropper);
 
             // Spiders sitting on walls and ceilings, scuttling now and then.
@@ -153,59 +149,6 @@ namespace LastSignal.EditorTools
             return Save(root, "Mouse");
         }
 
-        // ------------------------------------------------------------------ birds
-
-        private static GameObject BirdPrefab(Bird.Kind kind)
-        {
-            bool owl = kind == Bird.Kind.Owl;
-            var root = new GameObject(owl ? "Owl" : "Pigeon");
-            float s = owl ? 1.5f : 1f;
-            Material feathers = owl ? Mat("OwlFeathers", new Color(0.3f, 0.21f, 0.13f), smoothness: 0.1f)
-                                    : Mat("PigeonFeathers", new Color(0.33f, 0.34f, 0.38f), smoothness: 0.15f);
-            Material wingMat = owl ? Mat("OwlWing", new Color(0.24f, 0.16f, 0.1f), smoothness: 0.1f)
-                                   : Mat("PigeonWing", new Color(0.26f, 0.27f, 0.31f), smoothness: 0.15f);
-            Material face = owl ? Mat("OwlFace", new Color(0.55f, 0.45f, 0.33f), smoothness: 0.1f) : Mat("PigeonNeck", new Color(0.2f, 0.3f, 0.27f), smoothness: 0.6f);
-            Material eye = owl ? Mat("OwlEye", new Color(1f, 0.6f, 0.1f), emissive: true, smoothness: 0.9f) : Mat("PigeonEye", new Color(0.8f, 0.35f, 0.1f), smoothness: 0.9f);
-            Material beak = Mat("Beak", new Color(0.15f, 0.13f, 0.1f), smoothness: 0.4f);
-            Transform body = root.transform;
-
-            Prim(body, "Body", PrimitiveType.Sphere, new Vector3(0f, 0f, 0f) * s, new Vector3(0.15f, 0.15f, 0.28f) * s, feathers, new Vector3(owl ? -25f : 0f, 0f, 0f), collider: false);
-            Prim(body, "Tail", PrimitiveType.Sphere, new Vector3(0f, -0.01f, -0.19f) * s, new Vector3(0.11f, 0.02f, 0.17f) * s, wingMat, new Vector3(-10f, 0f, 0f), collider: false);
-            Transform head = Group(body, "Head", new Vector3(0f, 0.09f, 0.11f) * s);
-            Prim(head, "Skull", PrimitiveType.Sphere, Vector3.zero, Vector3.one * (owl ? 0.13f : 0.085f) * s, owl ? feathers : face, collider: false);
-            if (owl)
-            {
-                Prim(head, "FaceDisc", PrimitiveType.Sphere, new Vector3(0f, 0f, 0.045f) * s, new Vector3(0.12f, 0.1f, 0.04f) * s, face, collider: false);
-                Prim(head, "TuftL", PrimitiveType.Cube, new Vector3(-0.04f, 0.065f, 0.01f) * s, new Vector3(0.015f, 0.04f, 0.015f) * s, feathers, new Vector3(0f, 0f, 20f), collider: false);
-                Prim(head, "TuftR", PrimitiveType.Cube, new Vector3(0.04f, 0.065f, 0.01f) * s, new Vector3(0.015f, 0.04f, 0.015f) * s, feathers, new Vector3(0f, 0f, -20f), collider: false);
-            }
-            float eyeX = owl ? 0.028f : 0.03f, eyeZ = owl ? 0.06f : 0.03f, eyeSize = owl ? 0.028f : 0.014f;
-            Prim(head, "EyeL", PrimitiveType.Sphere, new Vector3(-eyeX, 0.01f, eyeZ) * s, Vector3.one * eyeSize * s, eye, collider: false);
-            Prim(head, "EyeR", PrimitiveType.Sphere, new Vector3(eyeX, 0.01f, eyeZ) * s, Vector3.one * eyeSize * s, eye, collider: false);
-            Prim(head, "Beak", PrimitiveType.Cube, new Vector3(0f, owl ? -0.015f : -0.005f, owl ? 0.07f : 0.05f) * s, new Vector3(0.012f, 0.015f, 0.03f) * s, beak, new Vector3(20f, 0f, 0f), collider: false);
-
-            Transform Wing(string n, float side)
-            {
-                Transform pivot = Group(body, n, new Vector3(side * 0.05f, 0.04f, 0.02f) * s);
-                // Tapered, feathered shapes: a broad inner wing and a swept-back pointed tip.
-                Prim(pivot, "Feathers", PrimitiveType.Sphere, new Vector3(side * 0.15f, 0f, -0.02f) * s, new Vector3(0.32f, 0.022f, 0.17f) * s, wingMat, collider: false);
-                Prim(pivot, "Tip", PrimitiveType.Sphere, new Vector3(side * 0.33f, 0f, -0.07f) * s, new Vector3(0.2f, 0.015f, 0.09f) * s, wingMat, new Vector3(0f, side * 25f, 0f), collider: false);
-                return pivot;
-            }
-            Transform left = Wing("WingL", -1f), right = Wing("WingR", 1f);
-
-            var bird = root.AddComponent<Bird>();
-            SetEnum(bird, "kind", (int)kind);
-            Set(bird, "leftWing", left);
-            Set(bird, "rightWing", right);
-            Set(bird, "head", head);
-            Set(bird, "voice", Voice(root, owl ? 25f : 18f));
-            SetFloat(bird, "flapsPerSecond", owl ? 4.5f : 8.5f);
-            SetFloat(bird, "flapDegrees", owl ? 55f : 65f);
-            SetFloat(bird, "flightSpeed", owl ? 5f : 6.5f);
-            return Save(root, owl ? "Owl" : "Pigeon");
-        }
-
         // ------------------------------------------------------------------ spiders
 
         private static GameObject SpiderPrefab(bool dropper)
@@ -268,7 +211,7 @@ namespace LastSignal.EditorTools
             lamp.intensity = 1.8f;
             lamp.shadows = LightShadows.None;
             lamp.lightmapBakeType = LightmapBakeType.Realtime;
-            lamp.renderingLayerMask = 1; // the environment, not Alex's own body
+            SetLightLayers(lamp, LitLayers);
 
             var flicker = root.AddComponent<DistantFlicker>();
             Set(flicker, "lamp", lamp);

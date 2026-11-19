@@ -30,6 +30,19 @@ namespace LastSignal.UI
         [SerializeField] private GameObject notePanel;
         [SerializeField] private TMP_Text noteTitle;
         [SerializeField] private TMP_Text noteBody;
+        [Tooltip("The sheet (image, title, body); hidden while a note is held up in Alex's hand.")]
+        [SerializeField] private GameObject noteSheet;
+        [SerializeField] private Image notePaper;
+        [Tooltip("Paper sprites by style (PaperArt).")]
+        [SerializeField] private Sprite[] paperSprites = new Sprite[0];
+        [SerializeField] private TMP_Text noteCloseLabel;
+        [SerializeField] private Image noteBackdrop;
+
+        /// <summary>The reader was closed (a held note goes back where it was).</summary>
+        public static event System.Action NoteClosed;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics() => NoteClosed = null;
 
         [Header("Inventory")]
         [SerializeField] private GameObject inventoryPanel;
@@ -233,19 +246,27 @@ namespace LastSignal.UI
 
         // ---------------------------------------------------------------- notes
 
-        private void OpenNote(string title, string body)
+        private void OpenNote(NoteInteractable note, bool held)
         {
-            if (notePanel == null) return;
-            if (noteTitle != null) noteTitle.text = title;
-            if (noteBody != null) noteBody.text = body;
+            if (notePanel == null || note == null) return;
+            if (noteTitle != null) { noteTitle.text = note.Title; noteTitle.color = note.Ink; }
+            if (noteBody != null) { noteBody.text = note.Body; noteBody.color = note.Ink; }
+            int style = note.PaperStyle;
+            if (notePaper != null && style >= 0 && style < paperSprites.Length && paperSprites[style] != null) notePaper.sprite = paperSprites[style];
+            // Held up in the hand: the sheet itself is in the world; only the button stays on screen.
+            if (noteSheet != null) noteSheet.SetActive(!held);
+            if (noteBackdrop != null) noteBackdrop.enabled = !held;
+            if (noteCloseLabel != null) noteCloseLabel.text = held ? "PUT BACK" : "CLOSE";
             notePanel.SetActive(true);
             ModalStack.Open(noteOwner);
         }
 
         public void CloseNote()
         {
+            bool wasOpen = notePanel != null && notePanel.activeSelf;
             SetActive(notePanel, false);
             ModalStack.Close(noteOwner);
+            if (wasOpen) NoteClosed?.Invoke();
         }
 
         // ---------------------------------------------------------------- inventory

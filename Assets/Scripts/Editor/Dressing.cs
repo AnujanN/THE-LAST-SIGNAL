@@ -154,7 +154,12 @@ namespace LastSignal.EditorTools
                     Add(Kind.Stain, f + Vector3.up * (0.004f + i * 0.00005f), OnFloor(R() * 360f), Vector2.one * (0.8f + R() * 1.6f));
             for (int i = 0; i < t.puddles; i++)
                 if (Floor(RandomPoint(out _), out Vector3 f))
-                    Add(Kind.Puddle, f + Vector3.up * 0.007f, OnFloor(R() * 360f), new Vector2(1f + R() * 1.6f, 0.8f + R() * 1.2f));
+                {
+                    float yaw = R() * 360f;
+                    var size = new Vector2(1f + R() * 1.6f, 0.8f + R() * 1.2f);
+                    Add(Kind.Puddle, f + Vector3.up * 0.007f, OnFloor(yaw), size);
+                    PuddleZone(f, yaw, size);
+                }
             for (int i = 0; i < t.papers; i++)
                 if (Floor(RandomPoint(out _), out Vector3 f))
                     Add(Kind.Papers, f + Vector3.up * (0.009f + i * 0.0001f), OnFloor(R() * 360f), new Vector2(0.21f, 0.29f) * (0.8f + R() * 0.4f));
@@ -180,6 +185,24 @@ namespace LastSignal.EditorTools
         }
 
         private static float Random(System.Random rng, float a, float b) => Mathf.Lerp(a, b, (float)rng.NextDouble());
+
+        /// <summary>
+        /// Walking through a puddle splashes (and carries a little further). The trigger lives outside the
+        /// environment so the NavMesh bake ignores it, on Ignore Raycast so it never blocks aiming.
+        /// </summary>
+        private static void PuddleZone(Vector3 at, float yaw, Vector2 size)
+        {
+            GameObject holder = GameObject.Find("WaterZones") ?? new GameObject("WaterZones");
+            var go = new GameObject("Puddle");
+            go.transform.SetParent(holder.transform, false);
+            go.transform.SetPositionAndRotation(at + Vector3.up * 0.2f, Quaternion.Euler(0f, yaw, 0f));
+            go.layer = 2; // Ignore Raycast
+            var box = go.AddComponent<BoxCollider>();
+            box.isTrigger = true;
+            box.size = new Vector3(size.x * 0.8f, 0.4f, size.y * 0.8f);
+            var zone = go.AddComponent<LastSignal.Enemy.SurfaceNoiseZone>();
+            SetValue(zone, "noiseMultiplier", 1.3f);
+        }
 
         private static Vector3 Flat(Vector3 v)
         {

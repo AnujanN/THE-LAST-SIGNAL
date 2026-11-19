@@ -4,16 +4,14 @@ using UnityEngine;
 namespace LastSignal.Environment
 {
     /// <summary>
-    /// The building is not empty: every so often a mouse darts across the floor ahead, a pigeon or an owl
-    /// bursts from the dark over Alex's shoulder, or a spider drops on its thread in front of his face.
+    /// The building is not empty: every so often a mouse darts across the floor ahead, a rat gnaws inside
+    /// the wall beside Alex, or a spider drops on its thread in front of his face.
     /// Events only start where they will be seen (in front of the camera, nothing in the way) and never
     /// while The Echo is chasing. Purely atmospheric: nothing here makes noise The Echo can hear.
     /// </summary>
     public class AmbientLife : MonoBehaviour
     {
         [SerializeField] private Critter mouse;
-        [SerializeField] private Bird pigeon;
-        [SerializeField] private Bird owl;
         [SerializeField] private Spider dropSpider;
         [SerializeField] private Vector2 everySeconds = new Vector2(18f, 40f);
         [SerializeField] private float firstDelay = 14f;
@@ -46,13 +44,13 @@ namespace LastSignal.Environment
         /// <summary>Try the events in a random order until one fits where Alex is looking.</summary>
         public bool TriggerAny()
         {
-            int start = Random.Range(0, 5);
-            for (int i = 0; i < 5; i++)
-                if (Trigger((start + i) % 5)) return true;
+            int start = Random.Range(0, 3);
+            for (int i = 0; i < 3; i++)
+                if (Trigger((start + i) % 3)) return true;
             return false;
         }
 
-        /// <summary>0 mouse, 1 pigeon, 2 owl, 3 spider, 4 rat gnawing inside a wall.</summary>
+        /// <summary>0 mouse, 1 spider, 2 rat gnawing inside a wall.</summary>
         public bool Trigger(int which)
         {
             Camera cam = Camera.main;
@@ -60,12 +58,10 @@ namespace LastSignal.Environment
             bool ok = which switch
             {
                 0 => TryMouse(cam.transform),
-                1 => TryBird(pigeon, cam.transform, 0.25f),
-                2 => TryBird(owl, cam.transform, 1.4f),
-                3 => TrySpider(cam.transform),
+                1 => TrySpider(cam.transform),
                 _ => TryGnaw(cam.transform),
             };
-            if (ok) LastEvent = which switch { 0 => "Mouse", 1 => "Pigeon", 2 => "Owl", 3 => "Spider", _ => "Gnaw" };
+            if (ok) LastEvent = which switch { 0 => "Mouse", 1 => "Spider", _ => "Gnaw" };
             return ok;
         }
 
@@ -93,37 +89,6 @@ namespace LastSignal.Environment
             Vector3 a = floor.point - r * left, b = floor.point + r * right;
             if (Random.value < 0.5f) (a, b) = (b, a);
             mouse.Run(a, b);
-            return true;
-        }
-
-        private bool TryBird(Bird bird, Transform cam, float delay)
-        {
-            if (bird == null || bird.Busy) return false;
-            Vector3 f = Flat(cam.forward), r = Vector3.Cross(Vector3.up, f);
-            Vector3 dir = Quaternion.AngleAxis(Random.Range(-25f, 25f), Vector3.up) * f;
-            Vector3 c = cam.position + dir * Random.Range(3f, 6f);
-            if (!Clear(cam.position, c)) return false;
-            float ceiling = Physics.Raycast(c, Vector3.up, out RaycastHit hc, 4f, solid, QueryTriggerInteraction.Ignore) ? hc.point.y : cam.position.y + 1.6f;
-            Vector3 perch = new Vector3(c.x, Mathf.Min(ceiling - 0.35f, cam.position.y + 1.3f), c.z);
-            if (perch.y < cam.position.y + 0.3f || !Clear(cam.position, perch)) return false;
-
-            // Over Alex's shoulder, then away behind him.
-            float side = Random.value < 0.5f ? -1f : 1f;
-            float overhead = Physics.Raycast(cam.position, Vector3.up, out RaycastHit ho, 3f, solid, QueryTriggerInteraction.Ignore) ? ho.distance - 0.3f : 0.6f;
-            Vector3 via = cam.position + r * (side * 0.7f) + Vector3.up * Mathf.Clamp(overhead, 0.2f, 0.6f);
-            Vector3 back = cam.position + Vector3.up * 0.35f;
-            float behind = Physics.Raycast(back, -f, out RaycastHit hb, 7f, solid, QueryTriggerInteraction.Ignore) ? hb.distance - 0.6f : 7f;
-            Vector3 exit;
-            if (behind >= 1.5f) exit = back - f * behind + r * (side * 0.4f);
-            else
-            {
-                // Nowhere to go behind: veer off sideways instead.
-                float away = Physics.Raycast(back, r * side, out RaycastHit hs, 6f, solid, QueryTriggerInteraction.Ignore) ? hs.distance - 0.6f : 6f;
-                if (away < 1.5f) return false;
-                exit = back + r * (side * away);
-            }
-            if (!Clear(perch, via) || !Clear(via, exit)) return false;
-            bird.Launch(perch, via, exit, delay);
             return true;
         }
 

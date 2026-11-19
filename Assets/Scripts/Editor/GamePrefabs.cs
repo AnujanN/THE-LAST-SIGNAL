@@ -134,6 +134,25 @@ namespace LastSignal.EditorTools
 
             BuildPlayerBody(root, controller, look, interactor, flashlight);
 
+            // Loose notes are held up here to read, lit by a dim warm light so they can be read with the torch off.
+            Transform noteHold = Group(camGo.transform, "NoteHold", new Vector3(0.02f, -0.035f, 0.37f));
+            var readGo = new GameObject("ReadingLight");
+            readGo.transform.SetParent(noteHold, false);
+            readGo.transform.localPosition = new Vector3(0.12f, 0.18f, -0.2f);
+            var reading = readGo.AddComponent<Light>();
+            reading.type = LightType.Point;
+            reading.range = 0.9f;
+            reading.intensity = 0.6f;
+            reading.color = new Color(1f, 0.92f, 0.78f);
+            reading.shadows = LightShadows.None;
+            SetLightLayers(reading, 1u | BodyLayer); // the sheet and the hand holding it
+            reading.enabled = false;
+            var holder = root.AddComponent<NoteHolder>();
+            Set(holder, "holdPoint", noteHold);
+            Set(holder, "readingLight", reading);
+            PlayerBody bodyRig = root.GetComponent<PlayerBody>();
+            if (bodyRig != null) Set(holder, "body", bodyRig);
+
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, PlayerPath);
             Object.DestroyImmediate(root);
             return prefab;
@@ -143,12 +162,6 @@ namespace LastSignal.EditorTools
         /// <summary>Rendering layer used only by the first-person body and its props.</summary>
         public const uint BodyLayer = 1u << 1;
 
-        private static void SetLightLayers(Light light, uint mask)
-        {
-            light.renderingLayerMask = (int)mask;
-            UniversalAdditionalLightData data = light.GetUniversalAdditionalLightData();
-            data.renderingLayers = mask;
-        }
 
         /// <summary>
         /// Alex's visible body (same CC0 mannequin, dark jacket and gloves). Head hidden at runtime by
@@ -253,6 +266,66 @@ namespace LastSignal.EditorTools
         /// torch held up by IK in the left hand while it is on (tucked away when off), the right hand reaching
         /// for what you use. Head hidden; the beam does not light the body (rendering layers).
         /// </summary>
+        /// <summary>
+        /// A fresh URP Lit material built from an imported Mixamo material's textures. The imported ones use the
+        /// specular workflow with colour-imported normal maps, which left Alex's body black or a flat blue-grey.
+        /// Matte, no environment reflections; normal map imported as a normal map; textures capped at 1024 px.
+        /// </summary>
+        private static Material MatteCopy(Material source)
+        {
+            if (source == null) return null;
+            string dir = System.IO.Path.GetDirectoryName(AssetDatabase.GetAssetPath(source)).Replace('\\', '/') + "/Materials";
+            EnsureFolder(dir);
+            string path = dir + "/" + source.name + "_Matte.mat";
+            Texture baseTex = source.HasProperty("_BaseMap") ? source.GetTexture("_BaseMap") : source.mainTexture;
+            Texture2D normal = null;
+            if (baseTex != null)
+            {
+                string texPath = AssetDatabase.GetAssetPath(baseTex);
+                Cap(texPath, false);
+                string normalPath = texPath.Replace("_Diffuse", "_Normal");
+                if (normalPath != texPath && System.IO.File.Exists(normalPath))
+                {
+                    Cap(normalPath, true);
+                    normal = AssetDatabase.LoadAssetAtPath<Texture2D>(normalPath);
+                }
+            }
+            Material m = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (m == null || m.shader.name != "Universal Render Pipeline/Lit")
+            {
+                if (m != null) AssetDatabase.DeleteAsset(path);
+                m = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                AssetDatabase.CreateAsset(m, path);
+            }
+            m.name = source.name + "_Matte";
+            m.SetFloat("_WorkflowMode", 1f); // metallic
+            m.SetTexture("_BaseMap", baseTex);
+            m.SetColor("_BaseColor", Color.white);
+            m.SetFloat("_Metallic", 0f);
+            m.SetFloat("_Smoothness", 0.2f);
+            m.SetFloat("_EnvironmentReflections", 0f);
+            m.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
+            if (normal != null)
+            {
+                m.SetTexture("_BumpMap", normal);
+                m.SetFloat("_BumpScale", 1f);
+                m.EnableKeyword("_NORMALMAP");
+            }
+            EditorUtility.SetDirty(m);
+            return m;
+        }
+
+        /// <summary>Character textures: 1024 px is plenty on a phone; normal maps imported as normal maps.</summary>
+        private static void Cap(string texPath, bool isNormal)
+        {
+            var ti = AssetImporter.GetAtPath(texPath) as TextureImporter;
+            if (ti == null) return;
+            bool changed = false;
+            if (ti.maxTextureSize != 1024) { ti.maxTextureSize = 1024; changed = true; }
+            if (isNormal && ti.textureType != TextureImporterType.NormalMap) { ti.textureType = TextureImporterType.NormalMap; changed = true; }
+            if (changed) ti.SaveAndReimport();
+        }
+
         private static void BuildMixamoPlayerBody(GameObject root, PlayerController controller, PlayerLook look,
             PlayerInteractor interactor, FlashlightController flashlight)
         {
@@ -260,6 +333,11 @@ namespace LastSignal.EditorTools
             if (body == null) return;
             foreach (SkinnedMeshRenderer smr in body.GetComponentsInChildren<SkinnedMeshRenderer>())
             {
+                // Matte copies of the imported materials: the originals are fairly glossy and reflect the default
+                // sky, which turned skin and clothes a flat blue-grey in the dark.
+                var mats = smr.sharedMaterials;
+                for (int i = 0; i < mats.Length; i++) mats[i] = MatteCopy(mats[i]);
+                smr.sharedMaterials = mats;
                 smr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 smr.receiveShadows = true;
                 smr.updateWhenOffscreen = true;
@@ -409,7 +487,7 @@ namespace LastSignal.EditorTools
                 // Mixamo body (Echo.fbx, or until it exists a black silhouette of a person), driven by the zombie
                 // animations, stretched tall and thin; EchoPresence adds the hunch, long arms and fingers, twitches.
                 GameObject body = MixamoSetup.Body(humanoid, MixamoSetup.EchoAnimator(), root.transform);
-                body.transform.localScale = new Vector3(0.8f, 1.2f, 0.8f);
+                body.transform.localScale = new Vector3(0.95f, 1.15f, 0.95f);
                 foreach (SkinnedMeshRenderer smr in body.GetComponentsInChildren<SkinnedMeshRenderer>())
                 {
                     var mats = new Material[smr.sharedMaterials.Length];
@@ -544,24 +622,6 @@ namespace LastSignal.EditorTools
             SetArray(presence, "upperArms", upperArms);
             SetArray(presence, "lowerArms", lowerArms);
             SetArray(presence, "hands", hands);
-
-            if (animator != null && animator.isHuman)
-            {
-                // Crawls on all fours, up the walls and across the ceiling (visual only; drops for a chase).
-                var crawler = root.AddComponent<EchoCrawler>();
-                Transform B(HumanBodyBones b) => animator.GetBoneTransform(b);
-                Set(crawler, "ai", ai);
-                Set(crawler, "animator", animator);
-                Set(crawler, "hips", B(HumanBodyBones.Hips));
-                Set(crawler, "head", head);
-                SetArray(crawler, "spine", new Object[] { B(HumanBodyBones.Spine), B(HumanBodyBones.Chest) });
-                SetArray(crawler, "leftArm", new Object[] { B(HumanBodyBones.LeftUpperArm), B(HumanBodyBones.LeftLowerArm), B(HumanBodyBones.LeftHand) });
-                SetArray(crawler, "rightArm", new Object[] { B(HumanBodyBones.RightUpperArm), B(HumanBodyBones.RightLowerArm), B(HumanBodyBones.RightHand) });
-                SetArray(crawler, "leftLeg", new Object[] { B(HumanBodyBones.LeftUpperLeg), B(HumanBodyBones.LeftLowerLeg), B(HumanBodyBones.LeftFoot) });
-                SetArray(crawler, "rightLeg", new Object[] { B(HumanBodyBones.RightUpperLeg), B(HumanBodyBones.RightLowerLeg), B(HumanBodyBones.RightFoot) });
-                Set(crawler, "carried", smoke.transform);
-                Set(crawler, "voice", voice);
-            }
 
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, EchoPath);
             Object.DestroyImmediate(root);
@@ -863,7 +923,14 @@ namespace LastSignal.EditorTools
                 noteTitle.font = hand;
                 noteBody.font = hand;
             }
-            UIButton(notePanel, "CloseButton", "CLOSE", new Vector2(0.5f, 0f), new Vector2(0f, 70f), new Vector2(320f, 90f), 34, story.CloseNote);
+            Button closeNote = UIButton(notePanel, "CloseButton", "CLOSE", new Vector2(0.5f, 0f), new Vector2(0f, 70f), new Vector2(320f, 90f), 34, story.CloseNote);
+            Set(story, "noteSheet", paper.gameObject);
+            Set(story, "notePaper", paperImage);
+            Set(story, "noteCloseLabel", closeNote.GetComponentInChildren<TMP_Text>());
+            Set(story, "noteBackdrop", notePanel.GetComponent<Image>());
+            var sprites = new Object[PaperArt.Styles];
+            for (int st = 0; st < sprites.Length; st++) sprites[st] = PaperArt.PaperSprite(st);
+            SetArray(story, "paperSprites", sprites);
 
             RectTransform invPanel = UIPanel(root.transform, "InventoryPanel", new Color(0f, 0f, 0f, 0.75f));
             UIText(invPanel, "Title", "INVENTORY", 48, new Vector2(0.5f, 0.5f), new Vector2(0f, 300f), new Vector2(800f, 80f));

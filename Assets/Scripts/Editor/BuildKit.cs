@@ -424,7 +424,18 @@ namespace LastSignal.EditorTools
             l.intensity = intensity * 4f;
             l.range = range;
             l.shadows = LightShadows.None;
+            SetLightLayers(l, LitLayers);
             return l;
+        }
+
+        /// <summary>Room lights reach the world (layer 0) and Alex's own body (layer 1); the torch only the world.</summary>
+        public const uint LitLayers = 1u | (1u << 1);
+
+        public static void SetLightLayers(Light light, uint mask)
+        {
+            light.renderingLayerMask = (int)mask;
+            UnityEngine.Rendering.Universal.UniversalAdditionalLightData data = light.GetUniversalAdditionalLightData();
+            data.renderingLayers = mask;
         }
 
         public static Light DirectionalLight(Transform parent, string name, Vector3 euler, Color color, float intensity)
@@ -620,12 +631,22 @@ namespace LastSignal.EditorTools
         public static NoteInteractable Note(Transform parent, string name, Vector3 pos, float yaw, string id,
             string title, string body, Material mat)
         {
-            GameObject go = Prim(parent, name, PrimitiveType.Cube, pos, new Vector3(0.22f, 0.01f, 0.3f), PaperArt.ForNote(mat), new Vector3(0f, yaw, 0f));
+            int style = PaperArt.StyleFor(id);
+            GameObject go = Prim(parent, name, PrimitiveType.Cube, pos, new Vector3(0.22f, 0.01f, 0.3f), PaperArt.ForNote(mat, style), new Vector3(0f, yaw, 0f));
             AddGrabTrigger(go, 0.4f);
             var n = go.AddComponent<NoteInteractable>();
             SetValue(n, "id", id);
             SetValue(n, "title", title);
             SetValue(n, "body", body);
+            SetValue(n, "paperStyle", style);
+            SetValue(n, "ink", PaperArt.Ink(style));
+            if (mat != null && mat.name == "Paper")
+            {
+                // A loose sheet: Alex picks it up and reads it in his hand, the words written on the sheet itself.
+                SetValue(n, "canHold", true);
+                Set(n, "heldMaterial", PaperArt.HeldMaterial(style));
+                Set(n, "writing", NoteWriting(go.transform, title, body, PaperArt.Ink(style)));
+            }
             return n;
         }
 
@@ -634,12 +655,41 @@ namespace LastSignal.EditorTools
             string title, string body, Material mat, Vector2? size = null)
         {
             Vector2 s = size ?? new Vector2(0.5f, 0.4f);
-            GameObject go = Prim(parent, name, PrimitiveType.Cube, pos, new Vector3(s.x, s.y, 0.02f), PaperArt.ForNote(mat), new Vector3(0f, yaw, 0f));
+            int style = PaperArt.StyleFor(id);
+            GameObject go = Prim(parent, name, PrimitiveType.Cube, pos, new Vector3(s.x, s.y, 0.02f), PaperArt.ForNote(mat, style), new Vector3(0f, yaw, 0f));
             var n = go.AddComponent<NoteInteractable>();
             SetValue(n, "id", id);
             SetValue(n, "title", title);
             SetValue(n, "body", body);
+            SetValue(n, "paperStyle", style);
+            SetValue(n, "ink", PaperArt.Ink(style));
             return n;
+        }
+
+        /// <summary>
+        /// Handwriting on the top face of a 0.22 x 0.3 m sheet (shown only while it is held). The sheet cube is
+        /// scaled (0.22, 0.01, 0.3), so the text undoes that scale to stay undistorted.
+        /// </summary>
+        private static TMP_Text NoteWriting(Transform sheet, string title, string body, Color ink)
+        {
+            var go = new GameObject("Writing", typeof(RectTransform));
+            go.transform.SetParent(sheet, false);
+            go.transform.localPosition = new Vector3(0.02f, 0.56f, -0.045f); // a little below printed headers
+            go.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            go.transform.localScale = new Vector3(1f / 0.22f, 1f / 0.3f, 1f / 0.01f);
+            var tmp = go.AddComponent<TextMeshPro>();
+            TMP_FontAsset hand = PaperArt.HandwritingFont();
+            if (hand != null) tmp.font = hand;
+            tmp.text = "<b>" + title + "</b>\n" + body;
+            tmp.color = ink;
+            tmp.alignment = TextAlignmentOptions.TopLeft;
+            tmp.textWrappingMode = TextWrappingModes.Normal;
+            tmp.enableAutoSizing = true;
+            tmp.fontSizeMin = 0.05f;
+            tmp.fontSizeMax = 0.16f;
+            tmp.lineSpacing = -12f;
+            ((RectTransform)go.transform).sizeDelta = new Vector2(0.175f, 0.24f);
+            return tmp;
         }
 
         /// <summary>Hinged door filling a 1.6 m doorway. pos = doorway centre on the floor; yaw 0 = door plane along X.</summary>

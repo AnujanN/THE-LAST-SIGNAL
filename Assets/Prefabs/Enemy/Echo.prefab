@@ -346,7 +346,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.8, y: 1.2, z: 0.8}
+  m_LocalScale: {x: 0.95, y: 1.15, z: 0.95}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 4130662308007517009}
@@ -3909,8 +3909,8 @@ Transform:
   m_GameObject: {fileID: 5363598209532922583}
   serializedVersion: 2
   m_LocalRotation: {x: -0.000000044703484, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.040000003, y: 0.08333328, z: 0.093749985}
-  m_LocalScale: {x: 0.040000003, y: 0.026666665, z: 0.040000003}
+  m_LocalPosition: {x: 0.033684213, y: 0.08695647, z: 0.078947365}
+  m_LocalScale: {x: 0.033684213, y: 0.027826088, z: 0.033684213}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 5194272934361390766}
@@ -4166,8 +4166,8 @@ Transform:
   m_GameObject: {fileID: 6594277256414905716}
   serializedVersion: 2
   m_LocalRotation: {x: -0.000000044703484, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.04, y: 0.08333328, z: 0.093749985}
-  m_LocalScale: {x: 0.040000003, y: 0.026666665, z: 0.040000003}
+  m_LocalPosition: {x: -0.033684213, y: 0.08695647, z: 0.078947365}
+  m_LocalScale: {x: 0.033684213, y: 0.027826088, z: 0.033684213}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 5194272934361390766}
@@ -4307,7 +4307,6 @@ GameObject:
   - component: {fileID: 6539630841494149276}
   - component: {fileID: 5504914211382670824}
   - component: {fileID: 8520134229727451018}
-  - component: {fileID: 4525967948502635247}
   m_Layer: 0
   m_Name: Echo
   m_TagString: Untagged
@@ -4564,61 +4563,6 @@ MonoBehaviour:
   twitchMaxDegrees: 35
   disturbRadius: 7
   disturbMinFactor: 0.25
---- !u!114 &4525967948502635247
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7227945006717455651}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5476955bea37716429b93c20d61076ad, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: LastSignal.Runtime::LastSignal.Enemy.EchoCrawler
-  ai: {fileID: 6539630841494149276}
-  animator: {fileID: 1366669830428857764}
-  hips: {fileID: 5706502923950133704}
-  head: {fileID: 5194272934361390766}
-  spine:
-  - {fileID: 5590577521451243775}
-  - {fileID: 4164044214240242304}
-  leftArm:
-  - {fileID: 8931861350487199672}
-  - {fileID: 3727410156224744265}
-  - {fileID: 4822983094530787653}
-  rightArm:
-  - {fileID: 1620729331822583739}
-  - {fileID: 228690441711142375}
-  - {fileID: 1826371723359972054}
-  leftLeg:
-  - {fileID: 2800751883925969213}
-  - {fileID: 8250266544601910006}
-  - {fileID: 5397348109658801874}
-  rightLeg:
-  - {fileID: 504192372918879381}
-  - {fileID: 5429197275435121146}
-  - {fileID: 1688818535456576380}
-  carried: {fileID: 6623977274310937061}
-  voice: {fileID: 4951725778424977903}
-  surfaceMask:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  decideEverySeconds: {x: 4, y: 9}
-  ceilingChance: 0.4
-  wallChance: 0.25
-  floorChance: 0.15
-  minCeiling: 1.9
-  maxCeiling: 5
-  wallReach: 1.5
-  wallHeight: 1.45
-  clearance: 0.36
-  climbSpeed: 2.4
-  dropSpeed: 6
-  stride: 0.5
-  stepSeconds: 0.2
-  stepLift: 0.16
-  watchDistance: 10
 --- !u!1 &7449156653164181665
 GameObject:
   m_ObjectHideFlags: 0
@@ -5125,7 +5069,7 @@ Transform:
   m_GameObject: {fileID: 9022555102609857936}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.000028175404, y: 0.1579, z: 0.32369182}
+  m_LocalPosition: {x: -0.000028175404, y: 0.22855231, z: 0.27434975}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace LastSignal.Enemy
 {
-    /// <summary>Trigger area (e.g. flooded floor) that makes footsteps louder and slower.</summary>
+    /// <summary>Trigger area of water (flooded floor, a puddle): footsteps splash and carry further.</summary>
     [RequireComponent(typeof(Collider))]
     public class SurfaceNoiseZone : MonoBehaviour
     {
@@ -14,17 +14,13 @@ namespace LastSignal.Enemy
         private void OnTriggerEnter(Collider other)
         {
             NoiseEmitter e = other.GetComponentInParent<NoiseEmitter>();
-            if (e == null) return;
-            e.SurfaceMultiplier = noiseMultiplier;
-            e.SurfaceClip = PlaceholderClips.Splash;
+            if (e != null) e.EnterWater(noiseMultiplier);
         }
 
         private void OnTriggerExit(Collider other)
         {
             NoiseEmitter e = other.GetComponentInParent<NoiseEmitter>();
-            if (e == null) return;
-            e.SurfaceMultiplier = 1f;
-            e.SurfaceClip = null;
+            if (e != null) e.ExitWater(noiseMultiplier);
         }
     }
 }

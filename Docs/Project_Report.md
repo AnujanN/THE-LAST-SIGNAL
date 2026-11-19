@@ -106,18 +106,10 @@ with a 4-second grace period.
 Player noise per step: sprint 10 m, walk 4 m, crouch 1.2 m (×2 in water). Puzzle mistakes (keypad buzz,
 generator stall, junction arc) and some scares also make noise.
 
-**Body:** a Mixamo character (`Echo.fbx`) stretched tall and thin, all black, hunched, with long arms and long
-fingers, a cocked head, random head twitches, glowing eyes (red when hunting) and smoke; Mixamo zombie animations
-blend idle / walk / run by speed, with the zombie idle for listening, the attack for inspecting a hiding place and
-the scream for the catch.
-
-**Crawling (`EchoCrawler`):** while it patrols, investigates, listens, searches or returns, it regularly drops onto
-all fours and climbs onto the ceiling (upside down), a wall, or crawls along the floor. Its four limbs plant and
-step in a diagonal gait with two-bone IK, elbows splayed like a spider, back arched, and on a wall or the ceiling
-its head twists round to stare at Alex. Scratching sounds while it moves up there. It is visual only: the agent
-still walks the floor NavMesh and it senses from the same eye point, so crawling never changes what it can see,
-hear or reach. The moment it starts a chase (or a hunt, inspection or catch) it drops to its feet with a thud and
-a small camera shake.
+**Body:** a Mixamo character (`Echo.fbx`) stretched tall (×1.15 high, ×0.95 wide), all black, hunched, with long
+arms and long fingers, a cocked head, random head twitches, glowing eyes (red when hunting) and smoke; Mixamo zombie
+animations blend idle / walk / run by speed, with the zombie idle for listening, the attack for inspecting a hiding
+place and the scream for the catch. (A wall-and-ceiling crawl was tried and removed at the owner's request.)
 
 ## 5. Visuals, first-person presence and fear
 
@@ -128,8 +120,9 @@ a small camera shake.
 - Alex's visible body: the Mixamo "Remy" character with walk, run, crouch and "running with torch" animations.
   When the torch is on he holds it up in his left hand (IK to a grip in front of the view); the right hand reaches
   the exact point being used (switches, items, doors), leaning the chest in when it is slightly out of reach; both
-  hands push doors when the torch is off. The torch beam does not light the body (URP rendering layers); a dim
-  body-only fill light does. Humanoid avatars are built from the scaled skeletons (`MixamoSetup.BuiltAvatar`)
+  hands push doors when the torch is off. The torch beam does not light the body (URP rendering layers); room lights
+  and a dim body-only fill light do. The body uses its own matte URP materials built from Remy's textures (the imported
+  ones used a specular setup with colour-imported normal maps, which left the body black or flat blue-grey). Humanoid avatars are built from the scaled skeletons (`MixamoSetup.BuiltAvatar`)
   because the importer's own avatars for these files kept a centimetre scale.
 - Flashlight beam: 68° cone (30° bright centre), 26 m range, brighter than before.
 - Camera: footstep bob and sway, breathing rise that quickens with danger, stillness while holding breath; the
@@ -138,8 +131,13 @@ a small camera shake.
   charred furniture in the burned wing) plus generated grime merged into a few meshes per level: water streaks,
   grime along wall bottoms, floor stains, puddles, mould, cracks, cobwebs in corners, soot, claw scratches, scattered
   papers and debris.
-- Notes are handwritten (Caveat font) on aged, stained, folded paper in the torch light; notes lying in the world
-  show handwriting too.
+- Notes are handwritten (Caveat font) on six kinds of paper, picked per note: aged page, lined notebook page with
+  punched holes (blue biro), graph paper (pencil), office memo with a printed header (typed), crumpled brown scrap
+  with a torn edge (red-brown ink), water-damaged page with a burnt corner.
+- A note lying on a desk or the floor is picked up: the sheet lifts off the table to in front of Alex's face, his right
+  hand holding its corner, the words written on the sheet, lit by a dim reading light (the game is paused; the hand
+  IK runs on unscaled time). "PUT BACK" returns it exactly where it was. Paper rustles when picked up and put down.
+  Notes pinned to walls open the full-screen reader on the matching paper.
 - Room and area names hang on burnt-edged wooden boards on wires (a little crooked; slid down clear of pipes and
   wired to the real ceiling after the level is built); small labels on fuse boxes, controls and machines sit on
   worn brass tags.
@@ -151,15 +149,22 @@ a small camera shake.
   sheet, broken orb with a hole, old slack web, tent web, small orb on guy lines), turned and sized at random;
   all in one atlas, so still one draw call per level.
 - Life in the building (`AmbientLife`): every 18–40 s, where Alex is looking and never during a chase, a mouse darts
-  across the floor squeaking, a pigeon or an owl (which hoots first, eyes glinting) bursts from high in the dark
-  over his shoulder, or a spider lowers itself on a thread in front of his face and climbs back up. 8–10 spiders
-  sit on the walls and ceilings of each level and scuttle now and then. None of it makes noise The Echo hears.
+  across the floor squeaking, a rat gnaws inside the wall beside him, or a spider lowers itself on a thread in front
+  of his face and climbs back up. 8–10 spiders sit on the walls and ceilings of each level and scuttle now and then.
+  None of it makes noise The Echo hears. (Birds were tried and removed at the owner's request.)
+- Bad wiring (`RoomLightFlicker`): every 12–28 s one of the hall or room lights near Alex stutters for a few seconds
+  (dips, brief blackouts, starter clicks), never one The Echo is already disturbing, and never the red emergency lamps.
+- Doors take 1.5 s to swing open and their creak is cut to the same 1.5 s.
+- Water: the Level 2 flood and every puddle in every level are water zones; steps there splash (real wading
+  recordings) and carry a little further.
+- Level 1 ends with a real flight of nine concrete steps (about 1.5 m) down into the dark behind the basement door,
+  with pipe handrails; Level 2 starts at the bottom.
 - Distant flickering lights: three dying fluorescent tubes per level, far down the longest corridors and rooms.
   They sputter on with the click of a failing starter, hum while lit, die, and go dark when Alex comes within 5 m.
-- Real recorded sounds (BigSoundBank, CC0) for footsteps on concrete, creaking doors, lockers and wardrobes, creaking
-  boards for the "someone upstairs" scare, Alex's frightened breathing and gasp, owl, pigeon wings and coos, mice
-  squeaking, a rat gnawing inside a wall (a fifth wildlife event), fluorescent tube clicks and hum, The Echo's joints
-  cracking and teeth grinding while it crawls, and birds waking at sunrise in the ending. The editor tool
+- Real recorded sounds (BigSoundBank, CC0) for footsteps on concrete and in water, creaking doors, lockers and
+  wardrobes, creaking boards for the "someone upstairs" scare, Alex's frightened breathing and gasp, paper picked up
+  and put down, mice squeaking, a rat gnawing inside a wall, fluorescent tube clicks and hum, and birds waking at
+  sunrise in the ending. The editor tool
   `SoundCuts` (menu *The Last Signal/Audio/Cut BigSoundBank Sounds*) cuts them from the original takes: single steps
   and squeaks found at their peaks, the loudest stretch of long takes, seamless loops for breathing and the hum.
 - Being caught: no punch — The Echo is suddenly in your face, towering; your view is wrenched up to it, its long hands
@@ -181,7 +186,7 @@ a small camera shake.
 
 ## 7. Testing
 
-### Automated (Unity Test Framework, Play Mode) — 22 tests, all passing
+### Automated (Unity Test Framework, Play Mode) — 23 tests, all passing
 
 | Test | What it proves |
 |---|---|
@@ -203,9 +208,10 @@ a small camera shake.
 | Echo_Chases_LosesHiddenPlayer_Investigates_AndCatches | Sight → chase; hiding → search; noise → investigate; catch → game over → retry |
 | Echo_InspectsHidingSpot_HoldingBreathKeepsPlayerSafe | Inspection + holding breath = safe |
 | Echo_InspectsHidingSpot_FindsBreathingPlayer | Inspection without holding breath = found |
-| Echo_CrawlsOnCeiling_AndDropsToItsFeetToHunt | Upside down on the ceiling with hands and feet planted on it; a hunt drops it to its feet at once |
-| Sounds_BigSoundBankRecordingsArePresent | Every recorded sound the game asks for exists (six footsteps, five door creaks, birds, mice, breathing, tubes, Echo, dawn) |
-| AmbientLife_MouseBirdsAndSpider_AppearAndLeave | Mouse, pigeon, owl and dropping spider all start in a clear corridor, a bird passes close to Alex, all leave again; a tube goes dark when Alex is under it |
+| Sounds_BigSoundBankRecordingsArePresent | Every recorded sound the game asks for exists (footsteps, door creaks, water, paper, mice, breathing, tubes, dawn) |
+| AmbientLife_MouseRatAndSpider_AppearAndLeave | Mouse, gnawing rat and dropping spider all start in a clear corridor and leave again; a tube goes dark when Alex is under it |
+| Note_PickedUpReadInHand_AndPutBack | A desk note lifts to the face with its words on it, the hand holds it while paused, and it goes back exactly where it was |
+| Water_PuddleMakesStepsSplash | Standing in a puddle switches steps to splashes and makes them carry further |
 
 The walkthrough tests call interactions directly; they prove logic and scene flow, not that every object is
 easy to reach by walking and aiming. That needs a human play-through.
@@ -227,11 +233,11 @@ easy to reach by walking and aiming. That needs a human play-through.
 | Maya's ghost, fallback bodies (mesh + animations) | **Quaternius — Universal Animation Library (Standard)** — **CC0** (`Assets/Art/Models/Echo/Quaternius_UAL_License.txt`) |
 | Props and furniture (39 models): boxes, crates, barrels, chairs, desks, tables, beds, sofa, shelves, cabinets, TV, wheelchair, trash bags, cans, rats, electrical cabinets, compressor, generator, pipes, propane tanks, radio, circuit boards, stove, mirror, ceiling fittings, wet-floor sign | **Poly Haven** models — **CC0** (`Assets/Art/Models/Props/CREDITS.txt`) |
 | Fridge, bathtub, sink, safe, lockers and wardrobes (with swinging doors), reel-to-reel tape decks, machine vents/lights | Built in code from primitives and the CC0 textures (`Fixtures`, `BuildKit.Locker`) |
-| Pigeon, owl, spiders, flickering tube fittings, sign boards, keypad | Built in code from primitives (`Wildlife`, `BuildKit`, `GamePrefabs`) |
+| Spiders, flickering tube fittings, sign boards, keypad, basement stairs | Built in code from primitives (`Wildlife`, `BuildKit`, `GamePrefabs`, `Level1Builder`) |
 | Handwriting font for notes: Caveat | Google Fonts, The Caveat Project Authors — **SIL Open Font License 1.1** (`Assets/Art/Fonts/Caveat/OFL.txt`) |
 | Aged paper, stains, drips, mould, cracks, cobwebs, soot, scratches, static | Generated in code by editor scripts (`PaperArt`, `Dressing`) |
 | Impacts, switches, latches, pickups, sparks, generator, elevator, glitches | Kenney (kenney.nl) — **CC0** |
-| Footsteps, creaking doors and boards, breathing, gasp, owl, pigeon, wings, mouse, rat, fluorescent tubes, bones cracking, teeth grinding, birds at dawn | Joseph Sardin, **BigSoundBank.com** — **CC0** (originals in `Assets/Audio/Source/BigSoundBank/`, by sound id; not in the build) |
+| Footsteps (concrete and water), creaking doors and boards, breathing, gasp, paper, mouse, rat, fluorescent tubes, birds at dawn | Joseph Sardin, **BigSoundBank.com** — **CC0** (originals in `Assets/Audio/Source/BigSoundBank/`, by sound id; not in the build) |
 | Rain & thunder ambience | "Rain and Thunder Loop" by DoKashiteru, OpenGameArt.org — **CC BY 3.0** (credited in game) |
 | Basement ambience | "Loopable Dungeon Ambience", OpenGameArt.org — **CC0** |
 | The Echo snarls / attack | "Monster Snarls", OpenGameArt.org — **CC0** |
@@ -246,9 +252,8 @@ easy to reach by walking and aiming. That needs a human play-through.
 
 ## 9. Known limitations
 
-- Maya's ghost still uses the stylised CC0 mannequin. The birds and spiders are simple shapes (fine in the dark and
-  in motion, but not detailed up close).
-- The Echo's crawl is procedural (IK on the zombie animation), not a hand-made crawl animation.
+- Maya's ghost still uses the stylised CC0 mannequin. The spiders are simple shapes (fine in the dark and in motion,
+  but not detailed up close). The hand holding a note is posed by IK on the idle animation, not a hand-made grip.
 - No voice acting; all story speech is subtitled. Breathing is a generated sound.
 - Not yet played end-to-end by a person after the five-level update; not tested on a physical Android device; FPS unmeasured.
 - Lighting is real-time only; baked lighting is a future optimisation.

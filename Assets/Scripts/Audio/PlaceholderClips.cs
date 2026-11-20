@@ -67,6 +67,11 @@ namespace LastSignal.Audio
         public static AudioClip TapeStart => Real("tapestart") ?? Click;
         public static AudioClip TapeRun => Real("taperun");
         public static AudioClip TapeStop => Real("tapestop") ?? Click;
+        /// <summary>Intro: rain on the car roof (loop), the car door, the radio sweeping the band, crackle.</summary>
+        public static AudioClip CarRain => Real("carrain") ?? Rain;
+        public static AudioClip CarDoor => Real("cardoor") ?? DoorCreak;
+        public static AudioClip RadioTune => Real("tune") ?? Interference;
+        public static AudioClip RadioCrackle => Real("crackle") ?? StaticBurst;
         /// <summary>A sheet of paper picked up and unfolded.</summary>
         public static AudioClip PaperUp => Real("paper") ?? Real("paperdown");
         /// <summary>A sheet of paper put back down.</summary>

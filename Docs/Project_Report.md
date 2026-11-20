@@ -26,7 +26,8 @@ MainMenu → Level01_Station → Level02_Basement → Level03_Quarters → Level
 
 ## 2. Story and levels
 
-Alex returns to the radio station where his sister Maya disappeared during a storm and fire ten years ago.
+Alex returns to Northpoint Radio Station, where his sister Maya disappeared during a storm and fire ten years ago
+(the family lived in the station's staff quarters; their father, Daniel, was the station's radio technician).
 Something in the static — The Echo — copies voices. Each level adds evidence; the core story is unchanged:
 Alex learns Maya saved him during the fire, broadcasts her final recording, shuts the rig down and escapes.
 
@@ -37,6 +38,19 @@ Alex learns Maya saved him during the fire, broadcasts her final recording, shut
 | 3 – The Living Quarters (new) | Medium-hard | Lift lobby → long hallway; kids' room, bathroom, parents' room, kitchen, Dad's study, storage → fire door | **Dad's safe**: logbook — *the night everything ended, month first*; kitchen calendar — 14 October circled → **1014** → fire door key | The Echo active in the hallway; wardrobes/pantry; opening the safe bursts the lamps, slams the door and brings it |
 | 4 – The Burned Wing (new) | Hard | Collapsed corridor → detour through the burned west office → Studio A (Maya's scorched tape) → junction room → tower stairs | **Junction J-4**: schematic (which feeds reach which lines) + fire marshal's report (what burned) → only **FEED B → LINE 3 → LIFT** works. Then The Echo hunts you to the stairs | Faster, more alert Echo; falling beam; heavy smoke |
 | 5 – The Last Transmission | Hardest | Tower corridor → equipment + antenna rooms → broadcast chamber → escape | **Frequency**: refit 3 modules, tune to Dad's channel: "one-oh-three point-" (Level 2 tape, rest lost in static) + "always ended on seven" (Maya's diary, Level 3) → **103.7**, transmit; final recording (Maya appears beside the transmitter); shutdown; escape chase | Most alert Echo; hunt after shutdown |
+
+**Intro** (`IntroBuilder`, `IntroSequence`, about 3 minutes, skippable at any time): 11:47 PM in Alex's flat, rain on the
+window and a ticking clock (a wall clock that really runs, with a tick every second). Dad's old radio on the sideboard
+switches itself on and, through the static, Maya says *"Alex... can you hear me?"* The player walks to the radio
+(objective "Go to the radio"); she begs him to come back to Northpoint "before it finds me", and the radio dies with its
+dial stuck on **103.7** (Dad's channel; the player cannot know why that matters until Level 5). The player then looks at
+the old family photo beside the radio (rendered in the editor from the station, hill and mast, then aged like a print;
+`PhotoArt`; the same photo hangs framed on the wall in Level 3), puts it down, and the screen goes black on THE LAST SIGNAL.
+Then the drive: a forest road in the storm seen from the driver's seat (wipers, rain on the glass, the car radio hunting
+between stations), the mast and its red beacon showing in a lightning flash, and the car stopping at the Northpoint gate.
+Level 1 starts beside the parked car (door open, courtesy light on) with the objective "Find the source of the
+transmission"; walking up to the building, someone stands for a moment at the lit upstairs window and is gone, and the front
+door swings shut behind Alex. The intro never shows The Echo and never says whether Maya is alive.
 
 Ending: sunrise epilogue at Maya's memorial — *"I heard you this time, Maya. Goodbye."* — then THE END. No sequel hook.
 The ending (`EndingBuilder`, `EndingSequence`): dawn on a grassy hillside above the radio station, three months later.
@@ -124,9 +138,13 @@ generator stall, junction arc) and some scares also make noise.
 (BigSoundBank). Sounds still ringing from a catch are cut off when you respawn.
 
 **Body:** a Mixamo character (`Echo.fbx`) stretched tall (×1.15 high, ×0.95 wide), all black, hunched, with long
-arms and long fingers, a cocked head, random head twitches, glowing eyes (red when hunting) and smoke; Mixamo zombie
-animations blend idle / walk / run by speed, with the zombie idle for listening, the attack for inspecting a hiding
-place and the scream for the catch. (A wall-and-ceiling crawl was tried and removed at the owner's request.)
+arms and long fingers, a cocked head, random head twitches, glowing eyes (red when hunting) and smoke; animations blend
+idle / walk / lurching jog / run by speed, with the zombie idle for listening, the attack for inspecting a hiding place
+and the scream for the catch. **Movement:** the supplied "Zombie Walk" clip has no leg movement at all (its legs hold one
+pose, so the Echo glided over the floor), and the Echo's clips had been crushed to two keys each by keyframe reduction; they
+are now imported uncompressed, the walk is Alex's walking clip (hunched and long-armed by `EchoPresence`), and each gait is
+played at the speed that matches its real movement (walk 1.3, jog 2.1, run 3.3 m/s) so the feet stay planted.
+**Footsteps** sound the moment a foot lands (heavy, pitched-down bare steps, now and then a creaking board), not on a timer. (A wall-and-ceiling crawl was tried and removed at the owner's request.)
 
 ## 5. Visuals, first-person presence and fear
 
@@ -214,7 +232,7 @@ place and the scream for the catch. (A wall-and-ceiling crawl was tried and remo
 
 ## 7. Testing
 
-### Automated (Unity Test Framework, Play Mode) — 25 tests, all passing
+### Automated (Unity Test Framework, Play Mode) — 27 tests, all passing
 
 | Test | What it proves |
 |---|---|
@@ -241,6 +259,8 @@ place and the scream for the catch. (A wall-and-ceiling crawl was tried and remo
 | AmbientLife_MouseRatAndSpider_AppearAndLeave | Mouse, gnawing rat and dropping spider all start in a clear corridor and leave again; a tube goes dark when Alex is under it |
 | Note_PickedUpReadInHand_AndPutBack | A desk note lifts to the face with its words on it, the hand holds it while paused, and it goes back exactly where it was |
 | Signs_TextFitsOnEveryBoard | In all five levels, every hanging board and brass tag is big enough for all of its letters |
+| NewGame_PlaysIntro_AndSkipReachesLevel1 | New game loads the intro (no Echo in it); skipping it starts Level 1 |
+| Echo_Walks_LegsSwingAndFeetLandWithSteps | While it patrols, its foot swings back and forth (not gliding) and every footfall makes a step sound |
 | Water_PuddleMakesStepsSplash | Standing in a puddle switches steps to splashes and makes them carry further |
 
 The walkthrough tests call interactions directly; they prove logic and scene flow, not that every object is
@@ -273,6 +293,10 @@ easy to reach by walking and aiming. That needs a human play-through.
 | Heartbeat | "Heartbeat.ogg" by HerbertBoland, Wikimedia Commons — **CC BY 3.0** (credited in game) |
 | Electrical hum | "MainsBrum50Hz.ogg", Wikimedia Commons — **Public domain** |
 | Spider skittering, fallback sounds when a recording is missing | Generated in code (`PlaceholderClips`) |
+| Intro and Level 1 arrival: asphalt_02, beige_wall_001, brown_planks_05, dirty_carpet, concrete_wall_004 | **Poly Haven** — **CC0** (`Assets/Art/Textures/PolyHaven/CREDITS.txt`) |
+| Intro: rain on a car roof, car door, radio tuning sweeps and crackle | Joseph Sardin, **BigSoundBank.com** — **CC0** (originals in `Assets/Audio/Source/BigSoundBank/`) |
+| Intro music bed: Music_Suspenseful | Unity "Get Started" template content (Unity Companion License), from `Assets/SourceFiles/SoundFX` |
+| The family photo, Alex's flat, the car and the forest road | Made in code and rendered in the editor (`PhotoArt`, `IntroBuilder`), from the models and textures above |
 | Ending ground and headstone: aerial_grass_rock, rock_boulder_dry | **Poly Haven** — **CC0** (`Assets/Art/Textures/PolyHaven/CREDITS.txt`) |
 | Ending music bed: Music_Ethereal | Unity "Get Started" template content (Unity Companion License), from `Assets/SourceFiles/SoundFX` |
 | Font: Liberation Sans SDF | TextMeshPro default font (SIL Open Font License) |

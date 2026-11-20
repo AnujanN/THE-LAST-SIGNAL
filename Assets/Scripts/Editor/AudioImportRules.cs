@@ -10,7 +10,7 @@ namespace LastSignal.EditorTools
     /// </summary>
     public class AudioImportRules : AssetPostprocessor
     {
-        private static readonly string[] LongSounds = { "rain", "drips", "dawn", "wind", "interference", "hum", "generator", "threat" };
+        private static readonly string[] LongSounds = { "rain", "carrain", "drips", "dawn", "wind", "interference", "hum", "generator", "threat" };
 
         private void OnPreprocessAudio()
         {

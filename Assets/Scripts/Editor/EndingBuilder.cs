@@ -210,7 +210,7 @@ namespace LastSignal.EditorTools
             volume.sharedProfile = profile;
         }
 
-        private static AudioSource Loop(Transform parent, string name, string clipPath)
+        internal static AudioSource Loop(Transform parent, string name, string clipPath)
         {
             var clip = AssetDatabase.LoadAssetAtPath<AudioClip>(clipPath);
             if (clip == null) return null;
@@ -227,7 +227,7 @@ namespace LastSignal.EditorTools
 
         // ------------------------------------------------------------------ ground and grass
 
-        private static Material Textured(string name, string tex, Color tint, float smooth)
+        internal static Material Textured(string name, string tex, Color tint, float smooth)
         {
             Material m = Mat(name, tint, smoothness: smooth);
             var diff = AssetDatabase.LoadAssetAtPath<Texture2D>(TextureDir + "/" + tex + "_diff.jpg");
@@ -244,7 +244,7 @@ namespace LastSignal.EditorTools
             return m;
         }
 
-        private static void Ground(Transform env)
+        internal static void Ground(Transform env)
         {
             const float x0 = -90f, x1 = 90f, z0 = -40f, z1 = 160f, step = 2f;
             int nx = Mathf.RoundToInt((x1 - x0) / step) + 1, nz = Mathf.RoundToInt((z1 - z0) / step) + 1;
@@ -278,7 +278,7 @@ namespace LastSignal.EditorTools
         }
 
         /// <summary>Tufts of long grass (crossed quads with a drawn blade texture), denser near the memorial.</summary>
-        private static void Grass(Transform env)
+        internal static void Grass(Transform env, float cx = 0f, float cz = 2f)
         {
             Material m = GrassMaterial();
             var rng = new System.Random(77);
@@ -290,7 +290,7 @@ namespace LastSignal.EditorTools
                 // Mostly within 14 m, some scattered further out.
                 float radius = i < 2000 ? Mathf.Sqrt(R()) * 14f : 14f + R() * 26f;
                 float ang = R() * Mathf.PI * 2f;
-                float x = Mathf.Cos(ang) * radius, z = Mathf.Sin(ang) * radius + 2f;
+                float x = Mathf.Cos(ang) * radius + cx, z = Mathf.Sin(ang) * radius + cz;
                 if (new Vector2(x, z).magnitude < 0.75f) continue; // keep the stone clear
                 if (Mathf.PerlinNoise(x * 0.3f + 4f, z * 0.3f) < 0.32f) continue; // patchy, like real grass
                 float h = 0.35f + R() * 0.35f, w = 0.45f + R() * 0.35f;
@@ -328,7 +328,7 @@ namespace LastSignal.EditorTools
             return bladeQuad;
         }
 
-        private static Material GrassMaterial()
+        internal static Material GrassMaterial()
         {
             EnsureFolder(GeneratedTex);
             string path = GeneratedTex + "/GrassBlades_v1.png";
@@ -591,7 +591,7 @@ namespace LastSignal.EditorTools
             Set(cf, "flame", flame.transform);
         }
 
-        private static void MakeTransparent(Material m)
+        internal static void MakeTransparent(Material m)
         {
             m.SetFloat("_Surface", 1f);
             m.SetFloat("_Blend", 0f);
@@ -606,7 +606,7 @@ namespace LastSignal.EditorTools
 
         // ------------------------------------------------------------------ the land around
 
-        private static void Trees(Transform env)
+        internal static void Trees(Transform env)
         {
             Material bark = Mat("Bark", new Color(0.16f, 0.13f, 0.1f), smoothness: 0.05f);
             Material[] leaves =
@@ -672,7 +672,7 @@ namespace LastSignal.EditorTools
 
         private static Mesh coneMesh;
         /// <summary>A unit cone (radius 0.5, height 1, base at y 0) with a drooping, uneven edge.</summary>
-        private static Mesh Cone()
+        internal static Mesh Cone()
         {
             if (coneMesh != null) return coneMesh;
             const int seg = 10;
@@ -693,7 +693,7 @@ namespace LastSignal.EditorTools
             return coneMesh;
         }
 
-        private static void Fence(Transform env)
+        internal static void Fence(Transform env)
         {
             Material wood = Textured("FenceWood", "brown_planks_05", new Color(0.55f, 0.52f, 0.48f), 0.08f);
             Transform fence = Group(env, "Fence");
@@ -717,17 +717,53 @@ namespace LastSignal.EditorTools
         }
 
         /// <summary>The radio station and its lattice mast on the far slope, hazy in the morning light.</summary>
-        private static void Station(Transform env)
+        internal static void Station(Transform env)
         {
             Material dark = Mat("DistantStation", new Color(0.12f, 0.11f, 0.11f), smoothness: 0.05f);
-            Material steel = Mat("MastSteel", new Color(0.18f, 0.18f, 0.2f), smoothness: 0.2f);
             Transform st = Group(env, "RadioStation", new Vector3(-30f, H(-30f, 85f), 85f));
             Box(st, "Building", new Vector3(0f, 4f, 0f), new Vector3(16f, 8f, 10f), dark, collider: false);
             Box(st, "Parapet", new Vector3(0f, 8.3f, 0f), new Vector3(16.4f, 0.6f, 10.4f), dark, collider: false);
             Box(st, "Annex", new Vector3(10f, 2.5f, 1f), new Vector3(6f, 5f, 7f), dark, collider: false);
-            // Lattice mast: four legs tapering in, cross-braced.
-            Transform mast = Group(st, "Mast", new Vector3(6f, 0f, 3f));
-            const float height = 34f, baseHalf = 1.6f, topHalf = 0.35f;
+            // Two rows of windows and the entrance on the front (the side facing the hill and the road).
+            Material glass = Mat("StationGlass", new Color(0.05f, 0.06f, 0.07f), smoothness: 0.92f);
+            Material frame = Mat("StationFrame", new Color(0.3f, 0.29f, 0.27f), smoothness: 0.1f);
+            for (int row = 0; row < 2; row++)
+                for (int i = -2; i <= 2; i++)
+                {
+                    if (row == 0 && i == 0) continue; // the entrance
+                    Vector3 c = new Vector3(i * 3f, row == 0 ? 2.2f : 5.6f, -5.03f);
+                    Box(st, "WindowFrame", c, new Vector3(1.8f, 1.5f, 0.06f), frame, collider: false);
+                    Box(st, "Window", c + new Vector3(0f, 0f, -0.02f), new Vector3(1.55f, 1.25f, 0.04f), glass, collider: false);
+                }
+            Box(st, "Entrance", new Vector3(0f, 1.3f, -5.04f), new Vector3(2.2f, 2.6f, 0.08f), frame, collider: false);
+            Box(st, "EntranceDoors", new Vector3(0f, 1.2f, -5.08f), new Vector3(1.8f, 2.3f, 0.04f), glass, collider: false);
+            Box(st, "Canopy", new Vector3(0f, 2.75f, -5.7f), new Vector3(3.2f, 0.15f, 1.4f), frame, collider: false);
+            Box(st, "SignBoard", new Vector3(-3f, 7.35f, -5.08f), new Vector3(7f, 0.8f, 0.08f), frame, collider: false);
+            var sign = new GameObject("SignText", typeof(RectTransform));
+            sign.transform.SetParent(st, false);
+            sign.transform.localPosition = new Vector3(-3f, 7.35f, -5.13f);
+            var tmp = sign.AddComponent<TMPro.TextMeshPro>();
+            if (TMPro.TMP_Settings.defaultFontAsset != null) tmp.font = TMPro.TMP_Settings.defaultFontAsset;
+            tmp.text = "NORTHPOINT RADIO";
+            tmp.fontSize = 6f;
+            tmp.characterSpacing = 8f;
+            tmp.alignment = TMPro.TextAlignmentOptions.Center;
+            tmp.color = new Color(0.8f, 0.78f, 0.72f);
+            tmp.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+            ((RectTransform)sign.transform).sizeDelta = new Vector2(6.8f, 0.8f);
+            Mast(st, new Vector3(6f, 0f, 3f), 34f);
+            foreach (Renderer r in st.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = ShadowCastingMode.Off;
+        }
+
+        /// <summary>
+        /// The station's lattice mast: four legs tapering in, cross-braced every 3 m, an antenna on top and a
+        /// slowly blinking red aircraft beacon (BlinkLight). Used by the ending, the intro and Level 1.
+        /// </summary>
+        internal static Transform Mast(Transform parent, Vector3 localPos, float height)
+        {
+            Material steel = Mat("MastSteel", new Color(0.18f, 0.18f, 0.2f), smoothness: 0.2f);
+            Transform mast = Group(parent, "Mast", localPos);
+            const float baseHalf = 1.6f, topHalf = 0.35f;
             Vector3 Leg(int i, float y)
             {
                 float half = Mathf.Lerp(baseHalf, topHalf, y / height);
@@ -763,12 +799,13 @@ namespace LastSignal.EditorTools
             var blink = mast.gameObject.AddComponent<BlinkLight>();
             Set(blink, "lamp", l);
             Set(blink, "bulb", bulb.GetComponent<Renderer>());
-            foreach (Renderer r in st.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = ShadowCastingMode.Off;
+            foreach (Renderer r in mast.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = ShadowCastingMode.Off;
+            return mast;
         }
 
         // ------------------------------------------------------------------ air
 
-        private static Material SoftParticles(string name, Color c)
+        internal static Material SoftParticles(string name, Color c)
         {
             Material m = UnlitMat(name, c, transparent: true);
             Sprite soft = EnsureSprite("SoftDot", SpriteShape.Soft);

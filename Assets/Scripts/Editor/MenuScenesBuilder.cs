@@ -15,6 +15,7 @@ namespace LastSignal.EditorTools
     {
         public const string MainMenuPath = "Assets/Scenes/MainMenu.unity";
         public const string EndingPath = "Assets/Scenes/Ending.unity";
+        public const string IntroPath = "Assets/Scenes/Intro.unity";
 
         private const string CreditsText =
             "<size=150%>THE LAST SIGNAL</size>\n\nA university game project\n\n\n" +
@@ -44,6 +45,7 @@ namespace LastSignal.EditorTools
             Level4Builder.Build();
             Level5Builder.Build();
             BuildEnding();
+            BuildIntro();
             ApplyBuildScenes();
             EditorSceneManagerOpen(MainMenuPath);
             Debug.Log("[Build] All game scenes rebuilt.");
@@ -52,7 +54,7 @@ namespace LastSignal.EditorTools
         /// <summary>The scene order in the build: menu, the five levels, ending.</summary>
         public static readonly string[] BuildScenes =
         {
-            MainMenuPath, Level1Builder.ScenePath, Level2Builder.ScenePath, Level3Builder.ScenePath,
+            MainMenuPath, IntroPath, Level1Builder.ScenePath, Level2Builder.ScenePath, Level3Builder.ScenePath,
             Level4Builder.ScenePath, Level5Builder.ScenePath, EndingPath,
         };
 
@@ -126,6 +128,9 @@ namespace LastSignal.EditorTools
 
         [MenuItem("The Last Signal/Build/Ending")]
         public static void BuildEnding() => EndingBuilder.Build(EndingPath, Canvas);
+
+        [MenuItem("The Last Signal/Build/Intro")]
+        public static void BuildIntro() => IntroBuilder.Build(IntroPath, Canvas);
 
         private static GameObject Canvas(string name)
         {

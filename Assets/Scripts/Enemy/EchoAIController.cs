@@ -94,7 +94,11 @@ namespace LastSignal.Enemy
         private float stateTimer;
         private float lostSightTimer;
         private float chaseTimer;
-        private float stepTimer;
+        // Footsteps follow the feet: a step sounds the moment a foot bone comes down onto the floor.
+        private Transform footL, footR;
+        private AudioSource stepSource;
+        private float lowL = 10f, lowR = 10f, stepCooldownL, stepCooldownR;
+        private bool groundedL, groundedR;
         private float graceTimer;
         private float farTimer;
         private float closeTimer;
@@ -115,6 +119,8 @@ namespace LastSignal.Enemy
         private static readonly int SpeedHash = Animator.StringToHash("Speed");
         private static readonly int StateHash = Animator.StringToHash("State");
 
+        /// <summary>How many footsteps have sounded (a foot landing while it moves).</summary>
+        public int FootstepCount { get; private set; }
         public State Current { get; private set; } = State.Inactive;
         public EchoSettings Settings => settings;
         public bool CanSeePlayerNow { get; private set; }
@@ -132,6 +138,7 @@ namespace LastSignal.Enemy
             agent = GetComponent<NavMeshAgent>();
             if (eye == null) eye = transform;
             if (animator == null) animator = GetComponentInChildren<Animator>();
+            SetupFeet();
             lureTimer = settings.lureInterval * UnityEngine.Random.Range(0.5f, 1f);
         }
 
@@ -637,13 +644,60 @@ namespace LastSignal.Enemy
                 AudioClip clip = PlaceholderClips.EchoVoice;
                 if (clip != null) voice.PlayOneShot(clip, 0.7f);
             }
-            if (voice == null || agent.velocity.sqrMagnitude < 0.1f) return;
-            stepTimer -= dt;
-            if (stepTimer > 0f) return;
-            stepTimer = Current == State.Chase || Current == State.Hunt ? 0.35f : 0.65f;
-            voice.pitch = 0.6f;
-            voice.PlayOneShot(PlaceholderClips.Thud, 0.5f);
-            voice.pitch = 1f;
+            bool moving = agent != null && agent.isOnNavMesh && agent.velocity.sqrMagnitude > 0.16f;
+            TrackFoot(footL, ref lowL, ref groundedL, ref stepCooldownL, dt, moving);
+            TrackFoot(footR, ref lowR, ref groundedR, ref stepCooldownR, dt, moving);
+        }
+
+        private void SetupFeet()
+        {
+            if (animator != null && animator.avatar != null && animator.avatar.isHuman)
+            {
+                footL = animator.GetBoneTransform(HumanBodyBones.LeftFoot);
+                footR = animator.GetBoneTransform(HumanBodyBones.RightFoot);
+            }
+            var go = new GameObject("Feet");
+            go.transform.SetParent(transform, false);
+            stepSource = go.AddComponent<AudioSource>();
+            stepSource.playOnAwake = false;
+            stepSource.spatialBlend = 1f;
+            stepSource.rolloffMode = AudioRolloffMode.Linear;
+            stepSource.minDistance = 1.5f;
+            stepSource.maxDistance = 26f;
+        }
+
+        /// <summary>
+        /// Watches one foot bone: it has "landed" when it comes down to the lowest height it reaches in its stride
+        /// (the floor level drifts up slowly so it adapts to each gait), and lifts again once it is clearly above it.
+        /// </summary>
+        private void TrackFoot(Transform foot, ref float low, ref bool grounded, ref float cooldown, float dt, bool moving)
+        {
+            if (foot == null) return;
+            float h = foot.position.y - transform.position.y;
+            low = Mathf.Min(h, low + 0.06f * dt);
+            cooldown -= dt;
+            if (!grounded && h < low + 0.035f)
+            {
+                grounded = true;
+                if (moving && cooldown <= 0f) { cooldown = 0.18f; Footstep(foot.position); }
+            }
+            else if (grounded && h > low + 0.08f) grounded = false;
+        }
+
+        /// <summary>A heavy, bare, damp footfall (the concrete step pitched right down), the odd board creaking under it.</summary>
+        private void Footstep(Vector3 at)
+        {
+            FootstepCount++;
+            if (stepSource == null) return;
+            bool fast = Current == State.Chase || Current == State.Hunt || agent.velocity.magnitude > 2.4f;
+            AudioClip clip = PlaceholderClips.Footstep;
+            if (clip == null) return;
+            float volume = (fast ? 1f : 0.8f) * Save.GameSettings.SfxVolume;
+            stepSource.transform.position = at;
+            stepSource.pitch = UnityEngine.Random.Range(fast ? 0.72f : 0.6f, fast ? 0.86f : 0.72f);
+            stepSource.PlayOneShot(clip, volume);
+            if (UnityEngine.Random.value < 0.18f && PlaceholderClips.CreakStep != null)
+                stepSource.PlayOneShot(PlaceholderClips.CreakStep, 0.35f * volume);
         }
 
         private void UpdateAnimator()

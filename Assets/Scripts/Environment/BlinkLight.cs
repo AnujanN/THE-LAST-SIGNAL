@@ -30,7 +30,7 @@ namespace LastSignal.Environment
             if (bulb != null)
             {
                 bulb.GetPropertyBlock(block);
-                block.SetColor(EmissionId, color * (0.15f + 4f * k));
+                block.SetColor(EmissionId, color * (0.1f + 1.0f * k));
                 bulb.SetPropertyBlock(block);
             }
         }

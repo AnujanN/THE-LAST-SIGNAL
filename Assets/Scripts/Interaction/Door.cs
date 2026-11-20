@@ -113,6 +113,34 @@ namespace LastSignal.Interaction
             Enemy.NoiseSystem.Emit(transform.position, 9f);
         }
 
+        /// <summary>An open door slowly swings shut by itself (creak, then a soft knock). It stays unlocked.</summary>
+        public void SwingShut()
+        {
+            if (!isOpen || moving) return;
+            StartCoroutine(SwingShutRoutine());
+        }
+
+        private IEnumerator SwingShutRoutine()
+        {
+            moving = true;
+            AudioManager.Instance?.PlayAt(PlaceholderClips.DoorCreak, transform.position, 0.45f);
+            Quaternion start = hinge.localRotation;
+            Quaternion end = start * Quaternion.Euler(0f, -openAngle, 0f);
+            const float seconds = 2.4f;
+            for (float t = 0f; t < seconds; t += Time.deltaTime)
+            {
+                // Slow at first, gathering speed as it swings in.
+                float k = t / seconds;
+                hinge.localRotation = Quaternion.Slerp(start, end, k * k);
+                yield return null;
+            }
+            hinge.localRotation = end;
+            isOpen = false;
+            moving = false;
+            if (obstacle != null) obstacle.enabled = true;
+            AudioManager.Instance?.PlayAt(PlaceholderClips.Thud, transform.position, 0.45f);
+        }
+
         /// <summary>Open from code or events (no lock checks).</summary>
         public void Open()
         {

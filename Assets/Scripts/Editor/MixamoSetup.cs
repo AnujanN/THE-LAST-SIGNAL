@@ -129,6 +129,9 @@ namespace LastSignal.EditorTools
                 imp.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
                 imp.materialImportMode = ModelImporterMaterialImportMode.None;
                 imp.importAnimation = true;
+                // Keyframe reduction crushed the Echo's clips to two keys per curve (a run cycle became a straight
+                // slide between two poses), so its animations are imported uncompressed.
+                if (folder.EndsWith("/Echo")) imp.animationCompression = ModelImporterAnimationCompression.Off;
                 ModelImporterClipAnimation[] clips = imp.defaultClipAnimations;
                 if (clips.Length == 0)
                 {
@@ -199,23 +202,54 @@ namespace LastSignal.EditorTools
             return ctrl;
         }
 
-        /// <summary>The Echo: idle / shambling walk / sprint by speed; clawing at a hiding place; screaming when it catches you.</summary>
+        /// <summary>
+        /// Gait speeds in metres per second: the speed each locomotion clip is stretched to match, so the feet
+        /// stay planted instead of skating over the floor. They line up with the Echo's patrol (1.3), investigate
+        /// (2.0) and chase (3.3, surging 0.9-1.15x) speeds in EchoSettings.
+        /// </summary>
+        public const float EchoWalkSpeed = 1.3f, EchoLurchSpeed = 2.1f, EchoRunSpeed = 3.3f;
+        /// <summary>Measured natural speeds of the source clips (m/s at the Echo's size): Alex's Walking and Zombie Running.</summary>
+        private const float WalkClipSpeed = 0.72f, RunClipSpeed = 3.0f;
+        private const string EchoVersion = "echo-v2";
+
+        /// <summary>
+        /// The Echo: idle / walk / lurching jog / run by speed; pressing at a hiding place; towering over you when it
+        /// catches you. The supplied "Zombie Walk" has no leg movement at all (the legs hold one pose), so the walk
+        /// is Alex's walking clip, hunched and long-armed by EchoPresence; the jog and run are the Zombie Running
+        /// clip played at two speeds.
+        /// </summary>
         public static AnimatorController EchoAnimator(bool force = false)
         {
             var existing = AssetDatabase.LoadAssetAtPath<AnimatorController>(EchoController);
-            if (!force && existing != null && AssetImporter.GetAtPath(EchoController).userData == Version) return existing;
+            if (!force && existing != null && AssetImporter.GetAtPath(EchoController).userData == EchoVersion) return existing;
             if (existing != null) AssetDatabase.DeleteAsset(EchoController);
             var ctrl = AnimatorController.CreateAnimatorControllerAtPath(EchoController);
             ctrl.AddParameter("Speed", AnimatorControllerParameterType.Float);
             ctrl.AddParameter("State", AnimatorControllerParameterType.Int);
             AnimationClip idle = Clip("Echo", "Zombie Idle");
-            AnimatorState move = Blend(ctrl, "Move", (idle, 0f), (Clip("Echo", "Zombie Walk"), 1.1f), (Clip("Echo", "Zombie Running"), 3.3f));
+            AnimationClip run = Clip("Echo", "Zombie Running");
+            AnimationClip walk = Clip("Alex", "Walking") ?? Clip("Echo", "Zombie Walk");
+            AnimatorState move = ctrl.CreateBlendTreeInController("Move", out BlendTree tree, 0);
+            tree.blendParameter = "Speed";
+            tree.useAutomaticThresholds = false;
+            if (idle != null) tree.AddChild(idle, 0f);
+            if (walk != null) tree.AddChild(walk, EchoWalkSpeed);
+            if (run != null) { tree.AddChild(run, EchoLurchSpeed); tree.AddChild(run, EchoRunSpeed); }
+            ChildMotion[] kids = tree.children;
+            for (int i = 0; i < kids.Length; i++)
+            {
+                float t = kids[i].threshold;
+                kids[i].timeScale = t < 0.01f ? 1f : Mathf.Approximately(t, EchoWalkSpeed) ? EchoWalkSpeed / WalkClipSpeed : t / RunClipSpeed;
+            }
+            tree.children = kids;
             AnimatorStateMachine sm = ctrl.layers[0].stateMachine;
             sm.defaultState = move;
             Pose(sm, move, "Listen", idle, (int)Enemy.EchoAIController.State.Listen, 0.35f);
             Pose(sm, move, "Inspect", Clip("Echo", "Zombie Attack"), (int)Enemy.EchoAIController.State.Inspect, 0.3f);
             Pose(sm, move, "Caught", Clip("Echo", "Zombie Scream"), (int)Enemy.EchoAIController.State.Caught, 0.08f);
             Finish(ctrl, EchoController);
+            AssetImporter.GetAtPath(EchoController).userData = EchoVersion;
+            AssetDatabase.WriteImportSettingsIfDirty(EchoController);
             return ctrl;
         }
 

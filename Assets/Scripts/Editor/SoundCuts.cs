@@ -21,7 +21,14 @@ namespace LastSignal.EditorTools
         {
             // Sets these recordings replace completely (old Kenney / generated variations removed).
             foreach (string key in new[] { "footstep", "door", "splash", "paper", "paperdown", "rain", "thunder", "whisper", "choke",
-                                           "tapestart", "taperun", "tapestop" }) RemoveSet(key);
+                                           "tapestart", "taperun", "tapestop", "carrain", "cardoor", "tune", "crackle" }) RemoveSet(key);
+
+            // Intro: rain drumming on the car roof, the radio hunting through the band, the car door.
+            Loudest("1293", "carrain", 30f, rate: 24000, loop: true, level: 0.06f);
+            First("1526", "cardoor", 3.5f);
+            First("2618", "tune", 7f);
+            First("2617", "tune_1", 5f);
+            First("0312", "crackle", 4f);
 
             // Storm outside Level 1: steady rain with no thunder in it (the old loop rumbled every few seconds),
             // and separate distant thunder that the AudioManager plays now and then.

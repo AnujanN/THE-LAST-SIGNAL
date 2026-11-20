@@ -171,8 +171,10 @@ namespace LastSignal.EditorTools
                 "     \"Maya: broadcast test\" - crossed out in Dad's handwriting\n21  Alex's birthday", paper, new Vector2(0.5f, 0.6f));
             On(calendar, "onRead", events.AddClue, "Kitchen calendar: the storm night was 14 October.");
 
+            // The same photo Alex keeps at home, framed on the wall.
+            PhotoArt.Framed(items, new Vector3(-6f, 1.55f, 24.86f), 0f, new Vector2(0.4f, 0.3f));
             WallNote(items, "Note_FamilyPhoto", new Vector3(-6f, 1.55f, 24.88f), 0f, "l3q_photo", "Family photo",
-                "A faded photo on the wall: Dad, Maya and Alex in front of the tower, squinting into the sun.\n\n" +
+                "A faded photo on the wall: Dad, Maya and Alex in front of the tower, the evening sun behind them.\n\n" +
                 "On the back, in Maya's handwriting: 'Our station. Our home. Whatever happens, we find each other.'", paper, new Vector2(0.4f, 0.3f));
 
             // Dad's safe -> fire door key.

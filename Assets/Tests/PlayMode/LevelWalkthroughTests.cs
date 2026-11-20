@@ -451,6 +451,48 @@ namespace LastSignal.Tests
             Assert.IsFalse(ModalStack.AnyOpen);
         }
 
+        [UnityTest, Timeout(90000)]
+        public IEnumerator NewGame_PlaysIntro_AndSkipReachesLevel1()
+        {
+            yield return StartLevel(GameFlowManager.Level1Scene); // gets the persistent GameFlow running
+            flow.NewGame();
+            yield return WaitForScene(GameFlowManager.IntroScene);
+            var intro = Object.FindAnyObjectByType<IntroSequence>();
+            Assert.IsNotNull(intro, "The intro scene needs its IntroSequence");
+            yield return new WaitForSeconds(3f);
+            Assert.IsNull(Object.FindAnyObjectByType<EchoAIController>(), "The intro never shows The Echo");
+            intro.Skip();
+            yield return WaitForScene(GameFlowManager.Level1Scene);
+            Assert.IsNotNull(Object.FindAnyObjectByType<LevelController>(), "Skipping the intro starts Level 1");
+        }
+
+        [UnityTest, Timeout(90000)]
+        public IEnumerator Echo_Walks_LegsSwingAndFeetLandWithSteps()
+        {
+            yield return StartLevel(GameFlowManager.Level2Scene);
+            EchoAIController echo = Get<EchoAIController>("Echo");
+            yield return WaitUntilTrue(() => echo.Started && !echo.InGracePeriod, 8f, "Echo start-up grace period over");
+            var agent = echo.GetComponent<UnityEngine.AI.NavMeshAgent>();
+            Animator anim = echo.GetComponentInChildren<Animator>();
+            Transform foot = anim.GetBoneTransform(HumanBodyBones.LeftFoot);
+            Assert.IsNotNull(foot, "The Echo needs a humanoid left foot");
+            echo.Activate();
+
+            // Patrolling: it must really walk (legs swinging, not gliding) and every footfall must sound.
+            yield return WaitUntilTrue(() => agent.isOnNavMesh && agent.velocity.magnitude > 0.8f, 20f, "The Echo walks");
+            int steps = echo.FootstepCount;
+            float lo = 99f, hi = -99f, until = Time.time + 3f;
+            while (Time.time < until)
+            {
+                float z = echo.transform.InverseTransformPoint(foot.position).z;
+                lo = Mathf.Min(lo, z);
+                hi = Mathf.Max(hi, z);
+                yield return null;
+            }
+            Assert.GreaterOrEqual(hi - lo, 0.2f, "Its foot should swing back and forth while it walks (range " + (hi - lo).ToString("F2") + " m)");
+            Assert.GreaterOrEqual(echo.FootstepCount - steps, 2, "Footsteps should sound as its feet land");
+        }
+
         /// <summary>Level 2 corridor: The Echo sees the player and chases; the player hides in a locker.</summary>
         private IEnumerator ChaseThenHide(EchoAIController echo, HidingSpot locker)
         {

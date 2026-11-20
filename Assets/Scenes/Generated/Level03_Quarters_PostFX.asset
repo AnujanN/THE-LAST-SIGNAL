@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Level03_Quarters_PostFX
   m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.VolumeProfile
   components:
-  - {fileID: 8211414979084482209}
-  - {fileID: 4766287528835811185}
---- !u!114 &4766287528835811185
+  - {fileID: 8835696853513508866}
+  - {fileID: 5359309004133161397}
+--- !u!114 &5359309004133161397
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_CorrespondingSourceObject: {fileID: 0}
@@ -43,7 +43,7 @@ MonoBehaviour:
   rounded:
     m_OverrideState: 1
     m_Value: 0
---- !u!114 &8211414979084482209
+--- !u!114 &8835696853513508866
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_CorrespondingSourceObject: {fileID: 0}

@@ -208,7 +208,7 @@ namespace LastSignal.UI
         private void OnLevelStarted(LevelController level)
         {
             if (titleText == null || titleGroup == null) return;
-            titleText.text = "LEVEL " + level.LevelNumber + "\n<size=140%>" + level.LevelName.ToUpperInvariant() + "</size>";
+            titleText.text = "LEVEL " + level.LevelNumber.ToString("00") + "\n<size=140%>" + level.LevelName.ToUpperInvariant() + "</size>";
             titleTimer = 4f;
         }
 

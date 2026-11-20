@@ -24,6 +24,8 @@ namespace LastSignal.GameFlow
         /// <summary>Before the five-level update the tower was "Level03_Tower"; old saves are mapped to Level 5.</summary>
         public const string LegacyTowerScene = "Level03_Tower";
         public const string EndingScene = "Ending";
+        /// <summary>Story intro played before Level 1 on a new game (skippable).</summary>
+        public const string IntroScene = "Intro";
 
         public static GameFlowManager Instance { get; private set; }
 
@@ -133,8 +135,11 @@ namespace LastSignal.GameFlow
             SaveManager.Delete();
             Live = new GameState();
             checkpointState = null;
-            Load(Level1Scene);
+            Load(IntroScene);
         }
+
+        /// <summary>The intro has finished (or was skipped): into the first level.</summary>
+        public void BeginFirstLevel() => Load(Level1Scene);
 
         /// <summary>Start a level with a clean run state (tests, debug level select). Does not touch the save file.</summary>
         public void StartFresh(string scene)

@@ -4307,6 +4307,7 @@ GameObject:
   - component: {fileID: 6539630841494149276}
   - component: {fileID: 5504914211382670824}
   - component: {fileID: 8520134229727451018}
+  - component: {fileID: 7598422370810236763}
   m_Layer: 0
   m_Name: Echo
   m_TagString: Untagged
@@ -4564,6 +4565,30 @@ MonoBehaviour:
   twitchMaxDegrees: 35
   disturbRadius: 7
   disturbMinFactor: 0.25
+--- !u!114 &7598422370810236763
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7227945006717455651}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 841a4b4a2339fab4aac6c11a03fa688a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: LastSignal.Runtime::LastSignal.Enemy.MonsterGait
+  animator: {fileID: 1366669830428857764}
+  badLegSwingSpeed: 0.72
+  goodLegSwingSpeed: 1.32
+  dragLegOutDegrees: 14
+  dragFootDownDegrees: 28
+  lurchRollDegrees: 11
+  badStepDipDegrees: 7
+  shoulderSagDegrees: 12
+  headLollDegrees: 14
+  armWeight: 0.85
+  armForward: 0.45
+  armSwingDegrees: 16
 --- !u!1 &7449156653164181665
 GameObject:
   m_ObjectHideFlags: 0

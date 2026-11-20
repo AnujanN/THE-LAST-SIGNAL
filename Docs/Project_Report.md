@@ -51,6 +51,15 @@ between stations), the mast and its red beacon showing in a lightning flash, and
 Level 1 starts beside the parked car (door open, courtesy light on) with the objective "Find the source of the
 transmission"; walking up to the building, someone stands for a moment at the lit upstairs window and is gone, and the front
 door swings shut behind Alex. The intro never shows The Echo and never says whether Maya is alive.
+Look and sound (`IntroDressing`): the flat is lived-in (heavy curtains, a radiator, books, a laptop glowing on the table
+beside a takeaway box and a glass of whisky, a coat by the door, paler squares where pictures used to hang) and lit by the
+floor lamp and the cold light through the rain-streaked window, which throws the window frame across the room; dust hangs
+in the lamp light and the city outside is soft, out-of-focus lights. Each part has its own grade: warm lamp over cold
+shadows with soft focus outside for the flat, cold and wet for the drive. The drive has a storm-cloud sky that the
+lightning lights up, a forked bolt over the hills, mist along the road, headlight beams in the rain, reflector posts,
+lit gauges and a charm swinging from the mirror. Sound: a real wall clock, rain on the glass, the radio; the ending's music
+(the family theme) rises over the old photo; the title comes in on a burst of static; in the car, the engine, the wipers
+on each sweep, rain on the roof, thunder, and the engine idling and switching off at the gate.
 
 Ending: sunrise epilogue at Maya's memorial — *"I heard you this time, Maya. Goodbye."* — then THE END. No sequel hook.
 The ending (`EndingBuilder`, `EndingSequence`): dawn on a grassy hillside above the radio station, three months later.
@@ -144,7 +153,10 @@ and the scream for the catch. **Movement:** the supplied "Zombie Walk" clip has 
 pose, so the Echo glided over the floor), and the Echo's clips had been crushed to two keys each by keyframe reduction; they
 are now imported uncompressed, the walk is Alex's walking clip (hunched and long-armed by `EchoPresence`), and each gait is
 played at the speed that matches its real movement (walk 1.3, jog 2.1, run 3.3 m/s) so the feet stay planted.
-**Footsteps** sound the moment a foot lands (heavy, pitched-down bare steps, now and then a creaking board), not on a timer. (A wall-and-ceiling crawl was tried and removed at the owner's request.)
+**Monster gait** (`MonsterGait`, on top of the walk and faded out as it breaks into the zombie run): it limps, the bad
+right leg swinging through slowly and turned out with its toes dragging while the good leg hurries; the body lurches over
+whichever leg is planted and folds forward on the bad one; the long arms hang dead in front of it and swing a beat behind;
+the right shoulder sags and the head lolls with the lurch. **Footsteps** sound the moment a foot lands (heavy, pitched-down bare steps, now and then a creaking board), not on a timer. (A wall-and-ceiling crawl was tried and removed at the owner's request.)
 
 ## 5. Visuals, first-person presence and fear
 
@@ -294,8 +306,8 @@ easy to reach by walking and aiming. That needs a human play-through.
 | Electrical hum | "MainsBrum50Hz.ogg", Wikimedia Commons — **Public domain** |
 | Spider skittering, fallback sounds when a recording is missing | Generated in code (`PlaceholderClips`) |
 | Intro and Level 1 arrival: asphalt_02, beige_wall_001, brown_planks_05, dirty_carpet, concrete_wall_004 | **Poly Haven** — **CC0** (`Assets/Art/Textures/PolyHaven/CREDITS.txt`) |
-| Intro: rain on a car roof, car door, radio tuning sweeps and crackle | Joseph Sardin, **BigSoundBank.com** — **CC0** (originals in `Assets/Audio/Source/BigSoundBank/`) |
-| Intro music bed: Music_Suspenseful | Unity "Get Started" template content (Unity Companion License), from `Assets/SourceFiles/SoundFX` |
+| Intro: rain on a car roof, car door, radio tuning sweeps and crackle, car interior at 80 km/h (3098), wipers (3112), engine idling and switching off (0557), quartz wall clock (1069) | Joseph Sardin, **BigSoundBank.com** — **CC0** (originals in `Assets/Audio/Source/BigSoundBank/`) |
+| Intro music: Music_Suspenseful (title), Music_Ethereal (the family theme, also the ending's) | Unity "Get Started" template content (Unity Companion License), from `Assets/SourceFiles/SoundFX` |
 | The family photo, Alex's flat, the car and the forest road | Made in code and rendered in the editor (`PhotoArt`, `IntroBuilder`), from the models and textures above |
 | Ending ground and headstone: aerial_grass_rock, rock_boulder_dry | **Poly Haven** — **CC0** (`Assets/Art/Textures/PolyHaven/CREDITS.txt`) |
 | Ending music bed: Music_Ethereal | Unity "Get Started" template content (Unity Companion License), from `Assets/SourceFiles/SoundFX` |

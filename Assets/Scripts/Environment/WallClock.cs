@@ -1,3 +1,4 @@
+using LastSignal.Audio;
 using UnityEngine;
 
 namespace LastSignal.Environment
@@ -20,12 +21,23 @@ namespace LastSignal.Environment
         private float seconds;
         private int lastTick = -1;
         private AudioClip tick, tock;
+        private bool recorded;
 
         private void Start()
         {
             seconds = startHour * 3600f + startMinute * 60f;
             tick = MakeTick("ClockTick", 3100f);
             tock = MakeTick("ClockTock", 2500f);
+            // A real quartz clock when the recording is there; the made-up tick otherwise.
+            AudioClip clock = PlaceholderClips.Clock;
+            if (clock != null && tickSource != null)
+            {
+                recorded = true;
+                tickSource.clip = clock;
+                tickSource.loop = true;
+                tickSource.volume = tickVolume * 1.6f * Save.GameSettings.SfxVolume;
+                tickSource.Play();
+            }
         }
 
         private void Update()
@@ -35,7 +47,7 @@ namespace LastSignal.Environment
             if (whole != lastTick)
             {
                 lastTick = whole;
-                if (tickSource != null) tickSource.PlayOneShot(whole % 2 == 0 ? tick : tock, tickVolume * Save.GameSettings.SfxVolume);
+                if (tickSource != null && !recorded) tickSource.PlayOneShot(whole % 2 == 0 ? tick : tock, tickVolume * Save.GameSettings.SfxVolume);
             }
             // The second hand jumps once a second; the others sweep.
             float s = whole % 60;

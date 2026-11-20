@@ -622,6 +622,9 @@ namespace LastSignal.EditorTools
             SetArray(presence, "upperArms", upperArms);
             SetArray(presence, "lowerArms", lowerArms);
             SetArray(presence, "hands", hands);
+            // A limping, lurching, dead-armed walk on top of the walk clip (it finds its own humanoid bones).
+            var gait = root.AddComponent<MonsterGait>();
+            if (animator != null) Set(gait, "animator", animator);
 
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, EchoPath);
             Object.DestroyImmediate(root);

@@ -40,18 +40,18 @@ namespace LastSignal.EditorTools
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogColor = new Color(0.03f, 0.035f, 0.05f);
-            RenderSettings.fogDensity = 0.016f;
+            RenderSettings.fogDensity = 0.0105f;
 
             Transform env = Group(null, "Environment");
             Light moon = DirectionalLight(env, "Moonlight", new Vector3(28f, 200f, 0f), new Color(0.55f, 0.62f, 0.85f), 0.18f);
             moon.shadows = LightShadows.None;
             Light lightning = DirectionalLight(env, "Lightning", new Vector3(38f, 165f, 0f), new Color(0.78f, 0.82f, 1f), 0f);
             lightning.shadows = LightShadows.Hard;
-            SetLightLayers(lightning, LitLayers);
+            SetLightLayers(lightning, LitLayers | (1u << 3)); // also the car bonnet, which nothing else lights
 
             // ------------------------------------------------------------------ the hill, the road, the gate
             EndingBuilder.Ground(env);
-            EndingBuilder.Grass(env, 18f, 16f);
+            EndingBuilder.Grass(env, 42f, 12f); // well off the road
             EndingBuilder.Trees(env);
             EndingBuilder.Station(env);
             Vector3 stationFront = new Vector3(-30f, EndingBuilder.H(-30f, 80f), 80f);
@@ -59,10 +59,16 @@ namespace LastSignal.EditorTools
             Vector3 dir = new Vector3(stationFront.x - carRef.x, 0f, stationFront.z - carRef.z).normalized;
             Vector3 right = Vector3.Cross(Vector3.up, dir);
             Vector3 gate = new Vector3(stationFront.x, 0f, stationFront.z) - dir * 20f;
-            Vector3 roadStart = gate - dir * 112f;
+            Vector3 roadStart = gate - dir * 100f;
             Road(env, roadStart - dir * 6f, new Vector3(stationFront.x, 0f, stationFront.z) - dir * 2f);
             Forest(env, roadStart, gate, dir, right);
+            ClearRoad(env.Find("Trees"), roadStart - dir * 6f, gate, 5f); // the ending's treeline crosses the road
             Gate(env, gate, dir, right);
+            IntroDressing.ReflectorPosts(env, roadStart, gate - dir * 4f, right);
+            IntroDressing.GroundMist(env, roadStart, gate, new Color(0.55f, 0.6f, 0.7f, 0.1f));
+            Vector3 mid = (roadStart + gate) / 2f;
+            Renderer stormSky = IntroDressing.StormSky(env, new Vector3(mid.x, -6f, mid.z), 92f);
+            LineRenderer bolt = IntroDressing.Bolt(env);
 
             // The car: its origin is the driver's eyes. It drives along a path of markers that follow the ground.
             Transform car = Group(null, "Car");
@@ -70,6 +76,8 @@ namespace LastSignal.EditorTools
             car.SetPositionAndRotation(drivePath[0].position, drivePath[0].rotation);
             Interior(car, out TMP_Text carDial, out Light carGlow, out Transform carRadioAt, out Transform[] wipers);
             Headlights(car);
+            IntroDressing.HeadlightBeams(car);
+            Transform charm = IntroDressing.Gauges(car.Find("Interior"));
             CarRain(car);
             Transform carView = Marker(car, "CarView", Vector3.zero, 0f);
             carView.localRotation = Quaternion.Euler(3f, 0f, 0f);
@@ -79,6 +87,8 @@ namespace LastSignal.EditorTools
 
             // ------------------------------------------------------------------ camera, grading
             GameObject postFx = PostFx("Intro");
+            GameObject flatLook = IntroDressing.FlatLook();
+            GameObject driveLook = IntroDressing.DriveLook();
             Transform rig = Group(null, "CameraRig");
             var camGo = new GameObject("IntroCamera") { tag = "Untagged" };
             camGo.transform.SetParent(rig, false);
@@ -95,6 +105,12 @@ namespace LastSignal.EditorTools
 
             // Sound sources (clips are chosen at runtime from the sound bank).
             AudioSource roof = Source(car, "RoofRain", 0f, 6f);
+            AudioSource engine = Source(car, "Engine", 0f, 6f);
+            AudioSource wiperSound = Source(car, "WiperSound", 0f, 6f);
+            wiperSound.loop = false;
+            // The family theme: the same music bed as the ending, first heard over the old photo.
+            AudioSource theme = EndingBuilder.Loop(rig, "Theme", "Assets/SourceFiles/SoundFX/Music_Ethereal.ogg");
+            if (theme != null) theme.loop = false;
             AudioSource carRadio = Source(carRadioAt, "CarRadio", 0.5f, 6f);
             AudioSource music = EndingBuilder.Loop(rig, "Music", "Assets/SourceFiles/SoundFX/Music_Suspenseful.ogg");
             if (music != null) music.loop = false;
@@ -135,6 +151,9 @@ namespace LastSignal.EditorTools
             title.characterSpacing = 22f;
             title.color = new Color(0.92f, 0.9f, 0.86f);
             var titleGroup = title.gameObject.AddComponent<CanvasGroup>();
+            TMP_Text tagline = UIText(title.transform, "Tagline", "A PSYCHOLOGICAL SURVIVAL HORROR", 26, c, new Vector2(0f, -105f), new Vector2(1200f, 50f));
+            tagline.characterSpacing = 18f;
+            tagline.color = new Color(0.75f, 0.73f, 0.7f, 0.85f);
             TMP_Text time = UIText(root.transform, "TimeCaption", "11:47 PM", 40, new Vector2(0f, 0f), new Vector2(230f, 110f), new Vector2(360f, 70f), TextAlignmentOptions.Left);
             time.characterSpacing = 6f;
             time.color = new Color(0.85f, 0.85f, 0.82f);
@@ -176,7 +195,14 @@ namespace LastSignal.EditorTools
             Set(intro, "carRadio", carRadio);
             Set(intro, "roofRain", roof);
             Set(intro, "lightning", lightning);
-            SetArray(intro, "flashSky", flat.sky);
+            SetArray(intro, "flashSky", new Object[] { flat.sky[0], stormSky });
+            Set(intro, "bolt", bolt);
+            Set(intro, "flatLook", flatLook);
+            Set(intro, "driveLook", driveLook);
+            Set(intro, "engine", engine);
+            Set(intro, "wiperSound", wiperSound);
+            Set(intro, "charm", charm);
+            if (theme != null) Set(intro, "theme", theme);
             Set(intro, "windowRain", flat.rainSource);
             SetLines(intro, "firstCall", new[]
             {
@@ -333,7 +359,7 @@ namespace LastSignal.EditorTools
             city.range = 9f;
             city.intensity = 2.2f;
             city.color = new Color(0.55f, 0.65f, 0.9f);
-            city.shadows = LightShadows.None;
+            city.shadows = LightShadows.Soft; // the window frame and the rain on the glass throw shadows into the room
             SetLightLayers(city, LitLayers);
 
             // The sideboard on the east wall: Dad's radio and the photo.
@@ -427,6 +453,11 @@ namespace LastSignal.EditorTools
             ParticleSystem outRain = IntroRain(outside, P(3f, 4f, RoomD + 5f), new Vector3(10f, 1f, 6f), 260f, 9f);
             outRain.name = "WindowRain";
             parts.sky = new[] { skyQuad.GetComponent<Renderer>() };
+            IntroDressing.CityBokeh(outside, P(3f, 0f, RoomD + 22f), 26, 47);
+
+            // The rest of the room: curtains, radiator, books, a laptop glowing on the table, a coat by the door...
+            IntroDressing.FlatDetails(room, P, RoomW, RoomD, RoomH);
+            IntroDressing.Dust(room, P(1.2f, 1.3f, 1.2f), new Vector3(2.2f, 1.4f, 2f), new Color(1f, 0.9f, 0.75f, 0.55f));
 
             // Rain heard through the glass (muffled) and the room's own tone.
             parts.rainSource = Source(room, "WindowRainSound", 0.6f, 12f);
@@ -481,7 +512,7 @@ namespace LastSignal.EditorTools
         /// <summary>A wet asphalt lane following the ground.</summary>
         private static void Road(Transform env, Vector3 from, Vector3 to)
         {
-            Material asphalt = EndingBuilder.Textured("IntroRoad", "asphalt_02", new Color(0.32f, 0.33f, 0.36f), 0.82f);
+            Material asphalt = EndingBuilder.Textured("IntroRoad", "asphalt_02", new Color(0.17f, 0.18f, 0.2f), 0.72f);
             float len = Vector3.Distance(new Vector3(from.x, 0f, from.z), new Vector3(to.x, 0f, to.z));
             int steps = Mathf.CeilToInt(len / 1.5f);
             const float half = 2.6f;
@@ -529,6 +560,21 @@ namespace LastSignal.EditorTools
                     line.transform.rotation = Quaternion.LookRotation(b - a);
                     line.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
                 }
+        }
+
+        /// <summary>Removes any tree standing within clearance metres of the road line (XZ).</summary>
+        private static void ClearRoad(Transform trees, Vector3 from, Vector3 to, float clearance)
+        {
+            if (trees == null) return;
+            Vector2 a = new Vector2(from.x, from.z), b = new Vector2(to.x, to.z), ab = b - a;
+            var doomed = new List<GameObject>();
+            foreach (Transform t in trees)
+            {
+                Vector2 q = new Vector2(t.position.x, t.position.z);
+                float k = Mathf.Clamp01(Vector2.Dot(q - a, ab) / ab.sqrMagnitude);
+                if (Vector2.Distance(q, a + ab * k) < clearance) doomed.Add(t.gameObject);
+            }
+            foreach (GameObject g in doomed) Object.DestroyImmediate(g);
         }
 
         /// <summary>Firs crowding both sides of the road up to the gate: trunks and drooping tiers in the headlights.</summary>
@@ -644,7 +690,7 @@ namespace LastSignal.EditorTools
                 l.range = 40f;
                 l.spotAngle = 55f;
                 l.innerSpotAngle = 24f;
-                l.intensity = 9f;
+                l.intensity = 6f;
                 l.color = new Color(1f, 0.93f, 0.8f);
                 l.shadows = LightShadows.None;
             }
@@ -704,10 +750,17 @@ namespace LastSignal.EditorTools
             GameObject top = Box(cab, "Dashboard", new Vector3(0.1f, -0.36f, 0.78f), new Vector3(1.75f, 0.18f, 0.5f), dash, collider: false, isStatic: false);
             top.transform.localRotation = Quaternion.Euler(-7f, 0f, 0f);
             Box(cab, "DashLip", new Vector3(0.1f, -0.27f, 1.0f), new Vector3(1.75f, 0.04f, 0.12f), dash, collider: false, isStatic: false);
-            Box(cab, "Hood", new Vector3(0.1f, -0.36f, 1.95f), new Vector3(1.7f, 0.06f, 1.6f), Mat("CarPaint", new Color(0.08f, 0.09f, 0.1f), smoothness: 0.85f), collider: false, isStatic: false)
-                .transform.localRotation = Quaternion.Euler(4f, 0f, 0f);
+            Material bonnet = Mat("CarBonnet", new Color(0.05f, 0.055f, 0.06f), smoothness: 0.4f);
+            bonnet.SetFloat("_EnvironmentReflections", 0f); // the glossy paint mirrored the sky into a pale slab
+            bonnet.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
+            GameObject hood = Box(cab, "Hood", new Vector3(0.1f, -0.36f, 1.95f), new Vector3(1.7f, 0.06f, 1.6f), bonnet, collider: false, isStatic: false);
+            hood.transform.localRotation = Quaternion.Euler(4f, 0f, 0f);
+            // A dark wet bonnet: only the lightning lights it (the cabin lamps made it a glowing slab).
+            hood.GetComponent<Renderer>().renderingLayerMask = 1u << 3;
             GameObject screen = Box(cab, "Windscreen", new Vector3(0.1f, 0.04f, 0.86f), new Vector3(1.6f, 0.68f, 0.006f), glass, collider: false, isStatic: false);
             screen.transform.localRotation = Quaternion.Euler(-34f, 0f, 0f);
+            // Not lit by the cabin lamps (their highlights sat on the glass like two orange moons).
+            screen.GetComponent<Renderer>().renderingLayerMask = 1u << 3;
             foreach (float x in new[] { -0.62f, 0.82f })
                 Box(cab, "Pillar", new Vector3(x, 0.04f, 0.84f), new Vector3(0.11f, 0.74f, 0.1f), trim, collider: false, isStatic: false)
                     .transform.localRotation = Quaternion.Euler(-34f, 0f, 0f);
@@ -762,10 +815,10 @@ namespace LastSignal.EditorTools
             // Faint light through the glass so the cabin's shapes read against the night.
             var fillGo = new GameObject("CabinFill");
             fillGo.transform.SetParent(cab, false);
-            fillGo.transform.localPosition = new Vector3(0.1f, 0.25f, 1.2f);
+            fillGo.transform.localPosition = new Vector3(0.1f, -0.05f, 0.05f);
             var fill = fillGo.AddComponent<Light>();
             fill.type = LightType.Point;
-            fill.range = 2.2f;
+            fill.range = 1.4f;
             fill.intensity = 0.35f;
             fill.color = new Color(0.55f, 0.65f, 0.9f);
             fill.shadows = LightShadows.None;

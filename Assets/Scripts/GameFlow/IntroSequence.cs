@@ -83,6 +83,17 @@ namespace LastSignal.GameFlow
 
         [Header("Sound")]
         [SerializeField] private AudioSource music;
+        [Tooltip("The family theme (the ending's music bed), first heard over the old photo.")]
+        [SerializeField] private AudioSource theme;
+        [SerializeField] private AudioSource engine;
+        [SerializeField] private AudioSource wiperSound;
+
+        [Header("Look")]
+        [Tooltip("Colour grade for the flat (warm lamp, cold shadows, soft focus outside) and for the drive.")]
+        [SerializeField] private GameObject flatLook;
+        [SerializeField] private GameObject driveLook;
+        [SerializeField] private LineRenderer bolt;
+        [SerializeField] private Transform charm;
 
         public Stage Current { get; private set; } = Stage.Opening;
         public bool PhotoOpen => photoPanel != null && photoPanel.activeSelf;
@@ -92,6 +103,7 @@ namespace LastSignal.GameFlow
         private Coroutine run;
         private bool atRadio, photoSeen, photoClosed, wipe;
         private float photoOpenedAt;
+        private int lastWipe = -1;
         private PlayerController controller;
         private PlayerLook look;
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
@@ -121,6 +133,7 @@ namespace LastSignal.GameFlow
             SetHomeRadio(false, 0f);
             AudioManager.Instance?.SetAmbience(Ambience.None);
             if (windowRain != null) { windowRain.clip = PlaceholderClips.Rain; windowRain.loop = true; windowRain.volume = 0f; windowRain.Play(); }
+            SetLook(flat: true);
             Cinematic(true);
             view = flatShotStart;
             run = StartCoroutine(Run());
@@ -158,13 +171,27 @@ namespace LastSignal.GameFlow
                 r.SetPropertyBlock(block);
             }
 
-            // Wipers: a sweep across and back, then a short rest.
+            // Wipers: a sweep across and back, then a short rest (the motor and rubber heard on each sweep).
             if (wipe && wipers != null)
             {
+                int n = Mathf.FloorToInt(Time.time / 1.9f);
+                if (n != lastWipe)
+                {
+                    lastWipe = n;
+                    AudioClip w = PlaceholderClips.Wiper;
+                    if (w != null && wiperSound != null) wiperSound.PlayOneShot(w, 0.45f * Save.GameSettings.SfxVolume);
+                }
                 float cycle = Mathf.Repeat(Time.time, 1.9f) / 1.5f;
                 float a = cycle < 1f ? Mathf.Sin(cycle * Mathf.PI) : 0f;
                 foreach (Transform w in wipers)
                     if (w != null) w.localRotation = Quaternion.Euler(0f, 0f, -a * 78f);
+            }
+
+            // The charm on the mirror swings with the car.
+            if (charm != null && Current == Stage.Drive)
+            {
+                float t = Time.time;
+                charm.localRotation = Quaternion.Euler(Mathf.Sin(t * 2.1f) * 9f + Mathf.PerlinNoise(t, 2f) * 6f - 3f, 0f, Mathf.Sin(t * 1.6f + 1f) * 12f);
             }
 
             // Put the photo down with E / Space / Enter (or the button).
@@ -187,6 +214,38 @@ namespace LastSignal.GameFlow
             lightningTimer = Random.Range(lightningEvery.x, lightningEvery.y);
             flash = Mathf.Max(flash, strength);
             StartCoroutine(Thunder(Random.Range(0.6f, 2.2f) / strength, strength));
+            if (bolt != null && Current == Stage.Drive && strength > 0.7f && car != null) StartCoroutine(BoltFlash());
+        }
+
+        /// <summary>A jagged fork of lightning far ahead over the hills: on, off, on again, gone.</summary>
+        private IEnumerator BoltFlash()
+        {
+            Vector3 ground = car.position + car.forward * Random.Range(70f, 95f) + car.right * Random.Range(-45f, 45f);
+            ground.y = car.position.y - 4f;
+            Vector3 top = ground + Vector3.up * Random.Range(55f, 70f) + car.right * Random.Range(-12f, 12f);
+            const int points = 14;
+            bolt.positionCount = points;
+            for (int i = 0; i < points; i++)
+            {
+                float k = i / (float)(points - 1);
+                Vector3 q = Vector3.Lerp(top, ground, k);
+                if (i > 0 && i < points - 1) q += car.right * Random.Range(-4f, 4f) * (1f - k * 0.5f) + car.forward * Random.Range(-2f, 2f);
+                bolt.SetPosition(i, q);
+            }
+            bolt.enabled = true;
+            yield return new WaitForSeconds(0.07f);
+            bolt.enabled = false;
+            yield return new WaitForSeconds(0.06f);
+            bolt.enabled = true;
+            yield return new WaitForSeconds(0.11f);
+            bolt.enabled = false;
+        }
+
+        /// <summary>The flat's grade or the drive's (the base grade stays underneath for the title).</summary>
+        private void SetLook(bool flat)
+        {
+            if (flatLook != null) flatLook.SetActive(flat);
+            if (driveLook != null) driveLook.SetActive(!flat);
         }
 
         private IEnumerator Thunder(float delay, float strength)
@@ -274,9 +333,13 @@ namespace LastSignal.GameFlow
             if (controller != null) controller.MovementLocked = true;
             yield return Fade(fade, 0f, 1f, 2f);
             if (windowRain != null) StartCoroutine(FadeAudio(windowRain, 0f, 1f));
+            if (theme != null && theme.isPlaying) StartCoroutine(FadeAudio(theme, 0f, 3f));
             Cinematic(true);
             if (player != null) player.SetActive(false);
             if (music != null) { music.volume = 0f; music.Play(); StartCoroutine(FadeAudio(music, 0.35f * Save.GameSettings.AmbienceVolume, 2f)); }
+            // The title comes in on a burst of static, as if tuned in.
+            AudioManager.Instance?.PlayUI(PlaceholderClips.StaticBurst, 0.45f);
+            AudioManager.Instance?.PlayUI(PlaceholderClips.RadioCrackle, 0.35f);
             yield return Fade(title, 0f, 1f, 2.5f);
             yield return new WaitForSeconds(2.5f);
             yield return Fade(title, 1f, 0f, 1.5f);
@@ -291,6 +354,9 @@ namespace LastSignal.GameFlow
             Current = Stage.Drive;
             view = carView;
             wipe = true;
+            SetLook(flat: false);
+            AudioClip hum = PlaceholderClips.CarEngine;
+            if (engine != null && hum != null) { engine.clip = hum; engine.loop = true; engine.pitch = 0.85f; engine.volume = 0f; engine.Play(); StartCoroutine(FadeAudio(engine, 0.55f * Save.GameSettings.SfxVolume, 2f)); }
             float[] along = PathLengths(out float total);
             if (car != null && drivePath.Length > 0) car.SetPositionAndRotation(drivePath[0].position, drivePath[0].rotation);
             if (roofRain != null) { roofRain.clip = PlaceholderClips.CarRain; roofRain.loop = true; roofRain.volume = 0.7f * Save.GameSettings.AmbienceVolume; roofRain.Play(); }
@@ -317,8 +383,11 @@ namespace LastSignal.GameFlow
                 if (!struck && k > 0.55f) { struck = true; Strike(1f); } // the station shows in the lightning
                 yield return null;
             }
-            // Engine off: the radio crackles and gives up; just the rain on the roof.
+            // Engine off: it idles, coughs and stops; the radio crackles and gives up; just the rain on the roof.
             wipe = false;
+            AudioClip off = PlaceholderClips.EngineOff;
+            if (engine != null) StartCoroutine(FadeAudio(engine, 0f, 0.8f));
+            if (off != null && wiperSound != null) wiperSound.PlayOneShot(off, 0.7f * Save.GameSettings.SfxVolume);
             PlayOn(carRadio, PlaceholderClips.RadioCrackle, 0.6f);
             yield return new WaitForSeconds(0.5f);
             if (carRadio != null) carRadio.Stop();
@@ -385,6 +454,7 @@ namespace LastSignal.GameFlow
             if (photoCard != null) StartCoroutine(RaiseCard());
             photoSeen = true;
             photoOpenedAt = Time.unscaledTime;
+            if (theme != null && !theme.isPlaying) { theme.volume = 0f; theme.Play(); StartCoroutine(FadeAudio(theme, 0.4f * Save.GameSettings.AmbienceVolume, 4f)); }
         }
 
         public void ClosePhoto()
@@ -433,6 +503,7 @@ namespace LastSignal.GameFlow
                 AudioManager.Instance?.PlayUI(PlaceholderClips.CarDoor, 0.9f);
                 StartCoroutine(FadeAudio(roofRain, 0f, 1.5f));
                 if (music != null) StartCoroutine(FadeAudio(music, 0f, 1.5f));
+                if (engine != null) StartCoroutine(FadeAudio(engine, 0f, 0.5f));
                 yield return Fade(fade, fade != null ? fade.alpha : 0f, 1f, 1.5f);
                 yield return new WaitForSeconds(0.5f);
             }

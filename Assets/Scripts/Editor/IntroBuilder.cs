@@ -72,7 +72,7 @@ namespace LastSignal.EditorTools
 
             // The car: its origin is the driver's eyes. It drives along a path of markers that follow the ground.
             Transform car = Group(null, "Car");
-            Transform[] drivePath = DrivePath(roadStart + right * 0.9f, gate - dir * 7f + right * 0.9f, dir, 24);
+            Transform[] drivePath = DrivePath(roadStart - right * 0.9f, gate - dir * 7f - right * 0.9f, dir, 24); // keep left; the driver sits on the right
             car.SetPositionAndRotation(drivePath[0].position, drivePath[0].rotation);
             Interior(car, out TMP_Text carDial, out Light carGlow, out Transform carRadioAt, out Transform[] wipers);
             Headlights(car);
@@ -108,9 +108,6 @@ namespace LastSignal.EditorTools
             AudioSource engine = Source(car, "Engine", 0f, 6f);
             AudioSource wiperSound = Source(car, "WiperSound", 0f, 6f);
             wiperSound.loop = false;
-            // The family theme: the same music bed as the ending, first heard over the old photo.
-            AudioSource theme = EndingBuilder.Loop(rig, "Theme", "Assets/SourceFiles/SoundFX/Music_Ethereal.ogg");
-            if (theme != null) theme.loop = false;
             AudioSource carRadio = Source(carRadioAt, "CarRadio", 0.5f, 6f);
             AudioSource music = EndingBuilder.Loop(rig, "Music", "Assets/SourceFiles/SoundFX/Music_Suspenseful.ogg");
             if (music != null) music.loop = false;
@@ -151,9 +148,20 @@ namespace LastSignal.EditorTools
             title.characterSpacing = 22f;
             title.color = new Color(0.92f, 0.9f, 0.86f);
             var titleGroup = title.gameObject.AddComponent<CanvasGroup>();
-            TMP_Text tagline = UIText(title.transform, "Tagline", "A PSYCHOLOGICAL SURVIVAL HORROR", 26, c, new Vector2(0f, -105f), new Vector2(1200f, 50f));
-            tagline.characterSpacing = 18f;
-            tagline.color = new Color(0.75f, 0.73f, 0.7f, 0.85f);
+            // The dot over the I in SIGNAL: a red beacon like the one on the mast, blinking with a transmitter pulse.
+            RectTransform dotRect = UIRect(title.transform, "BeaconDot");
+            Place(dotRect, c, Vector2.zero, new Vector2(26f, 26f));
+            Image dot = UIImage(dotRect, EnsureSprite("Circle", SpriteShape.Disc), new Color(1f, 0.08f, 0.05f), raycast: false);
+            RectTransform glowRect = UIRect(dotRect, "Glow");
+            Place(glowRect, c, Vector2.zero, new Vector2(150f, 150f));
+            Image glowImage = UIImage(glowRect, EnsureSprite("SoftDot", SpriteShape.Soft), new Color(1f, 0.08f, 0.05f, 0f), raycast: false);
+            glowRect.SetAsFirstSibling();
+            var beacon = title.gameObject.AddComponent<TitleBeacon>();
+            Set(beacon, "title", title);
+            Set(beacon, "dot", dotRect);
+            Set(beacon, "dotImage", dot);
+            Set(beacon, "glow", glowImage);
+            Set(beacon, "visibility", titleGroup);
             TMP_Text time = UIText(root.transform, "TimeCaption", "11:47 PM", 40, new Vector2(0f, 0f), new Vector2(230f, 110f), new Vector2(360f, 70f), TextAlignmentOptions.Left);
             time.characterSpacing = 6f;
             time.color = new Color(0.85f, 0.85f, 0.82f);
@@ -202,7 +210,6 @@ namespace LastSignal.EditorTools
             Set(intro, "engine", engine);
             Set(intro, "wiperSound", wiperSound);
             Set(intro, "charm", charm);
-            if (theme != null) Set(intro, "theme", theme);
             Set(intro, "windowRain", flat.rainSource);
             SetLines(intro, "firstCall", new[]
             {
@@ -683,7 +690,7 @@ namespace LastSignal.EditorTools
             {
                 var go = new GameObject("Headlight");
                 go.transform.SetParent(car, false);
-                go.transform.localPosition = new Vector3(x + 0.35f, -0.5f, 2.1f);
+                go.transform.localPosition = new Vector3(x - 0.35f, -0.5f, 2.1f);
                 go.transform.localRotation = Quaternion.Euler(6f, x * 3f, 0f);
                 var l = go.AddComponent<Light>();
                 l.type = LightType.Spot;
@@ -747,28 +754,29 @@ namespace LastSignal.EditorTools
             Material glass = Mat("Windscreen", new Color(0.55f, 0.6f, 0.7f, 0.07f), smoothness: 0.96f);
             EndingBuilder.MakeTransparent(glass);
 
-            GameObject top = Box(cab, "Dashboard", new Vector3(0.1f, -0.36f, 0.78f), new Vector3(1.75f, 0.18f, 0.5f), dash, collider: false, isStatic: false);
+            // Right-hand drive: the driver (the camera) sits on the right, so the rest of the car is to his left (-X).
+            GameObject top = Box(cab, "Dashboard", new Vector3(-0.1f, -0.36f, 0.78f), new Vector3(1.75f, 0.18f, 0.5f), dash, collider: false, isStatic: false);
             top.transform.localRotation = Quaternion.Euler(-7f, 0f, 0f);
-            Box(cab, "DashLip", new Vector3(0.1f, -0.27f, 1.0f), new Vector3(1.75f, 0.04f, 0.12f), dash, collider: false, isStatic: false);
+            Box(cab, "DashLip", new Vector3(-0.1f, -0.27f, 1.0f), new Vector3(1.75f, 0.04f, 0.12f), dash, collider: false, isStatic: false);
             Material bonnet = Mat("CarBonnet", new Color(0.05f, 0.055f, 0.06f), smoothness: 0.4f);
             bonnet.SetFloat("_EnvironmentReflections", 0f); // the glossy paint mirrored the sky into a pale slab
             bonnet.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
-            GameObject hood = Box(cab, "Hood", new Vector3(0.1f, -0.36f, 1.95f), new Vector3(1.7f, 0.06f, 1.6f), bonnet, collider: false, isStatic: false);
+            GameObject hood = Box(cab, "Hood", new Vector3(-0.1f, -0.36f, 1.95f), new Vector3(1.7f, 0.06f, 1.6f), bonnet, collider: false, isStatic: false);
             hood.transform.localRotation = Quaternion.Euler(4f, 0f, 0f);
             // A dark wet bonnet: only the lightning lights it (the cabin lamps made it a glowing slab).
             hood.GetComponent<Renderer>().renderingLayerMask = 1u << 3;
-            GameObject screen = Box(cab, "Windscreen", new Vector3(0.1f, 0.04f, 0.86f), new Vector3(1.6f, 0.68f, 0.006f), glass, collider: false, isStatic: false);
+            GameObject screen = Box(cab, "Windscreen", new Vector3(-0.1f, 0.04f, 0.86f), new Vector3(1.6f, 0.68f, 0.006f), glass, collider: false, isStatic: false);
             screen.transform.localRotation = Quaternion.Euler(-34f, 0f, 0f);
             // Not lit by the cabin lamps (their highlights sat on the glass like two orange moons).
             screen.GetComponent<Renderer>().renderingLayerMask = 1u << 3;
-            foreach (float x in new[] { -0.62f, 0.82f })
+            foreach (float x in new[] { 0.62f, -0.82f })
                 Box(cab, "Pillar", new Vector3(x, 0.04f, 0.84f), new Vector3(0.11f, 0.74f, 0.1f), trim, collider: false, isStatic: false)
                     .transform.localRotation = Quaternion.Euler(-34f, 0f, 0f);
-            Box(cab, "Roof", new Vector3(0.1f, 0.33f, 0.3f), new Vector3(1.8f, 0.05f, 1.0f), trim, collider: false, isStatic: false);
-            Box(cab, "SunVisor", new Vector3(-0.15f, 0.29f, 0.58f), new Vector3(0.6f, 0.03f, 0.2f), trim, collider: false, isStatic: false)
+            Box(cab, "Roof", new Vector3(-0.1f, 0.33f, 0.3f), new Vector3(1.8f, 0.05f, 1.0f), trim, collider: false, isStatic: false);
+            Box(cab, "SunVisor", new Vector3(0.12f, 0.29f, 0.58f), new Vector3(0.6f, 0.03f, 0.2f), trim, collider: false, isStatic: false)
                 .transform.localRotation = Quaternion.Euler(12f, 0f, 0f);
-            Box(cab, "Mirror", new Vector3(0.2f, 0.22f, 0.66f), new Vector3(0.24f, 0.07f, 0.03f), trim, collider: false, isStatic: false);
-            Box(cab, "DoorPanel", new Vector3(-0.78f, -0.45f, 0.1f), new Vector3(0.06f, 0.4f, 1.2f), trim, collider: false, isStatic: false);
+            Box(cab, "Mirror", new Vector3(-0.2f, 0.22f, 0.66f), new Vector3(0.24f, 0.07f, 0.03f), trim, collider: false, isStatic: false);
+            Box(cab, "DoorPanel", new Vector3(0.78f, -0.45f, 0.1f), new Vector3(0.06f, 0.4f, 1.2f), trim, collider: false, isStatic: false);
 
             // Steering wheel and column.
             var wheel = new GameObject("SteeringWheel");
@@ -782,8 +790,8 @@ namespace LastSignal.EditorTools
             Prim(cab, "Column", PrimitiveType.Cylinder, new Vector3(0f, -0.33f, 0.61f), new Vector3(0.06f, 0.12f, 0.06f), dash, new Vector3(-62f, 0f, 0f), collider: false);
 
             // Car radio on the centre console, high enough to sit in the frame.
-            Transform unit = Group(cab, "Radio", new Vector3(0.36f, -0.25f, 0.7f));
-            unit.localRotation = Quaternion.Euler(-24f, -10f, 0f);
+            Transform unit = Group(cab, "Radio", new Vector3(-0.36f, -0.25f, 0.7f));
+            unit.localRotation = Quaternion.Euler(-24f, 10f, 0f);
             Box(unit, "Body", Vector3.zero, new Vector3(0.22f, 0.07f, 0.04f), trim, collider: false, isStatic: false);
             Box(unit, "Window", new Vector3(0f, 0.008f, -0.0205f), new Vector3(0.13f, 0.028f, 0.001f), Mat("RadioWindow", new Color(0.04f, 0.02f, 0.0f), smoothness: 0.9f), collider: false, isStatic: false);
             foreach (float x in new[] { -0.088f, 0.088f })
@@ -815,7 +823,7 @@ namespace LastSignal.EditorTools
             // Faint light through the glass so the cabin's shapes read against the night.
             var fillGo = new GameObject("CabinFill");
             fillGo.transform.SetParent(cab, false);
-            fillGo.transform.localPosition = new Vector3(0.1f, -0.05f, 0.05f);
+            fillGo.transform.localPosition = new Vector3(-0.1f, -0.05f, 0.05f);
             var fill = fillGo.AddComponent<Light>();
             fill.type = LightType.Point;
             fill.range = 1.4f;
@@ -826,7 +834,7 @@ namespace LastSignal.EditorTools
             // Raindrops on the windscreen: beads that gather and run down the glass.
             // An unscaled plane lying in the glass (its -Z faces the driver): the drops and the wipers sit in it.
             // (Particle systems under the glass box's squashed scale were skewed into long streaks across the view.)
-            Transform plane = Group(cab, "WiperPlane", new Vector3(0.1f, 0.04f, 0.86f));
+            Transform plane = Group(cab, "WiperPlane", new Vector3(-0.1f, 0.04f, 0.86f));
             plane.localRotation = Quaternion.Euler(-34f, 0f, 0f);
             Drops(plane, beads: true, new Vector2(1.5f, 0.74f));
             Drops(plane, beads: false, new Vector2(1.5f, 0.74f));

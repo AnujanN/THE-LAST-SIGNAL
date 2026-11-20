@@ -28,6 +28,8 @@ namespace LastSignal.Audio
         private float ambienceTarget;
         private float threatLevel;
         private float thunderTimer = 25f;
+        private float outdoors = 1f;
+        private AudioLowPassFilter ambienceFilter;
 
         /// <summary>0 = safe, 1 = The Echo is right here. Drives the threat loop and HUD vignette.</summary>
         public float ThreatLevel => threatLevel;
@@ -36,6 +38,8 @@ namespace LastSignal.Audio
         {
             Instance = this;
             ambience = MakeSource("Ambience", true);
+            ambienceFilter = ambience.gameObject.AddComponent<AudioLowPassFilter>();
+            ambienceFilter.cutoffFrequency = 22000f;
             ui = MakeSource("UI", false);
             threat = MakeSource("Threat", true);
             threat.clip = PlaceholderClips.ThreatDrone;
@@ -57,7 +61,10 @@ namespace LastSignal.Audio
 
         private void Update()
         {
-            float ambienceVol = ambienceTarget * GameSettings.AmbienceVolume;
+            // Indoors the storm is quieter and muffled (walls take the top off it).
+            float ambienceVol = ambienceTarget * Mathf.Lerp(0.05f, 1f, outdoors) * GameSettings.AmbienceVolume;
+            if (ambienceFilter != null)
+                ambienceFilter.cutoffFrequency = Mathf.MoveTowards(ambienceFilter.cutoffFrequency, Mathf.Lerp(900f, 22000f, outdoors * outdoors), Time.unscaledDeltaTime * 20000f);
             ambience.volume = Mathf.MoveTowards(ambience.volume, ambienceVol, Time.unscaledDeltaTime * 0.5f);
 
             float threatVol = Mathf.Clamp01(threatLevel) * 0.55f * GameSettings.SfxVolume;
@@ -74,7 +81,7 @@ namespace LastSignal.Audio
                 {
                     thunderTimer = Random.Range(40f, 85f);
                     AudioClip clip = PlaceholderClips.Thunder;
-                    if (clip != null) ui.PlayOneShot(clip, Random.Range(0.3f, 0.55f) * GameSettings.AmbienceVolume);
+                    if (clip != null) ui.PlayOneShot(clip, Random.Range(0.35f, 0.65f) * Mathf.Lerp(0.35f, 1f, outdoors) * GameSettings.AmbienceVolume);
                 }
             }
         }
@@ -90,9 +97,16 @@ namespace LastSignal.Audio
             threat.volume = 0f;
         }
 
+        /// <summary>
+        /// How much the listener is out in the weather: 1 outside or in an open doorway, falling towards 0 deeper
+        /// inside (RainAmbience sets it each frame from the distance to the entrance). Resets to 1 on a new scene.
+        /// </summary>
+        public void SetOutdoors(float amount) => outdoors = Mathf.Clamp01(amount);
+
         public void SetAmbience(Ambience type, float volume = 0.6f)
         {
             ambienceTarget = type == Ambience.None ? 0f : volume;
+            outdoors = 1f;
             if (type == currentAmbience) return;
             currentAmbience = type;
             AudioClip clip = ClipFor(type);

@@ -48,17 +48,21 @@ the old family photo beside the radio (rendered in the editor from the station, 
 `PhotoArt`; the same photo hangs framed on the wall in Level 3), puts it down, and the screen goes black on THE LAST SIGNAL.
 Then the drive: a forest road in the storm seen from the driver's seat (wipers, rain on the glass, the car radio hunting
 between stations), the mast and its red beacon showing in a lightning flash, and the car stopping at the Northpoint gate.
-Level 1 starts beside the parked car (door open, courtesy light on) with the objective "Find the source of the
+Level 1 starts beside the driver's door of the parked car (a right-hand-drive saloon built in code, `CarModel`: smooth
+body, wheel arches, tinted glass with the cabin inside) with the objective "Find the source of the
 transmission"; walking up to the building, someone stands for a moment at the lit upstairs window and is gone, and the front
 door swings shut behind Alex. The intro never shows The Echo and never says whether Maya is alive.
+The storm in Level 1 is a real outdoor downpour with separate thunder; it is loud in the yard and in the doorway and
+fades and goes muffled step by step the further Alex walks in from the entrance (`RainAmbience`), quieter still once
+the front door has swung shut, and almost gone in the basement.
 Look and sound (`IntroDressing`): the flat is lived-in (heavy curtains, a radiator, books, a laptop glowing on the table
 beside a takeaway box and a glass of whisky, a coat by the door, paler squares where pictures used to hang) and lit by the
 floor lamp and the cold light through the rain-streaked window, which throws the window frame across the room; dust hangs
 in the lamp light and the city outside is soft, out-of-focus lights. Each part has its own grade: warm lamp over cold
 shadows with soft focus outside for the flat, cold and wet for the drive. The drive has a storm-cloud sky that the
 lightning lights up, a forked bolt over the hills, mist along the road, headlight beams in the rain, reflector posts,
-lit gauges and a charm swinging from the mirror. Sound: a real wall clock, rain on the glass, the radio; the ending's music
-(the family theme) rises over the old photo; the title comes in on a burst of static; in the car, the engine, the wipers
+lit gauges and a charm swinging from the mirror. Sound: a real wall clock, rain on the glass, the radio; no music over the photo; the title (no subtitle) comes in on a
+burst of static, the dot over its I a red beacon blinking with a radio transmitter pulse (`TitleBeacon`); in the car (right-hand drive, keeping left), the engine, the wipers
 on each sweep, rain on the roof, thunder, and the engine idling and switching off at the gate.
 
 Ending: sunrise epilogue at Maya's memorial — *"I heard you this time, Maya. Goodbye."* — then THE END. No sequel hook.
@@ -306,6 +310,7 @@ easy to reach by walking and aiming. That needs a human play-through.
 | Electrical hum | "MainsBrum50Hz.ogg", Wikimedia Commons — **Public domain** |
 | Spider skittering, fallback sounds when a recording is missing | Generated in code (`PlaceholderClips`) |
 | Intro and Level 1 arrival: asphalt_02, beige_wall_001, brown_planks_05, dirty_carpet, concrete_wall_004 | **Poly Haven** — **CC0** (`Assets/Art/Textures/PolyHaven/CREDITS.txt`) |
+| Level 1 storm: heavy rain and thunder (0740), thunderclaps (3181, 3184); title beacon: Eurosignal transmitter (3571) | Joseph Sardin, **BigSoundBank.com** — **CC0** (originals in `Assets/Audio/Source/BigSoundBank/`) |
 | Intro: rain on a car roof, car door, radio tuning sweeps and crackle, car interior at 80 km/h (3098), wipers (3112), engine idling and switching off (0557), quartz wall clock (1069) | Joseph Sardin, **BigSoundBank.com** — **CC0** (originals in `Assets/Audio/Source/BigSoundBank/`) |
 | Intro music: Music_Suspenseful (title), Music_Ethereal (the family theme, also the ending's) | Unity "Get Started" template content (Unity Companion License), from `Assets/SourceFiles/SoundFX` |
 | The family photo, Alex's flat, the car and the forest road | Made in code and rendered in the editor (`PhotoArt`, `IntroBuilder`), from the models and textures above |

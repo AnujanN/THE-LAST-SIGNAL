@@ -75,6 +75,8 @@ namespace LastSignal.Audio
         public static AudioClip Wiper => Real("wiper");
         /// <summary>A quartz wall clock ticking (loop); null if missing (WallClock then makes its own tick).</summary>
         public static AudioClip Clock => Real("clock");
+        /// <summary>One burst of a radio transmitter (the title's blinking dot).</summary>
+        public static AudioClip Transmit => Real("transmit");
         public static AudioClip CarDoor => Real("cardoor") ?? DoorCreak;
         public static AudioClip RadioTune => Real("tune") ?? Interference;
         public static AudioClip RadioCrackle => Real("crackle") ?? StaticBurst;

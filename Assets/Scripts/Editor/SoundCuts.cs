@@ -22,7 +22,7 @@ namespace LastSignal.EditorTools
             // Sets these recordings replace completely (old Kenney / generated variations removed).
             foreach (string key in new[] { "footstep", "door", "splash", "paper", "paperdown", "rain", "thunder", "whisper", "choke",
                                            "tapestart", "taperun", "tapestop", "carrain", "cardoor", "tune", "crackle",
-                                           "engine", "engineoff", "wiper", "clock" }) RemoveSet(key);
+                                           "engine", "engineoff", "wiper", "clock", "transmit" }) RemoveSet(key);
 
             // Intro: rain drumming on the car roof, the radio hunting through the band, the car door.
             Loudest("1293", "carrain", 30f, rate: 24000, loop: true, level: 0.06f);
@@ -37,11 +37,17 @@ namespace LastSignal.EditorTools
             Onsets("3112", "wiper", 3, 1.3f, minGap: 1.0f);
             Segment("1069", "clock", 2f, 12f, loop: true, rate: 24000);
 
-            // Storm outside Level 1: steady rain with no thunder in it (the old loop rumbled every few seconds),
-            // and separate distant thunder that the AudioManager plays now and then.
-            Loudest("1289", "rain", 40f, rate: 24000, loop: true, level: 0.05f);
-            First("3115", "thunder", 14f);
-            First("3180", "thunder_1", 12f);
+            // Storm outside Level 1: a real outdoor downpour (a steady stretch between the thunder rolls of
+            // "Rain and Thunder #2", looped), and thunder on its own that plays now and then: two single claps
+            // and a roll from the same storm recording, plus the two older distant rumbles.
+            Segment("0740", "rain", 64f, 20f, loop: true, rate: 24000, level: 0.07f);
+            First("3181", "thunder", 16f);
+            First("3184", "thunder_1", 14f);
+            Segment("0740", "thunder_2", 4f, 14f);
+            First("3115", "thunder_3", 14f);
+            First("3180", "thunder_4", 12f);
+            // The title's red dot: one burst of a real radio-paging transmitter (Eurosignal).
+            Segment("3571", "transmit", 10f, 0.42f);
 
             // Cassette deck: PLAY key down, the tape running under the voices (loop), the key popping up.
             First("0565", "tapestart", 1f);

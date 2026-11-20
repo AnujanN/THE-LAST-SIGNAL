@@ -341,7 +341,7 @@ namespace LastSignal.EditorTools
         {
             Mesh beam = BeamMesh(30f, 6.5f);
             Material m = EndingBuilder.SoftParticles("HeadlightBeam", new Color(1f, 0.95f, 0.85f));
-            foreach (float x in new[] { -0.27f, 0.97f })
+            foreach (float x in new[] { -0.97f, 0.27f })
             {
                 var go = new GameObject("Beam");
                 go.transform.SetParent(car, false);
@@ -422,7 +422,7 @@ namespace LastSignal.EditorTools
             l.shadows = LightShadows.None;
 
             // A small charm hanging from the mirror on a cord (it swings with the car).
-            Transform charm = Group(cab, "MirrorCharm", new Vector3(0.2f, 0.18f, 0.66f));
+            Transform charm = Group(cab, "MirrorCharm", new Vector3(-0.2f, 0.18f, 0.66f));
             Box(charm, "Cord", new Vector3(0f, -0.05f, 0f), new Vector3(0.002f, 0.1f, 0.002f), Mat("Flex", new Color(0.05f, 0.05f, 0.05f)), collider: false, isStatic: false);
             Prim(charm, "Charm", PrimitiveType.Sphere, new Vector3(0f, -0.11f, 0f), new Vector3(0.025f, 0.035f, 0.01f), Mat("CharmWood", new Color(0.3f, 0.18f, 0.08f), smoothness: 0.5f), collider: false);
             foreach (Renderer r in cluster.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = ShadowCastingMode.Off;

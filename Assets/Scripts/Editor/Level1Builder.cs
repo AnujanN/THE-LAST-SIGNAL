@@ -52,7 +52,8 @@ namespace LastSignal.EditorTools
             WallX(env, "Fence_S", -18f, -12f, 12f, 2.5f, facade);
             Box(env, "Path", new Vector3(0f, 0.01f, -12f), new Vector3(2.2f, 0.02f, 12f), floor);
             StreetLamp(env, new Vector3(2.2f, 0f, -10f), metal);
-            ParkedCar(env, new Vector3(-3.6f, 0f, -14.2f), 8f);
+            // Alex's car (right-hand drive), parked where he stopped in the rain, lamps off.
+            CarModel.Build(env, "ParkedCar", new Vector3(-3.6f, 0f, -14.2f), 8f, new Color(0.07f, 0.085f, 0.1f), "LS16 ALX");
             // Northpoint's mast behind the building, its red beacon blinking over the roof.
             EndingBuilder.Mast(env, new Vector3(7f, 0f, 30f), 34f);
 
@@ -329,8 +330,8 @@ namespace LastSignal.EditorTools
             CheckpointZone(story, "l1_power", new Vector3(0f, 0.02f, 9f), 0f, Vector3.one, triggerEnabled: false);
             CheckpointZone(story, "l1_control", new Vector3(0f, 1f, 15.5f), 0f, new Vector3(4f, 2f, 1.5f));
 
-            // Beside the car he came in, its door still open, looking up at the station.
-            Transform spawn = Marker(story, "PlayerStart", new Vector3(-6.6f, 0.02f, -14.9f), 24f);
+            // Beside the driver's door (right-hand side) of the car he came in, looking up at the station.
+            Transform spawn = Marker(story, "PlayerStart", new Vector3(-1.95f, 0.02f, -14.0f), -8f);
             var level = story.gameObject.AddComponent<LevelController>();
             SetValue(level, "levelNumber", 1);
             SetValue(level, "levelName", "The Abandoned Station");
@@ -344,7 +345,12 @@ namespace LastSignal.EditorTools
             });
             SetValue(level, "flashlightDrain", false);
             SetValue(level, "ambience", Ambience.RainAndWind);
-            SetValue(level, "ambienceVolume", 0.6f);
+            SetValue(level, "ambienceVolume", 0.95f);
+            // The storm is loud in the yard and the doorway and fades the further in Alex goes.
+            Transform entranceMark = Marker(story, "EntranceSound", new Vector3(0f, 1f, -6f), 0f);
+            var rainMix = story.gameObject.AddComponent<RainAmbience>();
+            Set(rainMix, "entrance", entranceMark);
+            Set(rainMix, "frontDoor", frontDoor);
 
             Transform weather = Group(null, "Weather");
             Rain(weather, new Vector3(0f, 10f, -12f), new Vector3(24f, 12f, 1f));
@@ -357,68 +363,6 @@ namespace LastSignal.EditorTools
             Debug.Log("[Level1Builder] Built " + ScenePath);
         }
         // ------------------------------------------------------------------ arrival: the car, the upstairs window
-
-        /// <summary>
-        /// Alex's car, parked where he stopped in the rain: wet dark paint, glass, four wheels, the driver's door
-        /// left open with the little courtesy light on inside, the lamps off.
-        /// </summary>
-        private static void ParkedCar(Transform env, Vector3 at, float yaw)
-        {
-            Transform car = Group(env, "ParkedCar", at);
-            car.localRotation = Quaternion.Euler(0f, yaw, 0f);
-            Material paint = Mat("CarPaint", new Color(0.08f, 0.09f, 0.1f), smoothness: 0.85f);
-            Material glass = Mat("CarGlass", new Color(0.04f, 0.05f, 0.06f), smoothness: 0.95f);
-            Material tyre = Mat("Tyre", new Color(0.03f, 0.03f, 0.03f), smoothness: 0.2f);
-            Material chrome = Mat("Chrome", new Color(0.6f, 0.6f, 0.62f), smoothness: 0.85f);
-            Material seat = Mat("CarSeat", new Color(0.09f, 0.08f, 0.08f));
-            Box(car, "Body", new Vector3(0f, 0.62f, 0f), new Vector3(1.8f, 0.62f, 4.4f), paint, isStatic: false);
-            Box(car, "Bonnet", new Vector3(0f, 0.95f, 1.45f), new Vector3(1.74f, 0.06f, 1.4f), paint, collider: false, isStatic: false);
-            Box(car, "Boot", new Vector3(0f, 0.95f, -1.75f), new Vector3(1.74f, 0.06f, 0.9f), paint, collider: false, isStatic: false);
-            Box(car, "Roof", new Vector3(0f, 1.42f, -0.3f), new Vector3(1.6f, 0.06f, 1.9f), paint, collider: false, isStatic: false);
-            // Glasshouse: windscreen and rear screen raked, side windows.
-            Box(car, "Windscreen", new Vector3(0f, 1.18f, 0.82f), new Vector3(1.56f, 0.04f, 0.62f), glass, collider: false, isStatic: false)
-                .transform.localRotation = Quaternion.Euler(-38f, 0f, 0f);
-            Box(car, "RearScreen", new Vector3(0f, 1.18f, -1.38f), new Vector3(1.56f, 0.04f, 0.55f), glass, collider: false, isStatic: false)
-                .transform.localRotation = Quaternion.Euler(42f, 0f, 0f);
-            Box(car, "SideGlass_R", new Vector3(0.79f, 1.18f, -0.3f), new Vector3(0.03f, 0.42f, 1.8f), glass, collider: false, isStatic: false);
-            Box(car, "SideGlass_L_Rear", new Vector3(-0.79f, 1.18f, -0.75f), new Vector3(0.03f, 0.42f, 0.9f), glass, collider: false, isStatic: false);
-            // Inside, seen through the open door.
-            Box(car, "Seat", new Vector3(-0.42f, 0.78f, -0.15f), new Vector3(0.55f, 0.16f, 0.55f), seat, collider: false, isStatic: false);
-            Box(car, "SeatBack", new Vector3(-0.42f, 1.1f, -0.42f), new Vector3(0.55f, 0.6f, 0.12f), seat, collider: false, isStatic: false)
-                .transform.localRotation = Quaternion.Euler(-12f, 0f, 0f);
-            Box(car, "Dash", new Vector3(0f, 1.0f, 0.55f), new Vector3(1.6f, 0.22f, 0.35f), seat, collider: false, isStatic: false);
-            // Driver's door, swung open on its front hinge.
-            Transform hinge = Group(car, "DoorHinge", new Vector3(-0.9f, 0f, 0.42f));
-            hinge.localRotation = Quaternion.Euler(0f, -58f, 0f);
-            Box(hinge, "Door", new Vector3(0f, 0.68f, -0.55f), new Vector3(0.07f, 0.7f, 1.1f), paint, isStatic: false);
-            Box(hinge, "DoorGlass", new Vector3(0f, 1.18f, -0.55f), new Vector3(0.03f, 0.4f, 1.0f), glass, collider: false, isStatic: false);
-            // Wheels, lamps, bumpers.
-            foreach (float x in new[] { -0.82f, 0.82f })
-                foreach (float z in new[] { -1.35f, 1.35f })
-                {
-                    Prim(car, "Wheel", PrimitiveType.Cylinder, new Vector3(x, 0.34f, z), new Vector3(0.66f, 0.12f, 0.66f), tyre, new Vector3(0f, 0f, 90f), collider: false);
-                    Prim(car, "Hub", PrimitiveType.Cylinder, new Vector3(x * 1.09f, 0.34f, z), new Vector3(0.3f, 0.02f, 0.3f), chrome, new Vector3(0f, 0f, 90f), collider: false);
-                }
-            foreach (float x in new[] { -0.6f, 0.6f })
-            {
-                Box(car, "Headlamp", new Vector3(x, 0.72f, 2.21f), new Vector3(0.36f, 0.14f, 0.02f), Mat("LampGlass", new Color(0.7f, 0.72f, 0.7f), smoothness: 0.9f), collider: false, isStatic: false);
-                Box(car, "TailLamp", new Vector3(x, 0.78f, -2.21f), new Vector3(0.34f, 0.12f, 0.02f), Mat("TailLamp", new Color(0.35f, 0.03f, 0.03f), smoothness: 0.8f), collider: false, isStatic: false);
-            }
-            Box(car, "Bumper_F", new Vector3(0f, 0.38f, 2.22f), new Vector3(1.82f, 0.16f, 0.08f), chrome, collider: false, isStatic: false);
-            Box(car, "Bumper_R", new Vector3(0f, 0.38f, -2.22f), new Vector3(1.82f, 0.16f, 0.08f), chrome, collider: false, isStatic: false);
-            // Courtesy light: the door's open.
-            var dome = new GameObject("CourtesyLight");
-            dome.transform.SetParent(car, false);
-            dome.transform.localPosition = new Vector3(-0.2f, 1.3f, -0.2f);
-            Light l = dome.AddComponent<Light>();
-            l.type = LightType.Point;
-            l.color = new Color(1f, 0.82f, 0.55f);
-            l.intensity = 0.9f;
-            l.range = 2.2f;
-            l.shadows = LightShadows.None;
-            SetLightLayers(l, LitLayers);
-            foreach (Transform t in car.GetComponentsInChildren<Transform>()) t.gameObject.isStatic = true;
-        }
 
         /// <summary>
         /// The facade above the doorway (3.4..6 m) with one upstairs window: a shallow, dimly lit room behind it

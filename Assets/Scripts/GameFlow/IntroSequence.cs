@@ -83,8 +83,6 @@ namespace LastSignal.GameFlow
 
         [Header("Sound")]
         [SerializeField] private AudioSource music;
-        [Tooltip("The family theme (the ending's music bed), first heard over the old photo.")]
-        [SerializeField] private AudioSource theme;
         [SerializeField] private AudioSource engine;
         [SerializeField] private AudioSource wiperSound;
 
@@ -333,7 +331,6 @@ namespace LastSignal.GameFlow
             if (controller != null) controller.MovementLocked = true;
             yield return Fade(fade, 0f, 1f, 2f);
             if (windowRain != null) StartCoroutine(FadeAudio(windowRain, 0f, 1f));
-            if (theme != null && theme.isPlaying) StartCoroutine(FadeAudio(theme, 0f, 3f));
             Cinematic(true);
             if (player != null) player.SetActive(false);
             if (music != null) { music.volume = 0f; music.Play(); StartCoroutine(FadeAudio(music, 0.35f * Save.GameSettings.AmbienceVolume, 2f)); }
@@ -454,7 +451,6 @@ namespace LastSignal.GameFlow
             if (photoCard != null) StartCoroutine(RaiseCard());
             photoSeen = true;
             photoOpenedAt = Time.unscaledTime;
-            if (theme != null && !theme.isPlaying) { theme.volume = 0f; theme.Play(); StartCoroutine(FadeAudio(theme, 0.4f * Save.GameSettings.AmbienceVolume, 4f)); }
         }
 
         public void ClosePhoto()

@@ -99,8 +99,7 @@ namespace LastSignal.EditorTools
 
             // ------------------------------------------------------------------ lights
             Transform lights = Group(null, "Lighting");
-            // The light hangs under the lamp head at the end of the arm (see StreetLamp).
-            PointLight(lights, "StreetLamp", new Vector3(2.2f - 1.0f, 3.95f, -10f), new Color(0.6f, 0.7f, 1f), 1.4f, 10f);
+            // The street lamp's own lights are part of the lamp (StreetLamp: they stutter with it).
             PointLight(lights, "EmergencyLight", new Vector3(0f, 2.9f, -2f), new Color(1f, 0.15f, 0.1f), 0.7f, 7f);
             Light foyerLight = PointLight(lights, "Foyer", new Vector3(0f, 2.9f, -2f), new Color(1f, 0.9f, 0.75f), 1.5f, 9f);
             Light receptionLight = PointLight(lights, "Reception", new Vector3(-8f, 2.9f, -2f), new Color(1f, 0.9f, 0.75f), 1.3f, 9f);
@@ -266,14 +265,13 @@ namespace LastSignal.EditorTools
             On(entrance, "onEnter", events.Say, "ALEX|Power's out. I need some light.|3");
             On(entrance, "onEnter", frontDoor.SwingShut); // the door slowly swings shut behind him
 
-            // Walking up to the building: for a moment someone stands at the lit upstairs window. Then nobody.
-            ShadowSighting window = ScareKit.Apparition(story, "l1_window_figure", ScareKit.EchoShadow(), new Vector3(-5f, 3.42f, -5.05f), 180f,
-                glimpse: true, maxSeconds: 9f, vanishDistance: 0.5f);
-            SetValue(window, "seenAngle", 9f);
-            SetValue(window, "seenDelay", 0.6f);
-            TriggerZone approach = Trigger<TriggerZone>(story, "Zone_Approach", new Vector3(-1f, 1f, -12.2f), new Vector3(20f, 2f, 1.6f));
-            SetValue(approach, "id", "l1_approach");
-            On(approach, "onEnter", window.Show);
+            // Arriving: Alex's eyes are drawn up to the lit window, where someone stands watching him, then walks
+            // away past the second window. No control until his view comes back (ArrivalCutscene).
+            WindowWatcher upstairs = WindowFigure(story);
+            Transform firstWindow = Marker(story, "FirstWindowView", new Vector3(UpperWindowX[0], 4.65f, -6.05f), 0f);
+            var arrival = story.gameObject.AddComponent<ArrivalCutscene>();
+            Set(arrival, "watcher", upstairs);
+            Set(arrival, "firstWindow", firstWindow);
 
             TriggerZone receptionRadio = Trigger<TriggerZone>(story, "Zone_ReceptionRadio", new Vector3(-8f, 1f, -1f), new Vector3(7f, 2f, 5f));
             SetValue(receptionRadio, "id", "l1_reception_radio");
@@ -338,11 +336,7 @@ namespace LastSignal.EditorTools
             Set(level, "startSpawn", spawn);
             SetValue(level, "startObjectiveId", "l1_enter");
             SetValue(level, "startObjectiveText", "Find the source of the transmission. Get inside the station.");
-            SetLines(level, "introLines", new[]
-            {
-                L("ALEX", "Ten years... I thought I'd never see this place again.", 4f),
-                L("ALEX", "Northpoint.", 2f),
-            });
+            SetLines(level, "introLines", new SubtitleLine[0]); // ArrivalCutscene speaks the arrival
             SetValue(level, "flashlightDrain", false);
             SetValue(level, "ambience", Ambience.RainAndWind);
             SetValue(level, "ambienceVolume", 0.95f);
@@ -364,38 +358,124 @@ namespace LastSignal.EditorTools
         }
         // ------------------------------------------------------------------ arrival: the car, the upstairs window
 
+        /// <summary>Centres (x) of the two upstairs windows, left of the station's name board.</summary>
+        private static readonly float[] UpperWindowX = { -5f, -3.3f };
+        private static readonly float[] UpperWindowWidth = { 1.4f, 1.1f };
+
         /// <summary>
-        /// The facade above the doorway (3.4..6 m) with one upstairs window: a shallow, dimly lit room behind it
-        /// where a figure is glimpsed as Alex walks up (see Zone_Approach).
+        /// The facade above the doorway (3.4..6 m) with two upstairs windows and the room behind them: a dim cold
+        /// light at the back so whoever stands there shows as a black shape against it.
         /// </summary>
         private static void UpperFacade(Transform env, Material facade)
         {
-            const float z = -6f, y0 = 3.4f, y1 = 6f, wx0 = -5.7f, wx1 = -4.3f, wy0 = 4.0f, wy1 = 5.3f, t = WallThickness;
-            Box(env, "Facade_Upper", new Vector3((-12f + wx0) / 2f, (y0 + y1) / 2f, z), new Vector3(wx0 + 12f, y1 - y0, t), facade);
-            Box(env, "Facade_Upper", new Vector3((wx1 + 12f) / 2f, (y0 + y1) / 2f, z), new Vector3(12f - wx1, y1 - y0, t), facade);
-            Box(env, "Facade_UnderWindow", new Vector3((wx0 + wx1) / 2f, (y0 + wy0) / 2f, z), new Vector3(wx1 - wx0, wy0 - y0, t), facade);
-            Box(env, "Facade_OverWindow", new Vector3((wx0 + wx1) / 2f, (wy1 + y1) / 2f, z), new Vector3(wx1 - wx0, y1 - wy1, t), facade);
+            const float z = -6f, y0 = 3.4f, y1 = 6f, wy0 = 4.0f, wy1 = 5.3f, t = WallThickness;
+            float a0 = UpperWindowX[0] - UpperWindowWidth[0] / 2f, a1 = UpperWindowX[0] + UpperWindowWidth[0] / 2f;
+            float b0 = UpperWindowX[1] - UpperWindowWidth[1] / 2f, b1 = UpperWindowX[1] + UpperWindowWidth[1] / 2f;
+            // Solid wall either side of and between the windows, and above and below them.
+            Box(env, "Facade_Upper", new Vector3((-12f + a0) / 2f, (y0 + y1) / 2f, z), new Vector3(a0 + 12f, y1 - y0, t), facade);
+            Box(env, "Facade_Upper", new Vector3((a1 + b0) / 2f, (y0 + y1) / 2f, z), new Vector3(b0 - a1, y1 - y0, t), facade);
+            Box(env, "Facade_Upper", new Vector3((b1 + 12f) / 2f, (y0 + y1) / 2f, z), new Vector3(12f - b1, y1 - y0, t), facade);
             Material frame = Mat("UpperWindowFrame", new Color(0.25f, 0.25f, 0.24f), smoothness: 0.2f);
-            Box(env, "WindowFrame", new Vector3(wx0 + 0.04f, (wy0 + wy1) / 2f, z - 0.08f), new Vector3(0.08f, wy1 - wy0, 0.06f), frame, collider: false);
-            Box(env, "WindowFrame", new Vector3(wx1 - 0.04f, (wy0 + wy1) / 2f, z - 0.08f), new Vector3(0.08f, wy1 - wy0, 0.06f), frame, collider: false);
-            Box(env, "WindowFrame", new Vector3((wx0 + wx1) / 2f, wy0 + 0.04f, z - 0.08f), new Vector3(wx1 - wx0, 0.08f, 0.06f), frame, collider: false);
-            Box(env, "WindowFrame", new Vector3((wx0 + wx1) / 2f, wy1 - 0.04f, z - 0.08f), new Vector3(wx1 - wx0, 0.08f, 0.06f), frame, collider: false);
-            Box(env, "WindowFrame", new Vector3((wx0 + wx1) / 2f, (wy0 + wy1) / 2f, z - 0.08f), new Vector3(wx1 - wx0, 0.05f, 0.04f), frame, collider: false);
-            Material pane = Mat("UpperWindowGlass", new Color(0.3f, 0.34f, 0.4f, 0.22f), smoothness: 0.95f);
+            Material pane = Mat("UpperWindowGlass", new Color(0.3f, 0.34f, 0.4f, 0.12f), smoothness: 0.95f);
             EndingBuilder.MakeTransparent(pane);
-            Box(env, "WindowGlass", new Vector3((wx0 + wx1) / 2f, (wy0 + wy1) / 2f, z - 0.06f), new Vector3(wx1 - wx0 - 0.08f, wy1 - wy0 - 0.08f, 0.01f), pane, collider: false);
-            // The little room behind: dark surfaces and a faint cold light at the back.
-            Material dark = Mat("UpperRoom", new Color(0.12f, 0.12f, 0.13f));
-            Box(env, "UpperRoom_Floor", new Vector3(-5f, y0 + 0.01f, -5f), new Vector3(2f, 0.02f, 1.8f), dark, collider: false);
-            Box(env, "UpperRoom_Back", new Vector3(-5f, (y0 + y1) / 2f, -4.05f), new Vector3(2f, y1 - y0, 0.1f), dark, collider: false);
-            Box(env, "UpperRoom_Side", new Vector3(-6.05f, (y0 + y1) / 2f, -5f), new Vector3(0.1f, y1 - y0, 1.9f), dark, collider: false);
-            Box(env, "UpperRoom_Side", new Vector3(-3.95f, (y0 + y1) / 2f, -5f), new Vector3(0.1f, y1 - y0, 1.9f), dark, collider: false);
-            Box(env, "UpperRoom_Top", new Vector3(-5f, y1 - 0.05f, -5f), new Vector3(2f, 0.1f, 1.9f), dark, collider: false);
-            Light glow = PointLight(env, "UpperWindowGlow", new Vector3(-5f, 4.9f, -4.35f), new Color(0.55f, 0.62f, 0.8f), 0.22f, 3f);
-            glow.gameObject.AddComponent<FlickerLight>();
+            for (int i = 0; i < 2; i++)
+            {
+                float x0 = UpperWindowX[i] - UpperWindowWidth[i] / 2f, x1 = UpperWindowX[i] + UpperWindowWidth[i] / 2f, cx = UpperWindowX[i];
+                Box(env, "Facade_UnderWindow", new Vector3(cx, (y0 + wy0) / 2f, z), new Vector3(x1 - x0, wy0 - y0, t), facade);
+                Box(env, "Facade_OverWindow", new Vector3(cx, (wy1 + y1) / 2f, z), new Vector3(x1 - x0, y1 - wy1, t), facade);
+                Box(env, "WindowFrame", new Vector3(x0 + 0.04f, (wy0 + wy1) / 2f, z - 0.08f), new Vector3(0.08f, wy1 - wy0, 0.06f), frame, collider: false);
+                Box(env, "WindowFrame", new Vector3(x1 - 0.04f, (wy0 + wy1) / 2f, z - 0.08f), new Vector3(0.08f, wy1 - wy0, 0.06f), frame, collider: false);
+                Box(env, "WindowFrame", new Vector3(cx, wy0 + 0.04f, z - 0.08f), new Vector3(x1 - x0, 0.08f, 0.06f), frame, collider: false);
+                Box(env, "WindowFrame", new Vector3(cx, wy1 - 0.04f, z - 0.08f), new Vector3(x1 - x0, 0.08f, 0.06f), frame, collider: false);
+                Box(env, "WindowFrame", new Vector3(cx, (wy0 + wy1) / 2f, z - 0.08f), new Vector3(x1 - x0, 0.04f, 0.04f), frame, collider: false);
+                Box(env, "WindowGlass", new Vector3(cx, (wy0 + wy1) / 2f, z - 0.06f), new Vector3(x1 - x0 - 0.08f, wy1 - wy0 - 0.08f, 0.01f), pane, collider: false);
+            }
+            // The room behind: a long, bare upstairs room running behind both windows and on behind the name board.
+            Material wall = Mat("UpperRoom", new Color(0.32f, 0.33f, 0.35f));
+            Material dark = Mat("UpperRoomDark", new Color(0.1f, 0.1f, 0.11f));
+            float rx0 = -6.2f, rx1 = -0.6f, rz1 = -4.1f;
+            Box(env, "UpperRoom_Floor", new Vector3((rx0 + rx1) / 2f, y0 + 0.01f, (z + rz1) / 2f), new Vector3(rx1 - rx0, 0.02f, rz1 - z), dark, collider: false);
+            Box(env, "UpperRoom_Back", new Vector3((rx0 + rx1) / 2f, (y0 + y1) / 2f, rz1 + 0.05f), new Vector3(rx1 - rx0, y1 - y0, 0.1f), wall, collider: false);
+            Box(env, "UpperRoom_End", new Vector3(rx0 - 0.05f, (y0 + y1) / 2f, (z + rz1) / 2f), new Vector3(0.1f, y1 - y0, rz1 - z), dark, collider: false);
+            Box(env, "UpperRoom_End", new Vector3(rx1 + 0.05f, (y0 + y1) / 2f, (z + rz1) / 2f), new Vector3(0.1f, y1 - y0, rz1 - z), dark, collider: false);
+            Box(env, "UpperRoom_Top", new Vector3((rx0 + rx1) / 2f, y1 - 0.05f, (z + rz1) / 2f), new Vector3(rx1 - rx0, 0.1f, rz1 - z), dark, collider: false);
+            // A cold light washing the back wall behind each window: whoever stands there is a black shape against it.
+            for (int i = 0; i < 2; i++)
+                PointLight(env, "UpperRoomLight", new Vector3(UpperWindowX[i], 4.9f, -4.4f), new Color(0.62f, 0.7f, 0.92f), 0.75f, 2.6f);
         }
 
-            // ------------------------------------------------------------------ street lamp
+        /// <summary>
+        /// Whoever is upstairs: a slight, dark, faceless figure (the size of a young woman, or not) that stands at the
+        /// first window, then walks the length of the room and out of sight past the second.
+        /// </summary>
+        private static WindowWatcher WindowFigure(Transform story)
+        {
+            Transform holder = Group(story, "WindowWatcher");
+            GameObject model = AssetDatabase.LoadAssetAtPath<GameObject>(GamePrefabs.EchoModelPath);
+            var figure = (GameObject)PrefabUtility.InstantiatePrefab(model);
+            PrefabUtility.UnpackPrefabInstance(figure, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+            figure.name = "Figure";
+            figure.transform.SetParent(holder, false);
+            figure.transform.localScale = Vector3.one * 0.9f;
+            Material black = Mat("WatcherSilhouette", new Color(0.012f, 0.012f, 0.015f), smoothness: 0.1f);
+            foreach (SkinnedMeshRenderer smr in figure.GetComponentsInChildren<SkinnedMeshRenderer>())
+            {
+                var mats = new Material[smr.sharedMaterials.Length];
+                for (int i = 0; i < mats.Length; i++) mats[i] = black;
+                smr.sharedMaterials = mats;
+                smr.updateWhenOffscreen = true;
+            }
+            Animator anim = figure.GetComponent<Animator>();
+            if (anim == null) anim = figure.AddComponent<Animator>();
+            anim.runtimeAnimatorController = WatcherController();
+            anim.applyRootMotion = false;
+            anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            // Close to the glass (and a step up) so the sill hides little of it from the yard below.
+            Transform watch = Marker(holder, "WatchPoint", new Vector3(UpperWindowX[0], 3.62f, -5.55f), 0f);
+            Transform exit = Marker(holder, "ExitPoint", new Vector3(-1.1f, 3.62f, -5.55f), 0f);
+            var watcher = holder.gameObject.AddComponent<WindowWatcher>();
+            Set(watcher, "figure", figure.transform);
+            Set(watcher, "animator", anim);
+            Set(watcher, "watchPoint", watch);
+            Set(watcher, "exitPoint", exit);
+            return watcher;
+        }
+
+        /// <summary>Standing still (idle) or walking, by a Walking bool; the mannequin's own clips.</summary>
+        private static UnityEditor.Animations.AnimatorController WatcherController()
+        {
+            const string path = "Assets/Art/Models/Echo/WindowWatcher.controller";
+            var existing = AssetDatabase.LoadAssetAtPath<UnityEditor.Animations.AnimatorController>(path);
+            if (existing != null) return existing;
+            AnimationClip idle = null, walk = null;
+            foreach (Object o in AssetDatabase.LoadAllAssetsAtPath(GamePrefabs.EchoModelPath))
+            {
+                if (!(o is AnimationClip c)) continue;
+                if (c.name == "Idle_Loop" || c.name == "Rig|Idle_Loop") idle = c;
+                if (c.name == "Walk_Loop" || c.name == "Rig|Walk_Loop") walk = c;
+                if (walk == null && (c.name == "Walk_Formal_Loop" || c.name == "Rig|Walk_Formal_Loop")) walk = c;
+            }
+            var ctrl = UnityEditor.Animations.AnimatorController.CreateAnimatorControllerAtPath(path);
+            ctrl.AddParameter("Walking", AnimatorControllerParameterType.Bool);
+            var sm = ctrl.layers[0].stateMachine;
+            var still = sm.AddState("Idle");
+            still.motion = idle;
+            var go = sm.AddState("Walk");
+            go.motion = walk;
+            sm.defaultState = still;
+            var t1 = still.AddTransition(go);
+            t1.AddCondition(UnityEditor.Animations.AnimatorConditionMode.If, 0f, "Walking");
+            t1.hasExitTime = false;
+            t1.duration = 0.3f;
+            var t2 = go.AddTransition(still);
+            t2.AddCondition(UnityEditor.Animations.AnimatorConditionMode.IfNot, 0f, "Walking");
+            t2.hasExitTime = false;
+            t2.duration = 0.3f;
+            AssetDatabase.SaveAssets();
+            return ctrl;
+        }
+
+        // ------------------------------------------------------------------ street lamp
 
         /// <summary>
         /// An old street light: a tapered steel pole on a base, an arm reaching out over the path, and a lamp
@@ -420,7 +500,38 @@ namespace LastSignal.EditorTools
             Prim(lamp, "Bowl", PrimitiveType.Sphere, new Vector3(-1.0f, 4.02f, 0f), new Vector3(0.48f, 0.11f, 0.24f), glass, collider: false);
             foreach (Renderer r in lamp.GetComponentsInChildren<Renderer>())
                 r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
-            lamp.Find("Bowl").GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            Renderer bowl = lamp.Find("Bowl").GetComponent<Renderer>();
+            bowl.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+            // Its light: a wide cone down onto the path (with shadows) and a soft glow round the head.
+            var downGo = new GameObject("LampDown");
+            downGo.transform.SetParent(lamp, false);
+            downGo.transform.localPosition = new Vector3(-1.0f, 3.9f, 0f);
+            downGo.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            Light down = downGo.AddComponent<Light>();
+            down.type = LightType.Spot;
+            down.spotAngle = 125f;
+            down.innerSpotAngle = 55f;
+            down.range = 14f;
+            down.intensity = 26f;
+            down.color = new Color(0.82f, 0.87f, 1f);
+            down.shadows = LightShadows.Soft;
+            SetLightLayers(down, LitLayers);
+            Light glow = PointLight(lamp, "LampGlow", new Vector3(-1.0f, 3.75f, 0f), new Color(0.7f, 0.78f, 1f), 1.6f, 9f);
+            // Failing: it stutters every few seconds, buzzing.
+            var buzzGo = new GameObject("Buzz");
+            buzzGo.transform.SetParent(lamp, false);
+            buzzGo.transform.localPosition = new Vector3(-1.0f, 4.0f, 0f);
+            var buzz = buzzGo.AddComponent<AudioSource>();
+            buzz.playOnAwake = false;
+            buzz.spatialBlend = 1f;
+            buzz.rolloffMode = AudioRolloffMode.Linear;
+            buzz.minDistance = 1f;
+            buzz.maxDistance = 10f;
+            var failing = lamp.gameObject.AddComponent<FailingLamp>();
+            SetArray(failing, "lamps", new Object[] { down, glow });
+            Set(failing, "bowl", bowl);
+            Set(failing, "buzz", buzz);
         }
 
         // ------------------------------------------------------------------ stairs to the basement

@@ -26,7 +26,8 @@ namespace LastSignal.UI
         [SerializeField] private Image[] waves = new Image[0];
         [SerializeField] private CanvasGroup visibility;
         [SerializeField] private Color colour = new Color(1f, 0.08f, 0.05f);
-        [SerializeField] private Color waveColour = new Color(1f, 0.32f, 0.22f);
+        [Tooltip("Lit waves: a hotter, brighter red than the logo's own arcs underneath.")]
+        [SerializeField] private Color waveColour = new Color(1f, 0.62f, 0.5f);
 
         [Header("Timing")]
         [Tooltip("Pulse by itself every period seconds (main menu); off = only when Pulse() is called (intro).")]

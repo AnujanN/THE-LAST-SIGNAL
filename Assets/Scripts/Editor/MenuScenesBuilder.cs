@@ -79,7 +79,7 @@ namespace LastSignal.EditorTools
                 RectTransform wr = UIRect(logo, "Wave" + (i + 1));
                 float size = sprite.texture.width * s;
                 Place(wr, c, at, new Vector2(size, size));
-                waves[i] = UIImage(wr, sprite, new Color(1f, 0.32f, 0.22f, 0f), raycast: false);
+                waves[i] = UIImage(wr, sprite, new Color(1f, 0.55f, 0.45f, 0f), raycast: false);
             }
             RectTransform dotRect = UIRect(logo, "BeaconDot");
             Place(dotRect, c, at, new Vector2(30f * s / 0.7f, 30f * s / 0.7f));
@@ -100,27 +100,48 @@ namespace LastSignal.EditorTools
             return beacon;
         }
 
-        /// <summary>One wave (left and right arcs) as a soft white sprite: a bright core with a faint halo, fading at the ends.</summary>
+        /// <summary>
+        /// One wave (its left and right arcs) cut straight out of the logo's own pixels: the red pixels in a ring
+        /// around the tower light, between this wave and its neighbours, away from the tower below. Laid back over
+        /// the logo at the same scale, lighting it brightens exactly the arc that is drawn there.
+        /// </summary>
         private static Sprite WaveSprite(int index, float radius, float thickness, float reachDegrees)
         {
             string path = "Assets/Art/UI/Generated/LogoWave" + (index + 1) + ".png";
-            int n = Mathf.CeilToInt((radius + thickness * 2f + 4f) * 2f);
+            var logo = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            logo.LoadImage(System.IO.File.ReadAllBytes(LogoPath));
+            Color32[] src = logo.GetPixels32();
+            int lw = logo.width, lh = logo.height;
+            // Ring limits: halfway to the neighbouring waves (the light's own glow inside, open air outside).
+            float inner = index == 0 ? 42f : (WaveRadius[index - 1] + radius) / 2f;
+            float outer = index == WaveRadius.Length - 1 ? radius + 26f : (WaveRadius[index + 1] + radius) / 2f;
+            int half = Mathf.CeilToInt(WaveRadius[WaveRadius.Length - 1] + 30f);
+            int n = half * 2;
+            float bx = 814f, byTop = 110f; // the light, in logo pixels from the top-left
             var tex = new Texture2D(n, n, TextureFormat.RGBA32, false);
             var px = new Color[n * n];
-            float cx = n / 2f, cy = n / 2f;
             for (int y = 0; y < n; y++)
                 for (int x = 0; x < n; x++)
                 {
-                    float dx = x + 0.5f - cx, dy = y + 0.5f - cy;
-                    float d = Mathf.Sqrt(dx * dx + dy * dy);
-                    float off = Mathf.Abs(d - radius);
-                    float core = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(thickness * 0.35f, thickness * 0.55f, off));
-                    float halo = Mathf.Exp(-off * off / (thickness * thickness * 1.2f));
-                    float ang = Mathf.Atan2(Mathf.Abs(dy), Mathf.Abs(dx)) * Mathf.Rad2Deg;
-                    float ends = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(reachDegrees - 12f, reachDegrees, ang));
-                    float a = Mathf.Clamp01(core * 0.95f + halo * 0.4f) * ends;
+                    // Sprite pixel (x, y from the bottom) -> logo pixel (texture rows run from the bottom too).
+                    int lx = Mathf.RoundToInt(bx - half + x), lyFromTop = Mathf.RoundToInt(byTop + half - 1 - y);
+                    int ly = lh - 1 - lyFromTop;
+                    float a = 0f;
+                    if (lx >= 0 && lx < lw && ly >= 0 && ly < lh)
+                    {
+                        Color32 c = src[ly * lw + lx];
+                        float dx = lx - bx, dy = byTop - lyFromTop;
+                        float d = Mathf.Sqrt(dx * dx + dy * dy);
+                        float ang = Mathf.Atan2(Mathf.Abs(dy), Mathf.Abs(dx)) * Mathf.Rad2Deg;
+                        float red = c.r > 90 && c.r > c.g * 1.7f ? 1f : 0f;
+                        float band = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(inner - 3f, inner + 3f, d))
+                                   * (1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(outer - 3f, outer + 3f, d)));
+                        float side = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(62f, 72f, ang)); // not the tower below
+                        a = c.a / 255f * red * band * side;
+                    }
                     px[y * n + x] = new Color(1f, 1f, 1f, a);
                 }
+            Object.DestroyImmediate(logo);
             tex.SetPixels(px);
             tex.Apply();
             EnsureFolder("Assets/Art/UI/Generated");
@@ -132,6 +153,7 @@ namespace LastSignal.EditorTools
             imp.spriteImportMode = SpriteImportMode.Single;
             imp.alphaIsTransparency = true;
             imp.mipmapEnabled = false;
+            imp.textureCompression = TextureImporterCompression.Uncompressed;
             imp.SaveAndReimport();
             return AssetDatabase.LoadAssetAtPath<Sprite>(path);
         }

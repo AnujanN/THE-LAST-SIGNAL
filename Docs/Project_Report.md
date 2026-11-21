@@ -50,8 +50,11 @@ Then the drive: a forest road in the storm seen from the driver's seat (wipers, 
 between stations), the mast and its red beacon showing in a lightning flash, and the car stopping at the Northpoint gate.
 Level 1 starts beside the driver's door of the parked car (a right-hand-drive saloon built in code, `CarModel`: smooth
 body, wheel arches, tinted glass with the cabin inside) with the objective "Find the source of the
-transmission"; walking up to the building, someone stands for a moment at the lit upstairs window and is gone, and the front
-door swings shut behind Alex. The intro never shows The Echo and never says whether Maya is alive.
+transmission". Level 1 opens with one unbroken shot through Alex's eyes (`ArrivalCutscene`, no control, no HUD): his view
+turns and narrows onto the lit upstairs window, where a dark figure stands watching him; it turns and walks past the second
+window and out of sight while he says "Who is that?... Maya? Is that you?"; then his view widens back and play begins
+(once per run). The street lamp in the yard lights the path and never holds steady: it stutters and buzzes (`FailingLamp`).
+The front door swings shut behind Alex. The intro never shows The Echo and never says whether Maya is alive.
 The storm in Level 1 is a real outdoor downpour with separate thunder; it is loud in the yard and in the doorway and
 fades and goes muffled step by step the further Alex walks in from the entrance (`RainAmbience`), quieter still once
 the front door has swung shut, and almost gone in the basement.

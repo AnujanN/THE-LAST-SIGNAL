@@ -35,6 +35,7 @@ namespace LastSignal.Tests
         public IEnumerator SetUp()
         {
             Time.timeScale = 1f;
+            LastSignal.GameFlow.ArrivalCutscene.SkipForTests = true; // Level 1's opening shot takes control away
             yield return null;
             flow = GameFlowManager.Instance;
             Assert.IsNotNull(flow, "GameFlowManager should bootstrap automatically");

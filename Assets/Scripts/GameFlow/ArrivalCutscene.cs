@@ -16,8 +16,13 @@ namespace LastSignal.GameFlow
     [DefaultExecutionOrder(200)]
     public class ArrivalCutscene : MonoBehaviour
     {
-        /// <summary>Tests that walk Level 1 turn this off.</summary>
+        /// <summary>Tests that walk Level 1 turn this off (each test's set-up sets it again).</summary>
         public static bool SkipForTests;
+
+        // The editor keeps static values between Play sessions here (no domain reload), so a test run used to
+        // leave the shot switched off for the next normal play. Reset it every time play starts.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics() => SkipForTests = false;
 
         [SerializeField] private WindowWatcher watcher;
         [Tooltip("The middle of the first window (where the figure stands).")]

@@ -364,10 +364,12 @@ namespace LastSignal.GameFlow
             float[] along = PathLengths(out float total);
             if (car != null && drivePath.Length > 0) car.SetPositionAndRotation(drivePath[0].position, drivePath[0].rotation);
             if (roofRain != null) { roofRain.clip = PlaceholderClips.CarRain; roofRain.loop = true; roofRain.volume = 0.7f * Save.GameSettings.AmbienceVolume; roofRain.Play(); }
-            if (carRadio != null) { carRadio.clip = PlaceholderClips.Interference; carRadio.loop = true; carRadio.volume = 0.18f; carRadio.Play(); }
-            if (music != null) StartCoroutine(FadeAudio(music, 0.18f * Save.GameSettings.AmbienceVolume, 3f));
+            // Only the storm and the car on the drive: the radio is off and the title music fades away.
+            if (carRadio != null) carRadio.Stop();
+            SetText(carDial, "");
+            if (carRadioGlow != null) carRadioGlow.intensity = 0f;
+            if (music != null) StartCoroutine(FadeAudio(music, 0f, 3f));
             StartCoroutine(Fade(fade, 1f, 0f, 2.5f));
-            StartCoroutine(HuntCarRadio());
             lightningTimer = 5.5f;
             bool struck = false;
             for (float t = 0f; t < driveSeconds; t += Time.deltaTime)
@@ -387,17 +389,12 @@ namespace LastSignal.GameFlow
                 if (!struck && k > 0.55f) { struck = true; Strike(1f); } // the station shows in the lightning
                 yield return null;
             }
-            // Engine off: it idles, coughs and stops; the radio crackles and gives up; just the rain on the roof.
+            // Engine off: it idles, coughs and stops; just the rain on the roof.
             wipe = false;
             AudioClip off = PlaceholderClips.EngineOff;
             if (engine != null) StartCoroutine(FadeAudio(engine, 0f, 0.8f));
             if (off != null && wiperSound != null) wiperSound.PlayOneShot(off, 0.7f * Save.GameSettings.SfxVolume);
-            PlayOn(carRadio, PlaceholderClips.RadioCrackle, 0.6f);
-            yield return new WaitForSeconds(0.5f);
-            if (carRadio != null) carRadio.Stop();
-            SetText(carDial, "");
-            if (carRadioGlow != null) carRadioGlow.intensity = 0f;
-            yield return new WaitForSeconds(2.5f);
+            yield return new WaitForSeconds(3f);
         }
 
         private float[] PathLengths(out float total)

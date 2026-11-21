@@ -63,7 +63,12 @@ namespace LastSignal.EditorTools
             Road(env, roadStart - dir * 6f, new Vector3(stationFront.x, 0f, stationFront.z) - dir * 2f);
             Forest(env, roadStart, gate, dir, right);
             ClearRoad(env.Find("Trees"), roadStart - dir * 6f, gate, 5f); // the ending's treeline crosses the road
-            Gate(env, gate, dir, right);
+            // The station gate, shut, with chain-link running off into the trees (the same gate stands open in Level 1).
+            System.Func<Vector3, float> ground = q => EndingBuilder.H(q.x, q.z);
+            Vector3 gateAt = new Vector3(gate.x, ground(gate), gate.z);
+            GateKit.Gate(env, gateAt, Quaternion.LookRotation(dir), 0f);
+            GateKit.Fence(env, gateAt - right * (GateKit.HalfOpening + 0.25f), gateAt - right * 18f, 2.1f, ground, solid: false);
+            GateKit.Fence(env, gateAt + right * (GateKit.HalfOpening + 0.25f), gateAt + right * 18f, 2.1f, ground, solid: false);
             IntroDressing.ReflectorPosts(env, roadStart, gate - dir * 4f, right);
             IntroDressing.GroundMist(env, roadStart, gate, new Color(0.55f, 0.6f, 0.7f, 0.1f));
             Vector3 mid = (roadStart + gate) / 2f;
@@ -610,48 +615,6 @@ namespace LastSignal.EditorTools
                         }
                         foreach (Transform c in tree.GetComponentsInChildren<Transform>()) c.gameObject.isStatic = true;
                     }
-        }
-
-        /// <summary>The station gate across the road: concrete posts, a chained steel gate and the sign.</summary>
-        private static void Gate(Transform env, Vector3 at, Vector3 dir, Vector3 right)
-        {
-            Transform g = Group(env, "Gate");
-            g.position = new Vector3(at.x, EndingBuilder.H(at.x, at.z), at.z);
-            g.rotation = Quaternion.LookRotation(dir);
-            Material concrete = EndingBuilder.Textured("GatePost", "concrete_wall_004", new Color(0.5f, 0.5f, 0.48f), 0.1f);
-            Material steel = Mat("GateSteel", new Color(0.22f, 0.2f, 0.18f), smoothness: 0.35f);
-            foreach (float x in new[] { -3.3f, 3.3f })
-                Box(g, "Post", new Vector3(x, 1.1f, 0f), new Vector3(0.45f, 2.2f, 0.45f), concrete);
-            // Two leaves of steel bars, chained in the middle.
-            foreach (float sgn in new[] { -1f, 1f })
-            {
-                Box(g, "Rail", new Vector3(sgn * 1.55f, 1.6f, 0f), new Vector3(3.0f, 0.07f, 0.07f), steel, collider: false);
-                Box(g, "Rail", new Vector3(sgn * 1.55f, 0.35f, 0f), new Vector3(3.0f, 0.07f, 0.07f), steel, collider: false);
-                for (int i = 0; i < 9; i++)
-                    Box(g, "Bar", new Vector3(sgn * (0.12f + i * 0.35f), 0.95f, 0f), new Vector3(0.035f, 1.35f, 0.035f), steel, collider: false);
-            }
-            Box(g, "Chain", new Vector3(0f, 1.1f, -0.03f), new Vector3(0.12f, 0.22f, 0.04f), steel, collider: false);
-            // Chain-link fence running off into the trees.
-            Material fence = Mat("FenceWire", new Color(0.25f, 0.25f, 0.25f), smoothness: 0.3f);
-            foreach (float sgn in new[] { -1f, 1f })
-                for (int i = 0; i < 6; i++)
-                {
-                    float x = sgn * (3.3f + 2.5f * (i + 1));
-                    Box(g, "FencePost", new Vector3(x, 1.0f, 0f), new Vector3(0.08f, 2f, 0.08f), steel, collider: false);
-                    Box(g, "FenceTop", new Vector3(x - sgn * 1.25f, 1.95f, 0f), new Vector3(2.5f, 0.04f, 0.04f), fence, collider: false);
-                }
-            Box(g, "SignBoard", new Vector3(-1.55f, 1.1f, -0.06f), new Vector3(1.6f, 0.8f, 0.03f), Mat("SignWhite", new Color(0.7f, 0.68f, 0.62f)), collider: false);
-            var sign = new GameObject("SignText", typeof(RectTransform));
-            sign.transform.SetParent(g, false);
-            sign.transform.localPosition = new Vector3(-1.55f, 1.1f, -0.08f);
-            var tmp = sign.AddComponent<TextMeshPro>();
-            if (TMP_Settings.defaultFontAsset != null) tmp.font = TMP_Settings.defaultFontAsset;
-            tmp.text = "<b>NORTHPOINT RADIO</b>\n<size=70%>STATION CLOSED\nNO ENTRY</size>";
-            tmp.fontSize = 1.6f;
-            tmp.alignment = TextAlignmentOptions.Center;
-            tmp.color = new Color(0.55f, 0.08f, 0.06f);
-            tmp.textWrappingMode = TextWrappingModes.NoWrap;
-            ((RectTransform)sign.transform).sizeDelta = new Vector2(1.5f, 0.7f);
         }
 
         /// <summary>Markers every few metres along the lane at eye height, pitched to the slope of the road.</summary>

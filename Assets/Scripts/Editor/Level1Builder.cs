@@ -49,7 +49,12 @@ namespace LastSignal.EditorTools
             Slab(env, "Yard", -12f, -18f, 12f, -6f, 0f, ground);
             WallZ(env, "Fence_W", -12f, -18f, -6f, 2.5f, facade);
             WallZ(env, "Fence_E", 12f, -18f, -6f, 2.5f, facade);
-            WallX(env, "Fence_S", -18f, -12f, 12f, 2.5f, facade);
+            // The way in: Northpoint's gate (the same one the car stopped at in the intro), standing open where
+            // Alex pushed it, chain-link either side, and the forest road behind running off into the dark.
+            GateKit.Gate(env, new Vector3(YardGateX, 0f, -18f), Quaternion.identity, 74f);
+            GateKit.Fence(env, new Vector3(-12f, 0f, -18f), new Vector3(YardGateX - GateKit.HalfOpening - 0.25f, 0f, -18f), 2.4f, q => 0f, solid: true);
+            GateKit.Fence(env, new Vector3(YardGateX + GateKit.HalfOpening + 0.25f, 0f, -18f), new Vector3(12f, 0f, -18f), 2.4f, q => 0f, solid: true);
+            OutsideTheGate(env);
             Box(env, "Path", new Vector3(0f, 0.01f, -12f), new Vector3(2.2f, 0.02f, 12f), floor);
             StreetLamp(env, new Vector3(2.2f, 0f, -10f), metal);
             // Alex's car (right-hand drive), parked where he stopped in the rain, lamps off.
@@ -272,6 +277,11 @@ namespace LastSignal.EditorTools
             var arrival = story.gameObject.AddComponent<ArrivalCutscene>();
             Set(arrival, "watcher", upstairs);
             Set(arrival, "firstWindow", firstWindow);
+            // Walking back to the open gate: he won't leave.
+            TriggerZone leave = Trigger<TriggerZone>(story, "Zone_GateBack", new Vector3(YardGateX, 1f, -17.2f), new Vector3(GateKit.HalfOpening * 2f, 2f, 1.2f));
+            SetValue(leave, "id", "l1_gate_back");
+            SetValue(leave, "once", false);
+            On(leave, "onEnter", events.Say, "ALEX|Not yet. I have to know who that was.|3");
 
             TriggerZone receptionRadio = Trigger<TriggerZone>(story, "Zone_ReceptionRadio", new Vector3(-8f, 1f, -1f), new Vector3(7f, 2f, 5f));
             SetValue(receptionRadio, "id", "l1_reception_radio");
@@ -356,6 +366,50 @@ namespace LastSignal.EditorTools
             SaveScene(scene, ScenePath);
             Debug.Log("[Level1Builder] Built " + ScenePath);
         }
+        /// <summary>The middle of the yard's gateway (in line with where Alex parked).</summary>
+        private const float YardGateX = -3.6f;
+
+        /// <summary>
+        /// Beyond the gate: the wet forest road Alex drove in on, the verge and the firs, fading into the fog. You can
+        /// see out but not leave: an unseen barrier fills the gateway, and Alex won't go back.
+        /// </summary>
+        private static void OutsideTheGate(Transform env)
+        {
+            Transform outside = Group(env, "OutsideTheGate");
+            Material asphalt = EndingBuilder.Textured("IntroRoad", "asphalt_02", new Color(0.17f, 0.18f, 0.2f), 0.72f);
+            Material verge = EndingBuilder.Textured("Verge", "aerial_grass_rock", new Color(0.25f, 0.27f, 0.22f), 0.15f);
+            Slab(outside, "Road", YardGateX - 2.6f, -60f, YardGateX + 2.6f, -18f, 0.005f, asphalt);
+            Slab(outside, "Verge", -40f, -60f, 36f, -18f, -0.01f, verge);
+            Material bark = Mat("Bark", new Color(0.16f, 0.13f, 0.1f), smoothness: 0.05f);
+            Material needles = Mat("Needles", new Color(0.07f, 0.12f, 0.08f), smoothness: 0.05f);
+            Mesh cone = EndingBuilder.Cone();
+            var rng = new System.Random(47);
+            float R() => (float)rng.NextDouble();
+            for (int k = 0; k < 46; k++)
+            {
+                float side = k % 2 == 0 ? -1f : 1f;
+                float x = YardGateX + side * (4.2f + R() * 16f), z = -21f - R() * 36f;
+                float s = 0.8f + R() * 0.7f;
+                Transform tree = Group(outside, "Fir", new Vector3(x, -0.1f, z));
+                tree.localRotation = Quaternion.Euler(0f, R() * 360f, 0f);
+                Prim(tree, "Trunk", PrimitiveType.Cylinder, new Vector3(0f, 2f * s, 0f), new Vector3(0.28f * s, 2f * s, 0.28f * s), bark, collider: false);
+                for (int t = 0; t < 5; t++)
+                {
+                    var tier = new GameObject("Tier");
+                    tier.transform.SetParent(tree, false);
+                    float w = (3.0f - t * 0.5f) * s;
+                    tier.transform.localPosition = new Vector3(0f, (1.8f + t * 1.7f) * s, 0f);
+                    tier.transform.localScale = new Vector3(w, 2.8f * s, w);
+                    tier.AddComponent<MeshFilter>().sharedMesh = cone;
+                    tier.AddComponent<MeshRenderer>().sharedMaterial = needles;
+                }
+                foreach (Transform c in tree.GetComponentsInChildren<Transform>()) c.gameObject.isStatic = true;
+            }
+            // Can't walk back out through the open gate.
+            GameObject block = Box(outside, "GateBarrier", new Vector3(YardGateX, 1.5f, -18.3f), new Vector3(GateKit.HalfOpening * 2f, 3f, 0.3f), asphalt);
+            block.GetComponent<Renderer>().enabled = false;
+        }
+
         // ------------------------------------------------------------------ arrival: the car, the upstairs window
 
         /// <summary>Centres (x) of the two upstairs windows, left of the station's name board.</summary>

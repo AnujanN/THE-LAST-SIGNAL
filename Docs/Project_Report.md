@@ -54,7 +54,8 @@ transmission". Level 1 opens with one unbroken shot through Alex's eyes (`Arriva
 turns and narrows onto the lit upstairs window, where a dark figure stands watching him; it turns and walks past the second
 window and out of sight while he says "Who is that?... Maya? Is that you?"; then his view widens back and play begins
 (once per run). The street lamp in the yard lights the path and never holds steady: it stutters and buzzes (`FailingLamp`).
-The front door swings shut behind Alex. The intro never shows The Echo and never says whether Maya is alive.
+The yard's back is Northpoint's gate (`GateKit`, the same gate the car stops at in the intro) standing open where Alex
+drove in, with chain-link fencing and the forest road beyond; he won't go back out. The front door swings shut behind Alex. The intro never shows The Echo and never says whether Maya is alive.
 The storm in Level 1 is a real outdoor downpour with separate thunder; it is loud in the yard and in the doorway and
 fades and goes muffled step by step the further Alex walks in from the entrance (`RainAmbience`), quieter still once
 the front door has swung shut, and almost gone in the basement.
@@ -66,7 +67,7 @@ shadows with soft focus outside for the flat, cold and wet for the drive. The dr
 lightning lights up, a forked bolt over the hills, mist along the road, headlight beams in the rain, reflector posts,
 lit gauges and a charm swinging from the mirror. Sound: a real wall clock, rain on the glass, the radio; no music over the photo; the title (no subtitle) comes in on a
 burst of static, the game's logo, the light on top of its tower a red beacon blinking with a radio transmitter pulse (`TitleBeacon`;
-the main menu shows the same logo, blinking silently; the menu has no credits page); in the car (right-hand drive, keeping left), the engine, the wipers
+the main menu shows the same logo, blinking silently; the menu has no credits page); in the car (right-hand drive, keeping left; radio off, no music), the engine, the wipers
 on each sweep, rain on the roof, thunder, and the engine idling and switching off at the gate.
 
 Ending: sunrise epilogue at Maya's memorial — *"I heard you this time, Maya. Goodbye."* — then THE END. No sequel hook.

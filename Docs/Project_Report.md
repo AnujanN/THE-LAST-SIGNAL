@@ -51,7 +51,8 @@ between stations), the mast and its red beacon showing in a lightning flash, and
 Level 1 starts beside the driver's door of the parked car (a right-hand-drive saloon built in code, `CarModel`: smooth
 body, wheel arches, tinted glass with the cabin inside) with the objective "Find the source of the
 transmission". Level 1 opens with one unbroken shot through Alex's eyes (`ArrivalCutscene`, no control, no HUD): his view
-turns and narrows onto the lit upstairs window, where a dark figure stands watching him; it turns and walks past the second
+turns and narrows onto the lit upstairs window, where a dark figure stands watching him (the outline of a young woman,
+long hair and a long dress, seen through a net curtain: it could be Maya, or not); it turns and walks past the second
 window and out of sight while he says "Who is that?... Maya? Is that you?"; then his view widens back and play begins
 (once per run). The street lamp in the yard lights the path and never holds steady: it stutters and buzzes (`FailingLamp`).
 The yard's back is Northpoint's gate (`GateKit`, the same gate the car stops at in the intro) standing open where Alex

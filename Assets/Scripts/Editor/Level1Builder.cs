@@ -432,6 +432,7 @@ namespace LastSignal.EditorTools
             Material frame = Mat("UpperWindowFrame", new Color(0.25f, 0.25f, 0.24f), smoothness: 0.2f);
             Material pane = Mat("UpperWindowGlass", new Color(0.3f, 0.34f, 0.4f, 0.12f), smoothness: 0.95f);
             EndingBuilder.MakeTransparent(pane);
+            Material netCurtain = UnlitMat("NetCurtain", new Color(0.6f, 0.64f, 0.72f, 0.2f), transparent: true);
             for (int i = 0; i < 2; i++)
             {
                 float x0 = UpperWindowX[i] - UpperWindowWidth[i] / 2f, x1 = UpperWindowX[i] + UpperWindowWidth[i] / 2f, cx = UpperWindowX[i];
@@ -443,6 +444,16 @@ namespace LastSignal.EditorTools
                 Box(env, "WindowFrame", new Vector3(cx, wy1 - 0.04f, z - 0.08f), new Vector3(x1 - x0, 0.08f, 0.06f), frame, collider: false);
                 Box(env, "WindowFrame", new Vector3(cx, (wy0 + wy1) / 2f, z - 0.08f), new Vector3(x1 - x0, 0.04f, 0.04f), frame, collider: false);
                 Box(env, "WindowGlass", new Vector3(cx, (wy0 + wy1) / 2f, z - 0.06f), new Vector3(x1 - x0 - 0.08f, wy1 - wy0 - 0.08f, 0.01f), pane, collider: false);
+                // A thin net curtain just inside: whoever stands behind it is a shape, never a face.
+                int folds = Mathf.CeilToInt((x1 - x0) / 0.2f);
+                float fw = (x1 - x0 - 0.06f) / folds;
+                for (int k = 0; k < folds; k++)
+                {
+                    GameObject fold = Box(env, "NetCurtain", new Vector3(x0 + 0.03f + fw * (k + 0.5f), (wy0 + wy1) / 2f + 0.02f, z + 0.22f + (k % 2) * 0.03f),
+                        new Vector3(fw * 1.12f, wy1 - wy0 + 0.04f, 0.004f), netCurtain, collider: false);
+                    fold.transform.localRotation = Quaternion.Euler(0f, k % 2 == 0 ? 12f : -12f, 0f);
+                    fold.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                }
             }
             // The room behind: a long, bare upstairs room running behind both windows and on behind the name board.
             Material wall = Mat("UpperRoom", new Color(0.32f, 0.33f, 0.35f));
@@ -479,6 +490,7 @@ namespace LastSignal.EditorTools
                 smr.sharedMaterials = mats;
                 smr.updateWhenOffscreen = true;
             }
+            DressAsGirl(figure.transform, black, out Transform[] upperArms, out Transform[] forearms);
             Animator anim = figure.GetComponent<Animator>();
             if (anim == null) anim = figure.AddComponent<Animator>();
             anim.runtimeAnimatorController = WatcherController();
@@ -492,7 +504,96 @@ namespace LastSignal.EditorTools
             Set(watcher, "animator", anim);
             Set(watcher, "watchPoint", watch);
             Set(watcher, "exitPoint", exit);
+            SetArray(watcher, "upperArms", upperArms);
+            SetArray(watcher, "forearms", forearms);
             return watcher;
+        }
+
+        /// <summary>
+        /// Turns the mannequin into the outline of a young woman (so nobody can say it is not Maya): long hair over the
+        /// shoulders and down the back, a long loose dress to the ankles hiding the legs, and wide sleeves past the hands.
+        /// All pitch black and fixed to the bones, built in the model's rest pose (it stands at the origin here).
+        /// </summary>
+        private static void DressAsGirl(Transform figure, Material black, out Transform[] upperArms, out Transform[] forearms)
+        {
+            Transform Bone(string n)
+            {
+                foreach (Transform t in figure.GetComponentsInChildren<Transform>(true)) if (t.name == n) return t;
+                return null;
+            }
+            Transform head = Bone("DEF-head"), hips = Bone("DEF-hips"), chest = Bone("DEF-spine.002");
+            upperArms = new[] { Bone("DEF-upper_arm.L"), Bone("DEF-upper_arm.R") };
+            forearms = new[] { Bone("DEF-forearm.L"), Bone("DEF-forearm.R") };
+            Transform[] hands = { Bone("DEF-hand.L"), Bone("DEF-hand.R") };
+            Vector3 back = figure.forward;   // the model faces its -Z
+            void Piece(PrimitiveType type, Transform bone, Vector3 worldPos, Vector3 scale, Quaternion worldRot, string name)
+            {
+                if (bone == null) return;
+                GameObject g = GameObject.CreatePrimitive(type);
+                g.name = name;
+                Object.DestroyImmediate(g.GetComponent<Collider>());
+                g.GetComponent<Renderer>().sharedMaterial = black;
+                g.transform.SetPositionAndRotation(worldPos, worldRot);
+                g.transform.localScale = scale;
+                g.transform.SetParent(bone, true);
+            }
+            if (head != null)
+            {
+                Vector3 h = head.position;
+                // Hair: a full crown, a long fall down the back, and two locks over the shoulders.
+                Piece(PrimitiveType.Sphere, head, h + Vector3.up * 0.11f + back * 0.015f, new Vector3(0.21f, 0.23f, 0.23f), Quaternion.identity, "HairCrown");
+                Piece(PrimitiveType.Capsule, head, h + Vector3.down * 0.12f + back * 0.07f, new Vector3(0.24f, 0.27f, 0.09f), Quaternion.identity, "HairBack");
+                foreach (float x in new[] { -0.085f, 0.085f })
+                    Piece(PrimitiveType.Capsule, head, h + new Vector3(x, -0.09f, 0f) - back * 0.02f, new Vector3(0.075f, 0.18f, 0.07f), Quaternion.Euler(0f, 0f, x > 0f ? 4f : -4f), "HairLock");
+            }
+            if (chest != null)
+                Piece(PrimitiveType.Capsule, chest, chest.position + Vector3.down * 0.02f, new Vector3(0.29f, 0.2f, 0.19f), Quaternion.identity, "Bodice");
+            if (hips != null)
+            {
+                // A long, slightly flared dress from the waist to the ankles.
+                var skirt = new GameObject("Skirt");
+                skirt.AddComponent<MeshFilter>().sharedMesh = Frustum(0.15f, 0.34f, 0.86f, 18);
+                skirt.AddComponent<MeshRenderer>().sharedMaterial = black;
+                skirt.transform.position = new Vector3(hips.position.x, hips.position.y + 0.12f, hips.position.z);
+                skirt.transform.SetParent(hips, true);
+            }
+            // Wide sleeves from the shoulder to past the hand (it never shows a hand).
+            for (int i = 0; i < 2; i++)
+            {
+                if (upperArms[i] == null || forearms[i] == null || hands[i] == null) continue;
+                Vector3 a = upperArms[i].position, b = forearms[i].position, c = hands[i].position + (hands[i].position - b).normalized * 0.09f;
+                Piece(PrimitiveType.Capsule, upperArms[i], (a + b) / 2f, new Vector3(0.11f, Vector3.Distance(a, b) / 2f + 0.03f, 0.11f), Quaternion.FromToRotation(Vector3.up, b - a), "Sleeve");
+                Piece(PrimitiveType.Capsule, forearms[i], (b + c) / 2f, new Vector3(0.13f, Vector3.Distance(b, c) / 2f + 0.03f, 0.13f), Quaternion.FromToRotation(Vector3.up, c - b), "Cuff");
+            }
+            foreach (Renderer r in figure.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+
+        /// <summary>An open cone from radius top (at y 0) down to radius bottom (at y -height), with a base.</summary>
+        private static Mesh Frustum(float top, float bottom, float height, int seg)
+        {
+            var v = new System.Collections.Generic.List<Vector3>();
+            var tri = new System.Collections.Generic.List<int>();
+            for (int i = 0; i <= seg; i++)
+            {
+                float a = i / (float)seg * Mathf.PI * 2f;
+                Vector3 d = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+                v.Add(d * top);
+                v.Add(d * bottom + Vector3.down * height);
+                if (i < seg)
+                {
+                    int k = i * 2;
+                    tri.AddRange(new[] { k, k + 2, k + 1, k + 1, k + 2, k + 3 });
+                }
+            }
+            int centre = v.Count;
+            v.Add(Vector3.down * height);
+            for (int i = 0; i < seg; i++) tri.AddRange(new[] { centre, i * 2 + 1, i * 2 + 3 });
+            var m = new Mesh { name = "Skirt" };
+            m.SetVertices(v);
+            m.SetTriangles(tri, 0);
+            m.RecalculateNormals();
+            m.RecalculateBounds();
+            return m;
         }
 
         /// <summary>Standing still (idle) or walking, by a Walking bool; the mannequin's own clips.</summary>

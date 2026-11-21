@@ -15,6 +15,9 @@ namespace LastSignal.Environment
         [SerializeField] private Transform watchPoint;
         [Tooltip("Where it walks to (past the second window, out of sight); it disappears there.")]
         [SerializeField] private Transform exitPoint;
+        [Tooltip("Arm bones: they are made to hang straight down, limp, whatever the animation does.")]
+        [SerializeField] private Transform[] upperArms = new Transform[0];
+        [SerializeField] private Transform[] forearms = new Transform[0];
         [SerializeField] private float walkSpeed = 1.05f;
         [SerializeField] private float turnSeconds = 0.6f;
 
@@ -58,6 +61,31 @@ namespace LastSignal.Environment
         {
             walking = false;
             if (figure != null) figure.gameObject.SetActive(false);
+        }
+
+        /// <summary>Arms hanging limp at the sides (after the animation has posed the bones this frame).</summary>
+        private void LateUpdate()
+        {
+            if (figure == null || !figure.gameObject.activeSelf || Time.deltaTime <= 0f) return;
+            Vector3 down = Vector3.down, front = -figure.forward; // the model faces its -Z
+            for (int i = 0; i < upperArms.Length && i < forearms.Length; i++)
+            {
+                Transform upper = upperArms[i], fore = forearms[i];
+                if (upper == null || fore == null) continue;
+                Vector3 outward = upper.position - figure.position;
+                outward.y = 0f;
+                outward = outward.sqrMagnitude > 1e-6f ? outward.normalized : Vector3.zero;
+                Aim(upper, fore.position, (down + outward * 0.1f + front * 0.03f).normalized);
+                Transform hand = fore.childCount > 0 ? fore.GetChild(0) : null;
+                if (hand != null) Aim(fore, hand.position, (down + front * 0.06f).normalized);
+            }
+        }
+
+        private static void Aim(Transform bone, Vector3 childPosition, Vector3 dir)
+        {
+            Vector3 current = childPosition - bone.position;
+            if (current.sqrMagnitude < 1e-6f) return;
+            bone.rotation = Quaternion.FromToRotation(current.normalized, dir) * bone.rotation;
         }
 
         private void Update()

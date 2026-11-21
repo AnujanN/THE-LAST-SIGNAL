@@ -149,20 +149,8 @@ namespace LastSignal.EditorTools
             Place(title, c, new Vector2(0f, 30f), MenuScenesBuilder.LogoSize(1150f));
             UIImage(title, MenuScenesBuilder.Logo(), Color.white, raycast: false).preserveAspect = true;
             var titleGroup = title.gameObject.AddComponent<CanvasGroup>();
-            RectTransform dotRect = UIRect(title.transform, "BeaconDot");
-            Place(dotRect, c, Vector2.zero, new Vector2(26f, 26f));
-            Image dot = UIImage(dotRect, EnsureSprite("Circle", SpriteShape.Disc), new Color(1f, 0.08f, 0.05f), raycast: false);
-            RectTransform glowRect = UIRect(dotRect, "Glow");
-            Place(glowRect, c, Vector2.zero, new Vector2(150f, 150f));
-            Image glowImage = UIImage(glowRect, EnsureSprite("SoftDot", SpriteShape.Soft), new Color(1f, 0.08f, 0.05f, 0f), raycast: false);
-            glowRect.SetAsFirstSibling();
-            var beacon = title.gameObject.AddComponent<TitleBeacon>();
-            Set(beacon, "logo", title);
-            SetValue(beacon, "logoPoint", MenuScenesBuilder.LogoBeacon);
-            Set(beacon, "dot", dotRect);
-            Set(beacon, "dotImage", dot);
-            Set(beacon, "glow", glowImage);
-            Set(beacon, "visibility", titleGroup);
+            // Five pulses while the title shows (IntroSequence fires them): the light, then the waves outwards.
+            TitleBeacon beacon = MenuScenesBuilder.LogoBeaconLights(title, 1150f, autoPulse: false, volume: 0.6f, visibility: titleGroup);
             TMP_Text time = UIText(root.transform, "TimeCaption", "11:47 PM", 40, new Vector2(0f, 0f), new Vector2(230f, 110f), new Vector2(360f, 70f), TextAlignmentOptions.Left);
             time.characterSpacing = 6f;
             time.color = new Color(0.85f, 0.85f, 0.82f);
@@ -235,6 +223,7 @@ namespace LastSignal.EditorTools
             });
             Set(intro, "fade", fadeGroup);
             Set(intro, "title", titleGroup);
+            Set(intro, "titleBeacon", beacon);
             Set(intro, "timeCaption", timeGroup);
             Set(intro, "skipButton", skip.gameObject);
             Set(intro, "introSubtitles", story);

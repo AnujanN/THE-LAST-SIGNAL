@@ -77,6 +77,8 @@ namespace LastSignal.GameFlow
         [Header("UI")]
         [SerializeField] private CanvasGroup fade;
         [SerializeField] private CanvasGroup title;
+        [Tooltip("The light on the logo's tower: five pulses while the title shows, the fifth as it fades.")]
+        [SerializeField] private UI.TitleBeacon titleBeacon;
         [SerializeField] private CanvasGroup timeCaption;
         [SerializeField] private GameObject skipButton;
         [SerializeField] private Behaviour introSubtitles;
@@ -337,9 +339,14 @@ namespace LastSignal.GameFlow
             // The title comes in on a burst of static, as if tuned in.
             AudioManager.Instance?.PlayUI(PlaceholderClips.StaticBurst, 0.45f);
             AudioManager.Instance?.PlayUI(PlaceholderClips.RadioCrackle, 0.35f);
-            yield return Fade(title, 0f, 1f, 2.5f);
-            yield return new WaitForSeconds(2.5f);
-            yield return Fade(title, 1f, 0f, 1.5f);
+            yield return Fade(title, 0f, 1f, 1.2f);
+            // Five beeps, one a second: each flashes the light and sends the waves out; the title fades on the fifth.
+            for (int beep = 1; beep <= 5; beep++)
+            {
+                if (titleBeacon != null) titleBeacon.Pulse();
+                if (beep == 5) StartCoroutine(Fade(title, 1f, 0f, 1f));
+                yield return new WaitForSeconds(1f);
+            }
 
             // 3. The drive.
             yield return Drive();

@@ -228,7 +228,7 @@ namespace LastSignal.EditorTools
             ctrl.AddParameter("State", AnimatorControllerParameterType.Int);
             AnimationClip idle = Clip("Echo", "Zombie Idle");
             AnimationClip run = Clip("Echo", "Zombie Running");
-            AnimationClip walk = Clip("Alex", "Walking") ?? Clip("Echo", "Zombie Walk");
+            AnimationClip walk = Clip("Alex", "Walking");
             AnimatorState move = ctrl.CreateBlendTreeInController("Move", out BlendTree tree, 0);
             tree.blendParameter = "Speed";
             tree.useAutomaticThresholds = false;

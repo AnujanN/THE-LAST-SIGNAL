@@ -1080,6 +1080,7 @@ namespace LastSignal.EditorTools
                 case float f: p.floatValue = f; break;
                 case Enum en: p.intValue = Convert.ToInt32(en); break;
                 case Vector3 v: p.vector3Value = v; break;
+                case Vector2 v2: p.vector2Value = v2; break;
                 case Color c: p.colorValue = c; break;
                 case LayerMask lm: p.intValue = lm.value; break;
                 default: throw new ArgumentException("Unsupported value type " + value.GetType());

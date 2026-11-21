@@ -62,7 +62,8 @@ in the lamp light and the city outside is soft, out-of-focus lights. Each part h
 shadows with soft focus outside for the flat, cold and wet for the drive. The drive has a storm-cloud sky that the
 lightning lights up, a forked bolt over the hills, mist along the road, headlight beams in the rain, reflector posts,
 lit gauges and a charm swinging from the mirror. Sound: a real wall clock, rain on the glass, the radio; no music over the photo; the title (no subtitle) comes in on a
-burst of static, the dot over its I a red beacon blinking with a radio transmitter pulse (`TitleBeacon`); in the car (right-hand drive, keeping left), the engine, the wipers
+burst of static, the game's logo, the light on top of its tower a red beacon blinking with a radio transmitter pulse (`TitleBeacon`;
+the main menu shows the same logo, blinking silently; the menu has no credits page); in the car (right-hand drive, keeping left), the engine, the wipers
 on each sweep, rain on the roof, thunder, and the engine idling and switching off at the gate.
 
 Ending: sunrise epilogue at Maya's memorial — *"I heard you this time, Maya. Goodbye."* — then THE END. No sequel hook.

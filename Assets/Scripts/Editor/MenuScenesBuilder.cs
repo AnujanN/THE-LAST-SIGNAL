@@ -17,22 +17,6 @@ namespace LastSignal.EditorTools
         public const string EndingPath = "Assets/Scenes/Ending.unity";
         public const string IntroPath = "Assets/Scenes/Intro.unity";
 
-        private const string CreditsText =
-            "<size=150%>THE LAST SIGNAL</size>\n\nA university game project\n\n\n" +
-            "<b>Game design & development</b>\nAnujan N\n\n" +
-            "<b>Characters</b>\nAlex\nMaya\nThe Echo\n\n" +
-            "<b>Built with</b>\nUnity 6 - Universal Render Pipeline\nClaude Code + Unity MCP\n\n" +
-            "<b>Sound effects</b>\nKenney (kenney.nl) - CC0\nAdditional sounds: Joseph Sardin - BigSoundBank.com - CC0\n" +
-            "OpenGameArt.org contributors - CC0\n" +
-            "\"Heartbeat\" by HerbertBoland (Wikimedia Commons) - CC BY 3.0\n" +
-            "CC BY 3.0: creativecommons.org/licenses/by/3.0\n\n" +
-            "<b>Art</b>\nTextures: Poly Haven (polyhaven.com) - CC0\n" +
-            "Alex and The Echo, characters and animations: Mixamo (Adobe)\n" +
-            "Props: Poly Haven - CC0\n" +
-            "Maya's ghost: Quaternius, Universal Animation Library - CC0\n\n" +
-            "<b>Fonts</b>\nLiberation Sans (TextMeshPro)\nCaveat - The Caveat Project Authors, SIL Open Font License\n\n\n" +
-            "For everyone who is still listening.\n\n\nThank you for playing.";
-
         [MenuItem("The Last Signal/Build/Build All Game Scenes", priority = 0)]
         public static void BuildAll()
         {
@@ -70,6 +54,32 @@ namespace LastSignal.EditorTools
         private static void EditorSceneManagerOpen(string path) =>
             UnityEditor.SceneManagement.EditorSceneManager.OpenScene(path);
 
+        // ================================================================== Logo
+
+        public const string LogoPath = "Assets/Art/UI/Logo.png";
+        /// <summary>Where the light on top of the logo's tower is (0..1 across, 0..1 up the image).</summary>
+        public static readonly Vector2 LogoBeacon = new Vector2(811f / 1648f, 1f - 110f / 796f);
+
+        /// <summary>The game's logo as a UI sprite (transparent background, imported crisp, no mipmaps).</summary>
+        public static Sprite Logo()
+        {
+            var imp = AssetImporter.GetAtPath(LogoPath) as TextureImporter;
+            if (imp != null && (imp.textureType != TextureImporterType.Sprite || imp.mipmapEnabled || imp.maxTextureSize != 2048))
+            {
+                imp.textureType = TextureImporterType.Sprite;
+                imp.spriteImportMode = SpriteImportMode.Single;
+                imp.alphaIsTransparency = true;
+                imp.mipmapEnabled = false;
+                imp.maxTextureSize = 2048;
+                imp.textureCompression = TextureImporterCompression.CompressedHQ;
+                imp.SaveAndReimport();
+            }
+            return AssetDatabase.LoadAssetAtPath<Sprite>(LogoPath);
+        }
+
+        /// <summary>The logo's size at a given width, keeping its shape.</summary>
+        public static Vector2 LogoSize(float width) => new Vector2(width, width * 796f / 1648f);
+
         // ================================================================== Main menu
 
         [MenuItem("The Last Signal/Build/Main Menu")]
@@ -94,30 +104,37 @@ namespace LastSignal.EditorTools
             var c = new Vector2(0.5f, 0.5f);
             RectTransform main = UIRect(root.transform, "MainPage");
             Stretch(main);
-            TMP_Text title = UIText(main, "Title", "THE LAST SIGNAL", 110, c, new Vector2(0f, 300f), new Vector2(1600f, 160f));
-            title.characterSpacing = 12f;
-            UIText(main, "Tagline", "Something in the static knows your name.", 32, c, new Vector2(0f, 205f), new Vector2(1400f, 60f))
+            // The logo, its tower light blinking red (silently here; the intro's title has the transmitter pulse).
+            RectTransform logo = UIRect(main, "Logo");
+            Place(logo, c, new Vector2(0f, 300f), LogoSize(820f));
+            UIImage(logo, Logo(), Color.white, raycast: false).preserveAspect = true;
+            RectTransform dotRect = UIRect(logo, "BeaconDot");
+            Place(dotRect, c, Vector2.zero, new Vector2(20f, 20f));
+            Image dot = UIImage(dotRect, EnsureSprite("Circle", SpriteShape.Disc), new Color(1f, 0.08f, 0.05f), raycast: false);
+            RectTransform glowRect = UIRect(dotRect, "Glow");
+            Place(glowRect, c, Vector2.zero, new Vector2(120f, 120f));
+            Image glow = UIImage(glowRect, EnsureSprite("SoftDot", SpriteShape.Soft), new Color(1f, 0.08f, 0.05f, 0f), raycast: false);
+            var beacon = logo.gameObject.AddComponent<TitleBeacon>();
+            Set(beacon, "logo", logo);
+            SetValue(beacon, "logoPoint", LogoBeacon);
+            Set(beacon, "dot", dotRect);
+            Set(beacon, "dotImage", dot);
+            Set(beacon, "glow", glow);
+            SetValue(beacon, "pulseVolume", 0f);
+            UIText(main, "Tagline", "Something in the static knows your name.", 30, c, new Vector2(0f, 82f), new Vector2(1400f, 50f))
                 .color = new Color(0.8f, 0.8f, 0.8f, 0.7f);
-            UIButton(main, "NewGame", "NEW GAME", c, new Vector2(0f, 70f), new Vector2(520f, 95f), 38, menu.NewGame);
-            Button cont = UIButton(main, "Continue", "CONTINUE", c, new Vector2(0f, -40f), new Vector2(520f, 95f), 38, menu.Continue);
-            UIButton(main, "Settings", "SETTINGS", c, new Vector2(0f, -150f), new Vector2(520f, 95f), 38, menu.ShowSettings);
-            UIButton(main, "Credits", "CREDITS", c, new Vector2(0f, -260f), new Vector2(520f, 95f), 38, menu.ShowCredits);
-            Button quit = UIButton(main, "Quit", "QUIT", c, new Vector2(0f, -370f), new Vector2(520f, 95f), 38, menu.Quit);
+            UIButton(main, "NewGame", "NEW GAME", c, new Vector2(0f, -15f), new Vector2(520f, 95f), 38, menu.NewGame);
+            Button cont = UIButton(main, "Continue", "CONTINUE", c, new Vector2(0f, -125f), new Vector2(520f, 95f), 38, menu.Continue);
+            UIButton(main, "Settings", "SETTINGS", c, new Vector2(0f, -235f), new Vector2(520f, 95f), 38, menu.ShowSettings);
+            Button quit = UIButton(main, "Quit", "QUIT", c, new Vector2(0f, -345f), new Vector2(520f, 95f), 38, menu.Quit);
 
             RectTransform settings = GamePrefabs.SettingsPage(root.transform, menu.ShowMain);
 
-            RectTransform credits = UIRect(root.transform, "CreditsPage");
-            Stretch(credits);
-            UIText(credits, "Text", CreditsText.Replace("\n\n\nThank you for playing.", ""), 30, c, new Vector2(0f, 60f), new Vector2(1200f, 820f),
-                TextAlignmentOptions.Center, wrap: true);
-            UIButton(credits, "Back", "BACK", c, new Vector2(0f, -430f), new Vector2(360f, 90f), 36, menu.ShowMain);
-            credits.gameObject.SetActive(false);
 
             Set(menu, "continueButton", cont);
             Set(menu, "quitButton", quit.gameObject);
             Set(menu, "mainPage", main.gameObject);
             Set(menu, "settingsPage", settings.gameObject);
-            Set(menu, "creditsPage", credits.gameObject);
 
             EventSystemObject();
             SaveScene(scene, MainMenuPath);

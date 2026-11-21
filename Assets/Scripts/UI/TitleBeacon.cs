@@ -15,6 +15,9 @@ namespace LastSignal.UI
         [SerializeField] private TMP_Text title;
         [Tooltip("Which character the dot sits over (the I in SIGNAL).")]
         [SerializeField] private int characterIndex = 10;
+        [Tooltip("Or: a logo image, and the point on it (0..1 across, 0..1 up) where the beacon light is.")]
+        [SerializeField] private RectTransform logo;
+        [SerializeField] private Vector2 logoPoint = new Vector2(0.5f, 0.86f);
         [SerializeField] private RectTransform dot;
         [SerializeField] private Image dotImage;
         [SerializeField] private Image glow;
@@ -64,7 +67,15 @@ namespace LastSignal.UI
         /// <summary>Puts the dot just above the top of the chosen letter (once the text has its layout).</summary>
         private void Place()
         {
-            if (title == null || dot == null) return;
+            if (dot == null) return;
+            if (logo != null)
+            {
+                Rect r = logo.rect;
+                dot.position = logo.TransformPoint(new Vector3(r.xMin + r.width * logoPoint.x, r.yMin + r.height * logoPoint.y, 0f));
+                placed = true;
+                return;
+            }
+            if (title == null) return;
             title.ForceMeshUpdate();
             TMP_TextInfo info = title.textInfo;
             if (info == null || characterIndex >= info.characterCount) return;

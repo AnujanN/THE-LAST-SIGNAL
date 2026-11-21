@@ -144,11 +144,11 @@ namespace LastSignal.EditorTools
             UIImage(fadeRect, null, Color.black, raycast: false);
             var fadeGroup = fadeRect.gameObject.AddComponent<CanvasGroup>();
             fadeGroup.blocksRaycasts = false;
-            TMP_Text title = UIText(root.transform, "Title", "THE LAST SIGNAL", 104, c, new Vector2(0f, 30f), new Vector2(1600f, 200f));
-            title.characterSpacing = 22f;
-            title.color = new Color(0.92f, 0.9f, 0.86f);
+            // The game's logo; the light on top of its tower is a red beacon blinking with a transmitter pulse.
+            RectTransform title = UIRect(root.transform, "Title");
+            Place(title, c, new Vector2(0f, 30f), MenuScenesBuilder.LogoSize(1150f));
+            UIImage(title, MenuScenesBuilder.Logo(), Color.white, raycast: false).preserveAspect = true;
             var titleGroup = title.gameObject.AddComponent<CanvasGroup>();
-            // The dot over the I in SIGNAL: a red beacon like the one on the mast, blinking with a transmitter pulse.
             RectTransform dotRect = UIRect(title.transform, "BeaconDot");
             Place(dotRect, c, Vector2.zero, new Vector2(26f, 26f));
             Image dot = UIImage(dotRect, EnsureSprite("Circle", SpriteShape.Disc), new Color(1f, 0.08f, 0.05f), raycast: false);
@@ -157,7 +157,8 @@ namespace LastSignal.EditorTools
             Image glowImage = UIImage(glowRect, EnsureSprite("SoftDot", SpriteShape.Soft), new Color(1f, 0.08f, 0.05f, 0f), raycast: false);
             glowRect.SetAsFirstSibling();
             var beacon = title.gameObject.AddComponent<TitleBeacon>();
-            Set(beacon, "title", title);
+            Set(beacon, "logo", title);
+            SetValue(beacon, "logoPoint", MenuScenesBuilder.LogoBeacon);
             Set(beacon, "dot", dotRect);
             Set(beacon, "dotImage", dot);
             Set(beacon, "glow", glowImage);

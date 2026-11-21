@@ -6,14 +6,13 @@ using UnityEngine.UI;
 
 namespace LastSignal.UI
 {
-    /// <summary>Main menu: New Game, Continue (only with a save), Settings, Credits, Quit.</summary>
+    /// <summary>Main menu: New Game, Continue (only with a save), Settings, Quit.</summary>
     public class MainMenuController : MonoBehaviour
     {
         [SerializeField] private Button continueButton;
         [SerializeField] private GameObject quitButton;
         [SerializeField] private GameObject mainPage;
         [SerializeField] private GameObject settingsPage;
-        [SerializeField] private GameObject creditsPage;
 
         private void Start()
         {
@@ -31,13 +30,11 @@ namespace LastSignal.UI
 
         public void ShowMain() => Show(mainPage);
         public void ShowSettings() => Show(settingsPage);
-        public void ShowCredits() => Show(creditsPage);
 
         private void Show(GameObject page)
         {
             if (mainPage != null) mainPage.SetActive(page == mainPage);
             if (settingsPage != null) settingsPage.SetActive(page == settingsPage);
-            if (creditsPage != null) creditsPage.SetActive(page == creditsPage);
         }
     }
 }
